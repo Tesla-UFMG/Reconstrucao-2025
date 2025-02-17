@@ -2,9 +2,7 @@
 
 Window::Window() {}
 
-Window::~Window() { 
-    this->close();
-}
+Window::~Window() {}
 
 void Window::init(const std::string& windowTitle, int windowWidth, int windowHeight) {
     SDLWrapper::initSubsystem();
@@ -31,12 +29,16 @@ void Window::loop() {
     while (true) {
         if (Window::handleEvent())
             break; // Fecha o programa caso cliquem em fechar.
-        if (SDLWrapper::getWindowIsMinimized() == false) { 
+        if (SDLWrapper::getWindowIsMinimized() == false) {
             // Não renderiza se a janela estiver minimizada, PODE BUGAR!
             ImGuiWrapper::prepareForNewFrame();
             SDLWrapper::clearScreen();
 
+            
+            
             ImGui::ShowDemoWindow(nullptr);
+
+            Pages::mainMenuBar();
 
             ImGuiWrapper::render();
             SDLWrapper::render();

@@ -1,4 +1,4 @@
-WINDOWS := 1
+WINDOWS := 0
 
 PROJECT := app
 BUILD_FOLDER := build
@@ -62,11 +62,12 @@ $(OBJ_FOLDER) :
 
 .PHONY: clean run check
 
-check: $(OUTPUT)
+check: all
 	valgrind --leak-check=full --show-leak-kinds=all $(OUTPUT)
 
-run: $(OUTPUT)
+run: all
+	@rm -rf log.txt
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER)
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt

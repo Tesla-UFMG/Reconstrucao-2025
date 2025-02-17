@@ -42,9 +42,7 @@ Para compilar para WINDOWS, deixe a variável como verdadeira.
 WINDOWS := 1
 ```
 
-Para você compilar, você deve uasr um dos seguintes comandos.
-
-Nosso Makefile possui os seguintes comandos.
+Para você compilar, você deve usar um dos seguintes comandos.
 
 Compilação padrão: `make`
 
@@ -52,4 +50,4 @@ Compilar e rodar: `make run`
 
 Compilar e checar memory leak: `make check`
 
-Limpar o binários e p executável: `make clean`
+Limpar os binários e o executável: `make clean`

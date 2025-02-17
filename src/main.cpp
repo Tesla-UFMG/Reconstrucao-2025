@@ -1,5 +1,6 @@
 #define SDL_MAIN_HANDLED
 #include "Window.hpp"
+#include <iostream>
 
 int main() {
     const std::string WINDOW_TITLE  = "Resconstrução de Pista";

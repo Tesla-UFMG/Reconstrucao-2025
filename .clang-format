@@ -1,0 +1,20 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+PointerAlignment: Left
+ColumnLimit: 100
+LineEnding: LF
+AlignConsecutiveAssignments:
+    Enabled: true
+    AcrossEmptyLines: false
+    AlignCompound: true
+AlignConsecutiveDeclarations:
+    Enabled: true
+    AcrossEmptyLines: false
+AlignConsecutiveMacros:
+    Enabled: true
+    AcrossEmptyLines: false
+AlignArrayOfStructures: Left
+IndentCaseLabels: true
+AccessModifierOffset: 0
+NamespaceIndentation: All
+IndentAccessModifiers: true
