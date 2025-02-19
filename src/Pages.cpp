@@ -1,5 +1,11 @@
 #include "Pages.hpp"
 
+
+namespace Pages {
+    bool showAbout = false;
+}
+
+
 void Pages::mainMenuBarTime() {
     std::time_t t = std::time(nullptr);
     std::tm* now = std::localtime(&t);

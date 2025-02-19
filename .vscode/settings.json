@@ -52,6 +52,18 @@
         "utility": "cpp",
         "iomanip": "cpp",
         "iostream": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "cstring": "cpp",
+        "charconv": "cpp",
+        "list": "cpp",
+        "source_location": "cpp",
+        "ranges": "cpp",
+        "span": "cpp",
+        "variant": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp"
     }
 }

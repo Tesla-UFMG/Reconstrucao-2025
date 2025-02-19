@@ -1,20 +1,25 @@
 #include "Log.hpp"
 
+
 Log& Log::getInstance(const std::string& filepath) {
     static Log instance(filepath);
     return instance;
 }
 
 Log::Log(const std::string& filepath) {
-    file.open(filepath, std::ios::app);
-    if (!file) {
-        throw std::runtime_error("Erro ao abrir arquivo de log: " + filepath);
+    this->file.open(filepath, std::ios::app);
+    if (!this->file) {
+        std::string error = "Erro ao abrir arquivo de log: " + filepath;
+        std::cerr << error << std::endl;
+        throw std::runtime_error(error);
     }
+    this->message("TRACE", "Log iniciado com sucesso.");
 }
 
 Log::~Log() {
-    if (file.is_open()) {
-        file.close();
+    if (this->file.is_open()) {
+        this->message("TRACE", "Log encerrado.");
+        this->file.close();
     }
 }
 
@@ -30,5 +35,5 @@ std::string Log::getCurrentTime() {
 }
 
 void Log::message(const std::string& level, const std::string& message) {
-    file << "[" << getCurrentTime() << "]" << " " << level << " - " << message << std::endl;
+    this->file << "[" << getCurrentTime() << "]" << " " << level << " - " << message << std::endl;
 }

@@ -63,11 +63,11 @@ $(OBJ_FOLDER) :
 .PHONY: clean run check
 
 check: all
-	valgrind --leak-check=full --show-leak-kinds=all $(OUTPUT)
+	valgrind --leak-check=full --show-leak-kinds=all $(OUTPUT) 2> check.txt
 
 run: all
 	@rm -rf log.txt
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3

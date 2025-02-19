@@ -4,9 +4,8 @@ bool     ImGuiWrapper::isSubsystemInited = false;
 ImGuiIO* ImGuiWrapper::io                = nullptr;
 
 void ImGuiWrapper::initSubsystem() {
-    Log& logger = Log::getInstance();
     if (ImGuiWrapper::isSubsystemInited) {
-        logger.message("WARN", "ImGui já está iniciado. Não é possível iniciá-lo novamente.");
+        Log::getInstance().message("WARN", "ImGui já está iniciado. Não é possível iniciá-lo novamente.");
         return;
     }
 
@@ -21,7 +20,7 @@ void ImGuiWrapper::initSubsystem() {
     ImGui_ImplSDL2_InitForSDLRenderer(SDLWrapper::window, SDLWrapper::renderer);
     ImGui_ImplSDLRenderer2_Init(SDLWrapper::renderer);
     ImGuiWrapper::isSubsystemInited = true;
-    logger.message("TRACE", "ImGui foi iniciado com sucesso.");
+    Log::getInstance().message("TRACE", "ImGui foi iniciado com sucesso.");
 }
 
 void ImGuiWrapper::prepareForNewFrame() {
@@ -36,9 +35,8 @@ void ImGuiWrapper::render() {
 }
 
 void ImGuiWrapper::closeSubystem() {
-    Log& logger = Log::getInstance();
     if (ImGuiWrapper::isSubsystemInited == false) {
-        logger.message("WARN", "ImGui já está fechado. Não é possível fechá-lo novamente.");
+        Log::getInstance().message("WARN", "ImGui já está fechado. Não é possível fechá-lo novamente.");
         return;
     }
 
@@ -46,5 +44,5 @@ void ImGuiWrapper::closeSubystem() {
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
     ImGuiWrapper::isSubsystemInited = false;
-    logger.message("TRACE", "ImGui encerrado.");
+    Log::getInstance().message("TRACE", "ImGui encerrado.");
 }

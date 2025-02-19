@@ -1,5 +1,11 @@
 #define SDL_MAIN_HANDLED
+
+// Project
 #include "Window.hpp"
+#include "Log.hpp"
+#include "DB.hpp"
+
+// C++
 #include <iostream>
 
 int main() {
@@ -12,5 +18,7 @@ int main() {
     window.loop();
     window.close();
 
+    DB& db = DB::getInstance();
+        
     return 0;
 }

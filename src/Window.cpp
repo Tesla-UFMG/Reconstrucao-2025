@@ -17,8 +17,10 @@ void Window::close() {
 
 bool Window::handleEvent() {
     while (SDL_PollEvent(&SDLWrapper::events)) {
-        if (SDLWrapper::events.type == SDL_QUIT)
+        if (SDLWrapper::events.type == SDL_QUIT){
+            Log::getInstance().message("TRACE", "Evento de fechar janela detectado.");
             return true;
+        }
         ImGui_ImplSDL2_ProcessEvent(&SDLWrapper::events);
         SDLWrapper::handleWindowEvents(SDLWrapper::events);
     }

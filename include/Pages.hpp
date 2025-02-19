@@ -5,7 +5,8 @@
 #include "ImGuiWrapper.hpp"
 
 namespace Pages {
-    static bool showAbout = false;
+    
+    extern bool showAbout;
 
     void mainMenuBarTime();
     void mainMenuBar();
