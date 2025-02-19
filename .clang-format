@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
 PointerAlignment: Left
-ColumnLimit: 100
+ColumnLimit: 120
 LineEnding: LF
 AlignConsecutiveAssignments:
     Enabled: true

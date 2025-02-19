@@ -32,20 +32,20 @@ endif
 all: $(BUILD_FOLDER) $(OBJ_FOLDER) $(OUTPUT)
 
 $(OUTPUT): $(OBJ_FILES)
-	@$(CXX) $(INCLUDES) $(OBJ_FILES) -o $(OUTPUT) $(LDFLAGS) $(LINKFLAGS)
 	@echo $@
+	@$(CXX) $(INCLUDES) $(OBJ_FILES) -o $(OUTPUT) $(LDFLAGS) $(LINKFLAGS)
 
 $(OBJ_FOLDER)/%.o: src/%.cpp $(wildcard include/%.hpp)
-	@$(CXX) $(INCLUDES) $(CXX_FLAGS) -c $< -o $@
 	@echo $@
+	@$(CXX) $(INCLUDES) $(CXX_FLAGS) -c $< -o $@
 
 $(OBJ_FOLDER)/lib/%.o: lib/*/%.cpp 
-	@$(CXX) $(INCLUDES) $(CXX_FLAGS) -c $< -o $@
 	@echo $@
+	@$(CXX) $(INCLUDES) $(CXX_FLAGS) -c $< -o $@
 
 $(OBJ_FOLDER)/lib/%.o: lib/*/%.c
-	@$(CXX) -x c $< $(INCLUDE_FOLDER) -c -o $@
 	@echo $@
+	@$(CXX) -x c $< $(INCLUDE_FOLDER) -c -o $@
 
 ifeq ($(WINDOWS), 1)
 $(BUILD_FOLDER) :
@@ -67,6 +67,7 @@ check: all
 
 run: all
 	@rm -rf log.txt
+	@echo "Executando."
 	@./$(OUTPUT)
 
 clean:

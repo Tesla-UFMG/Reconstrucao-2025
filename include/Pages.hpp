@@ -5,12 +5,12 @@
 #include "ImGuiWrapper.hpp"
 
 namespace Pages {
-    
+
     extern bool showAbout;
 
     void mainMenuBarTime();
     void mainMenuBar();
 
-}
+} // namespace Pages
 
 #endif // PAGES_HPP

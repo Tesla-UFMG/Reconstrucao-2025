@@ -17,7 +17,7 @@ void Window::close() {
 
 bool Window::handleEvent() {
     while (SDL_PollEvent(&SDLWrapper::events)) {
-        if (SDLWrapper::events.type == SDL_QUIT){
+        if (SDLWrapper::events.type == SDL_QUIT) {
             Log::getInstance().message("TRACE", "Evento de fechar janela detectado.");
             return true;
         }
@@ -36,8 +36,6 @@ void Window::loop() {
             ImGuiWrapper::prepareForNewFrame();
             SDLWrapper::clearScreen();
 
-            
-            
             ImGui::ShowDemoWindow(nullptr);
 
             Pages::mainMenuBar();

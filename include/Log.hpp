@@ -1,7 +1,6 @@
 #ifndef LOG_HPP
 #define LOG_HPP
 
-
 /*
 FATAL → Erro crítico que faz o sistema parar.
 ERROR → Erro que afeta o funcionamento, mas o sistema continua.
@@ -14,15 +13,14 @@ SECURITY → Eventos de segurança (ex: tentativa de acesso não autorizado).
 METRICS → Dados de desempenho (ex: tempo de resposta de uma função).
 */
 
-
 // C++
 #include <ctime>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <iostream>
 
 #define LOG_OUTPUT "log.txt"
 
@@ -30,13 +28,12 @@ class Log {
     private:
         explicit Log(const std::string& filepath);
 
-        std::string getCurrentTime();
+        std::string   getCurrentTime();
         std::ofstream file;
-        
 
     public:
-        Log(Log&&) = delete;
-        Log& operator= (Log&&) = delete;
+        Log(Log&&)            = delete;
+        Log& operator=(Log&&) = delete;
         ~Log();
 
         static Log& getInstance(const std::string& filepath = LOG_OUTPUT);

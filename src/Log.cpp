@@ -1,6 +1,5 @@
 #include "Log.hpp"
 
-
 Log& Log::getInstance(const std::string& filepath) {
     static Log instance(filepath);
     return instance;

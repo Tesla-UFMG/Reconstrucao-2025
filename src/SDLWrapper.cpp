@@ -34,14 +34,12 @@ void SDLWrapper::initSubsystem() {
     SDLWrapper::isSubsystemInited = true;
 }
 
-void SDLWrapper::createWindowAndRenderer(const std::string& windowTitle, int windowWidth,
-                                         int windowHeight) {
+void SDLWrapper::createWindowAndRenderer(const std::string& windowTitle, int windowWidth, int windowHeight) {
 
     try {
-        int windowFlags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-        SDLWrapper::window =
-            SDL_CreateWindow(windowTitle.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                             windowWidth, windowHeight, windowFlags);
+        int windowFlags    = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+        SDLWrapper::window = SDL_CreateWindow(windowTitle.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                              windowWidth, windowHeight, windowFlags);
 
         if (!SDLWrapper::window)
             throw std::runtime_error(SDL_GetError());
@@ -49,7 +47,7 @@ void SDLWrapper::createWindowAndRenderer(const std::string& windowTitle, int win
         int rendererFlags    = SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC;
         SDLWrapper::renderer = SDL_CreateRenderer(SDLWrapper::window, -1, rendererFlags);
 
-        if (!SDLWrapper::renderer){
+        if (!SDLWrapper::renderer) {
             throw std::runtime_error(SDL_GetError());
         }
 
@@ -88,8 +86,7 @@ void SDLWrapper::handleWindowEvents(SDL_Event& events) {
 
     else if (events.type == SDL_KEYDOWN && events.key.keysym.sym == SDLK_F11) {
         SDLWrapper::isFullscreen = !SDLWrapper::isFullscreen;
-        SDL_SetWindowFullscreen(SDLWrapper::window,
-                                SDLWrapper::isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+        SDL_SetWindowFullscreen(SDLWrapper::window, SDLWrapper::isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
     }
 }
 

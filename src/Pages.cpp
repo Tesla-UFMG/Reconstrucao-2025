@@ -1,17 +1,15 @@
 #include "Pages.hpp"
 
-
 namespace Pages {
     bool showAbout = false;
 }
 
-
 void Pages::mainMenuBarTime() {
-    std::time_t t = std::time(nullptr);
-    std::tm* now = std::localtime(&t);
-    char buffer[64];
+    std::time_t t   = std::time(nullptr);
+    std::tm*    now = std::localtime(&t);
+    char        buffer[64];
     std::strftime(buffer, sizeof(buffer), "%H:%M:%S  %d-%m-%Y", now);
-    ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(buffer)[0]*1.1); 
+    ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(buffer)[0] * 1.1);
     ImGui::Text("%s", buffer);
 }
 
@@ -34,13 +32,14 @@ void Pages::mainMenuBar() {
             ImGui::MenuItem("Sobre", nullptr, &Pages::showAbout);
             ImGui::EndMenu();
         }
-        
+
         Pages::mainMenuBarTime();
         ImGui::EndMainMenuBar();
     }
 
     if (Pages::showAbout) {
-        ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
         ImGui::Begin("Sobre", &Pages::showAbout, flags);
         ImGui::SeparatorText("Resconstrução de Pista");
         ImGui::Text("Formula Tesla");

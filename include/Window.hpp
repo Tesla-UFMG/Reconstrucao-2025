@@ -8,8 +8,8 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "SDLWrapper.hpp"
 #include "Pages.hpp"
+#include "SDLWrapper.hpp"
 
 class Window {
     private:
