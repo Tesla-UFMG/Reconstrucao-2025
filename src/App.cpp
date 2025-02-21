@@ -29,21 +29,23 @@ bool App::handleEvent() {
 
 void App::loop() {
     while (true) {
-        if (App::handleEvent())
-            break; // Fecha o programa caso cliquem em fechar.
+        // Fecha o programa caso cliquem em fechar.
+        if (App::handleEvent()){
+            break;
+        }
+
+        // Não renderiza se a janela estiver minimizada, PODE BUGAR!
         if (SDLWrapper::getWindowIsMinimized() == false) {
-            // Não renderiza se a janela estiver minimizada, PODE BUGAR!
             ImGuiWrapper::prepareForNewFrame();
             SDLWrapper::clearScreen();
 
             ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-
             ImGui::ShowDemoWindow(nullptr);
-
+            ImPlot::ShowDemoWindow(nullptr);
+            
             MenuBar::render();
             Pages::render();
-
 
             ImGuiWrapper::render();
             SDLWrapper::render();

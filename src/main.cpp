@@ -2,8 +2,8 @@
 
 // Project
 #include "App.hpp"
-#include "Log.hpp"
 #include "DB.hpp"
+#include "Log.hpp"
 
 // C++
 #include <iostream>
@@ -17,7 +17,6 @@ int main() {
     app.init(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
     app.loop();
     app.close();
-
 
     return 0;
 }

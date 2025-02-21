@@ -8,8 +8,8 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "Pages.hpp"
 #include "MenuBar.hpp"
+#include "Pages.hpp"
 #include "SDLWrapper.hpp"
 
 class App {

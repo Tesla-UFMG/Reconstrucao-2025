@@ -3,14 +3,14 @@
 
 // C++
 #include <fstream>
-#include <string>
 #include <sstream>
+#include <string>
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "SDLWrapper.hpp"
-#include "Pages.hpp"
 #include "Log.hpp"
+#include "Pages.hpp"
+#include "SDLWrapper.hpp"
 
 namespace MenuBar {
     void WindowsTab();
@@ -21,8 +21,9 @@ namespace MenuBar {
     void loadLayout();
 
     void renderCurrentTime();
+    void renderProgramName();
     void render();
 
-} // App
+} // namespace MenuBar
 
 #endif // MENU_BAR

@@ -88,8 +88,7 @@ void DB::select(const std::string& table, std::vector<std::string>& columns) {
         }
         query += " FROM " + table + ";";
         // Passando a referencia do banco de dados, não o ponteiro
-        SQLite::Statement select(*this->db,
-                                 query); 
+        SQLite::Statement select(*this->db, query);
         // TODO -> FAZER A FUNÇÃO PARA RETORNAR UM MAP COM OS VALORES
         while (select.executeStep()) {
             for (size_t i = 0; i < columns.size(); i++) {
@@ -197,5 +196,5 @@ void DB_TEST() {
     db.select("teste", selectColumns);
 
     // Deletando tabela
-//    db.dropTable("teste");
+    //    db.dropTable("teste");
 }

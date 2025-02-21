@@ -1,40 +1,40 @@
 # Reconstrucao-2025
 
-Esse é o software de reconstrução de pista da temporada 2025 da equipe Tesla.
+Reconstrução de pista da temporada 2025, da equipe Tesla UFMG.
 
-## Dependencias
+## Dependências
 
-Todos os passos para a instalação das dependencias aqui são para Linux! Caso você use o Windows, baixe o WSL!
+Todos os passos de instalações são para Linux! Caso você use o Windows, baixe o WSL!
 
-Antes de tudo, sempre de um:
+Antes de tudo, digite:
 
 ```
 sudo apt update
 ```
 
-Para instalar o compilador e o make, você pode usar o seguinte comando.
+Agora, instale o compilador e o make com o comando:
 
 ```
-apt-get install build-essential
+sudo apt install build-essential
 ```
 
-Para compilar para Windows para passar o .exe para os colegas, você também pode instalar o mingw32.
+Se você quiser compilar para Windows, instale o mingw:
 
 ```
 sudo apt install mingw-w64
 ```
 
-Além disso, para a compilação em Linux, você precisa instalar o SDL2.
+Por ultimo, baixe o SDL2 para que a interface rode perfeitamente:
 
 ```
 sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libsdl2-net-dev
 ```
 
-De resto, tudo certo! O SQLite3 e o ImGui já está na pasta do projeto. Apesar de não ser a melhor forma, assim evita dor de cabeça para você!
+De resto, tudo certo! O SQLite3 e o ImGui já estão na pasta do projeto.
 
 ## Compilação
 
-Para compilar, após ter instalados as dependencias, você precisa selecionar para qual sistema você irá compilar, você deve abrir o Makefile  e modificar a primeira linha.
+Para compilar, após ter instalados as dependencias, você precisa selecionar para qual sistema você irá compilar. Para isso, você deve abrir o Makefile  e modificar a primeira linha.
 
 Para compilar para LINUX, você deve deixar a variavel WINDOWS como falso.
 
@@ -48,7 +48,7 @@ Para compilar para WINDOWS, deixe a variável como verdadeira.
 WINDOWS := 1
 ```
 
-Para você compilar, você deve usar um dos seguintes comandos.
+Nosso Makefile possui alguns comandos, que além de compilarem o programa, adiciona algumas funcionalidades, são eles:
 
 Compilação padrão: `make`
 
@@ -57,3 +57,40 @@ Compilar e rodar: `make run`
 Compilar e checar memory leak: `make check`
 
 Limpar os binários e o executável: `make clean`
+
+Copia e 'zipa' o executável: make  `make copy`
+
+Ao compilar, será gerado o executável na pasta build. Você pode executar esse arquivo em todos os computadores com o sistema operacional que você selecionou no Makefile. Se você selecionou para compilar para Windows, lembre-se de também copiar os arquivos .dll para o programa executar!
+
+## Executação
+
+Você pode executar o programa digitando na pasta raiz do projeto:
+
+```
+make run
+```
+
+Mas também é possível executá-lo simplemente abrindo-o como um aplicativo normal. Porém, lembre-se, você só conseguirá abri-lo se você o compilou para o seu sistema operacional.
+
+## Justificativas
+
+### Interface
+
+Para a interface gráfica utilizamos o SDL2, o ImGui e o ImPlot. Selecionamos essas bibliotecas por serem faceis de se usar e por serem bastantes robustas.
+
+O SDL2 é usado principalmente para se fazersimulações gráficas e jogos, por isso, é perfeitamente adequada para o nosso projeto.
+
+Já o ImGui, é simplemente a biblioteca de C++ mais sensacional para se fazer interfaces gráficas. Seu uso é simples e robusto, sendo utilizado em praticamente todos os jogos modernos (Incluindo o GTA 6) como interface de debug/desenvolvimento. Portanto, ao aprender utiliza-lo, abre-se um leque muito grande no mercado.
+
+Apesar do ImGui ser otimo para interfaces, foi levantado a necessidade de se instalar o plugin ImPlot para melhores gráficos.
+
+### Banco de Dados
+
+Para o banco de dados estamos utilizando o SQLite3. O escolhemos por ser uma biblioteca leve, simples, e uma das mais utilizadas em C++ para se mexer com SQL.
+
+## Inteface
+
+A interface foi inspirada nesses projetos:
+
+https://trinacriasimracing.wordpress.com/beginners-guide-to-telemetry-analysis-motec/
+https://jpieper.com/tag/diagnostics/

@@ -8,14 +8,16 @@ SRC_FILES := $(wildcard src/*.cpp)
 SQLITECPP_FILES := $(wildcard lib/SQLiteCpp/*.cpp)
 SQLITE3_FILES := $(wildcard lib/sqlite3/*.c)
 IMGUI_FILES := $(wildcard lib/imgui/*.cpp)
+IMPLOT_FILES := $(wildcard lib/implot/*.cpp)
 
 OBJ_FILES := $(patsubst src/%.cpp, $(OBJ_FOLDER)/%.o, $(SRC_FILES))
 OBJ_FILES += $(patsubst lib/SQLiteCpp/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(SQLITECPP_FILES))
 OBJ_FILES += $(patsubst lib/sqlite3/%.c, $(OBJ_FOLDER)/lib/%.o, $(SQLITE3_FILES))
 OBJ_FILES += $(patsubst lib/imgui/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(IMGUI_FILES))
+OBJ_FILES += $(patsubst lib/implot/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(IMPLOT_FILES))
 
 CXX_FLAGS := -Wall -Wextra -pedantic -std=c++11 
-INCLUDES := -I./include -I./lib -I./lib/sqlite3 -I./lib/SQLiteCpp -I./lib/imgui -I./lib/SDL2
+INCLUDES := -I./include -I./lib -I./lib/sqlite3 -I./lib/SQLiteCpp -I./lib/imgui -I./lib/SDL2 -I./lib/implot
 
 ifeq ($(WINDOWS), 1)
 	CXX := x86_64-w64-mingw32-g++

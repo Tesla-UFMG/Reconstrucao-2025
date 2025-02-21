@@ -94,9 +94,7 @@ void SDLWrapper::changeFullscreen() {
     SDL_SetWindowFullscreen(SDLWrapper::window, SDLWrapper::isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 }
 
-bool SDLWrapper::getIsFullscreen() {
-    return SDLWrapper::isFullscreen;
-}
+bool SDLWrapper::getIsFullscreen() { return SDLWrapper::isFullscreen; }
 
 void SDLWrapper::clearScreen() {
     SDL_SetRenderDrawColor(SDLWrapper::renderer, 33, 33, 33, 255);

@@ -9,7 +9,16 @@ void MenuBar::renderCurrentTime() {
     ImGui::Text("%s", buffer);
 }
 
-void MenuBar::loadLayout(){
+void MenuBar::renderProgramName(){
+    std::string programName = "Fórmula Tesla";
+    float windowWidth = ImGui::GetWindowWidth();
+    float textWidth = ImGui::CalcTextSize(programName.c_str())[0];
+    float textOffsetX = (windowWidth - textWidth) / 2.0f;
+    ImGui::SetCursorPosX(textOffsetX);
+    ImGui::Text("%s", programName.c_str());
+}
+
+void MenuBar::loadLayout() {
     std::ifstream inFile(".interface-layout", std::ios::binary);
     if (inFile.is_open()) {
         std::string iniData, line;
@@ -25,14 +34,14 @@ void MenuBar::loadLayout(){
 }
 
 void MenuBar::saveLayout() {
-    size_t size;
-    const char* iniData = ImGui::SaveIniSettingsToMemory(&size);
+    size_t        size;
+    const char*   iniData = ImGui::SaveIniSettingsToMemory(&size);
     std::ofstream outFile(".interface-layout", std::ios::binary);
     if (outFile.is_open()) {
         outFile.write(iniData, size);
         outFile.close();
         Log::getInstance().message("TRACE", "Layout salvo com sucesso.");
-    } else{
+    } else {
         Log::getInstance().message("ERROR", "Não foi possível salvar o layout.");
     }
 }
@@ -75,15 +84,15 @@ void MenuBar::ConfigurationTab() {
     }
 }
 
-
 void MenuBar::render() {
     if (ImGui::BeginMainMenuBar()) {
 
         MenuBar::ConfigurationTab();
         MenuBar::WindowsTab();
-        MenuBar::HelpTab();   
+        MenuBar::HelpTab();
 
         MenuBar::renderCurrentTime();
+        MenuBar::renderProgramName();
         ImGui::EndMainMenuBar();
     }
 }
