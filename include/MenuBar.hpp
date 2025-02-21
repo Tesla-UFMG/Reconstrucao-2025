@@ -13,9 +13,10 @@
 #include "SDLWrapper.hpp"
 
 namespace MenuBar {
-    void WindowsTab();
-    void ConfigurationTab();
-    void HelpTab();
+    void windowsTab();
+    void layoutTab();
+    void configurationTab();
+    void helpTab();
 
     void saveLayout();
     void loadLayout();

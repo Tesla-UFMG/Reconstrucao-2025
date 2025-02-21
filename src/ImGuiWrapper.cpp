@@ -69,7 +69,7 @@ void ImGuiWrapper::configStyle() {
     colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 
     // Frames
-    colors[ImGuiCol_FrameBg]        = LOW(0.54f);
+    colors[ImGuiCol_FrameBg]        = LOW(0.65f);
     colors[ImGuiCol_FrameBgHovered] = HI(0.4f);
     colors[ImGuiCol_FrameBgActive]  = HI(0.67f);
 

@@ -46,36 +46,37 @@ void MenuBar::saveLayout() {
     }
 }
 
-void MenuBar::WindowsTab() {
+void MenuBar::windowsTab() {
     if (ImGui::BeginMenu("Janelas")) {
-        // Layout Manager
-        if (ImGui::BeginMenu("Layout")) {
-            if (ImGui::MenuItem("Salvar Layout")) {
-                MenuBar::saveLayout();
-            }
-            if (ImGui::MenuItem("Carregar Layout")) {
-                MenuBar::loadLayout();
-            }
-            ImGui::EndMenu();
-        }
-        ImGui::Separator();
-        ImGui::MenuItem("Janela 1", nullptr, &Pages::showAbout);
-        ImGui::MenuItem("Janela 2", nullptr, &Pages::showAbout);
-        ImGui::MenuItem("Janela 3", nullptr, &Pages::showAbout);
-        ImGui::MenuItem("Janela 4", nullptr, &Pages::showAbout);
-        ImGui::MenuItem("Janela 5", nullptr, &Pages::showAbout);
+        ImGui::MenuItem("Playback", nullptr, &Pages::showPlayback);
+        ImGui::MenuItem("Selecionador de Dados", nullptr, &Pages::showDataPicker);
+        ImGui::MenuItem("Reconstrução de Pista", nullptr, &Pages::showReconstruction);
+        ImGui::MenuItem("Video", nullptr, &Pages::showVideo);
+        ImGui::MenuItem("Plot", nullptr, &Pages::showPlot);
         ImGui::EndMenu();
     }
 }
 
-void MenuBar::HelpTab() {
+void MenuBar::layoutTab() {
+    if (ImGui::BeginMenu("Layouts")) {
+        if (ImGui::MenuItem("Salvar Layout")) {
+            MenuBar::saveLayout();
+        }
+        if (ImGui::MenuItem("Carregar Layout")) {
+            MenuBar::loadLayout();
+        }
+        ImGui::EndMenu();
+    }
+}
+
+void MenuBar::helpTab() {
     if (ImGui::BeginMenu("Ajuda")) {
         ImGui::MenuItem("Sobre", nullptr, &Pages::showAbout);
         ImGui::EndMenu();
     }
 }
 
-void MenuBar::ConfigurationTab() {
+void MenuBar::configurationTab() {
     if (ImGui::BeginMenu("Configurações")) {
         if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
             SDLWrapper::changeFullscreen();
@@ -87,9 +88,10 @@ void MenuBar::ConfigurationTab() {
 void MenuBar::render() {
     if (ImGui::BeginMainMenuBar()) {
 
-        MenuBar::ConfigurationTab();
-        MenuBar::WindowsTab();
-        MenuBar::HelpTab();
+        MenuBar::configurationTab();
+        MenuBar::windowsTab();
+        MenuBar::layoutTab();
+        MenuBar::helpTab();
 
         MenuBar::renderCurrentTime();
         MenuBar::renderProgramName();
