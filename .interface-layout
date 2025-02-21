@@ -1,0 +1,22 @@
+[Window][Debug##Default]
+Pos=60,60
+Size=400,400
+Collapsed=0
+
+[Window][Dear ImGui Demo]
+Pos=371,327
+Size=339,345
+Collapsed=1
+
+[Window][Example: Documents]
+Pos=60,60
+Size=621,695
+Collapsed=0
+
+[Window][Sobre]
+Pos=277,66
+Size=210,162
+Collapsed=0
+
+[Docking][Data]
+

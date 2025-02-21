@@ -85,13 +85,21 @@ void SDLWrapper::handleWindowEvents(SDL_Event& events) {
     }
 
     else if (events.type == SDL_KEYDOWN && events.key.keysym.sym == SDLK_F11) {
-        SDLWrapper::isFullscreen = !SDLWrapper::isFullscreen;
-        SDL_SetWindowFullscreen(SDLWrapper::window, SDLWrapper::isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+        SDLWrapper::changeFullscreen();
     }
 }
 
+void SDLWrapper::changeFullscreen() {
+    SDLWrapper::isFullscreen = !SDLWrapper::isFullscreen;
+    SDL_SetWindowFullscreen(SDLWrapper::window, SDLWrapper::isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+}
+
+bool SDLWrapper::getIsFullscreen() {
+    return SDLWrapper::isFullscreen;
+}
+
 void SDLWrapper::clearScreen() {
-    SDL_SetRenderDrawColor(SDLWrapper::renderer, 0, 204, 102, 255);
+    SDL_SetRenderDrawColor(SDLWrapper::renderer, 33, 33, 33, 255);
     SDL_RenderClear(SDLWrapper::renderer);
 }
 

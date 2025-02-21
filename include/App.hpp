@@ -1,5 +1,5 @@
-#ifndef WINDOW_HPP
-#define WINDOW_HPP
+#ifndef APP_HPP
+#define APP_HPP
 
 // C++
 #include <iostream>
@@ -9,19 +9,20 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "Pages.hpp"
+#include "MenuBar.hpp"
 #include "SDLWrapper.hpp"
 
-class Window {
+class App {
     private:
         bool handleEvent();
 
     public:
-        Window();
-        ~Window();
+        App();
+        ~App();
         void init(const std::string& windowTitle, int windowWidth,
                   int windowHeight); // Inicia os subsistemas e cria uma janela
         void loop();                 // Loop principal da janela
         void close();                // Fecha a janela
 };
 
-#endif
+#endif // APP_HPP

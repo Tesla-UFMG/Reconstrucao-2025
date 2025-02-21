@@ -31,6 +31,8 @@ class SDLWrapper {
         static bool getWindowIsMinimized();                    // Pega se a janela está minimizada
         static void render();                                  // Renderiza a tela
         static void closeSubystem();                           // Fecha todos os subsistemas do SDL
+        static void changeFullscreen(); 
+        static bool getIsFullscreen();                          
 };
 
 #endif

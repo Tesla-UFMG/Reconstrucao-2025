@@ -12,13 +12,22 @@
 
 // Third party
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
+
+
+#define HI(a)   ImVec4(0.113f, 0.725f, 0.329f, a) 
+#define MED(a)  ImVec4(0.184f, 0.564f, 0.317f, a) 
+#define LOW(a)  ImVec4(0.152f, 0.231f, 0.180f, a) 
+
 
 class ImGuiWrapper {
     private:
         static bool     isSubsystemInited;
         static ImGuiIO* io;
+        static void configStyle();
+
 
     public:
         static void initSubsystem();      // Inicia todos os subsistemas do ImGui

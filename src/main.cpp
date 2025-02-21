@@ -1,7 +1,7 @@
 #define SDL_MAIN_HANDLED
 
 // Project
-#include "Window.hpp"
+#include "App.hpp"
 #include "Log.hpp"
 #include "DB.hpp"
 
@@ -13,12 +13,11 @@ int main() {
     const int         WINDOW_WIDTH  = 1280;
     const int         WINDOW_HEIGHT = 720;
 
-    //Window window;
-    //window.init(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
-    //window.loop();
-    //window.close();
+    App app;
+    app.init(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
+    app.loop();
+    app.close();
 
 
-        
     return 0;
 }

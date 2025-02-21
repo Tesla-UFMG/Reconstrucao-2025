@@ -1,21 +1,21 @@
-#include "Window.hpp"
+#include "App.hpp"
 
-Window::Window() {}
+App::App() {}
 
-Window::~Window() {}
+App::~App() {}
 
-void Window::init(const std::string& windowTitle, int windowWidth, int windowHeight) {
+void App::init(const std::string& windowTitle, int windowWidth, int windowHeight) {
     SDLWrapper::initSubsystem();
     SDLWrapper::createWindowAndRenderer(windowTitle, windowWidth, windowHeight);
     ImGuiWrapper::initSubsystem();
 }
 
-void Window::close() {
+void App::close() {
     ImGuiWrapper::closeSubystem();
     SDLWrapper::closeSubystem();
 }
 
-bool Window::handleEvent() {
+bool App::handleEvent() {
     while (SDL_PollEvent(&SDLWrapper::events)) {
         if (SDLWrapper::events.type == SDL_QUIT) {
             Log::getInstance().message("TRACE", "Evento de fechar janela detectado.");
@@ -27,18 +27,23 @@ bool Window::handleEvent() {
     return false;
 }
 
-void Window::loop() {
+void App::loop() {
     while (true) {
-        if (Window::handleEvent())
+        if (App::handleEvent())
             break; // Fecha o programa caso cliquem em fechar.
         if (SDLWrapper::getWindowIsMinimized() == false) {
             // Não renderiza se a janela estiver minimizada, PODE BUGAR!
             ImGuiWrapper::prepareForNewFrame();
             SDLWrapper::clearScreen();
 
+            ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
+
             ImGui::ShowDemoWindow(nullptr);
 
-            Pages::mainMenuBar();
+            MenuBar::render();
+            Pages::render();
+
 
             ImGuiWrapper::render();
             SDLWrapper::render();

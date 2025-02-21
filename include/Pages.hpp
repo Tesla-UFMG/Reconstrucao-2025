@@ -3,13 +3,14 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
+#include "SDLWrapper.hpp"
 
 namespace Pages {
 
     extern bool showAbout;
 
-    void mainMenuBarTime();
-    void mainMenuBar();
+    void aboutPage();
+    void render();
 
 } // namespace Pages
 

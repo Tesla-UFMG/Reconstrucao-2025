@@ -1,4 +1,4 @@
-WINDOWS := 0
+WINDOWS := 1
 
 PROJECT := app
 BUILD_FOLDER := build
@@ -60,7 +60,7 @@ $(OBJ_FOLDER) :
 	@mkdir -p $@
 	@mkdir -p $@/lib
 
-.PHONY: clean run check
+.PHONY: clean run check copy
 
 check: all
 	valgrind --leak-check=full --show-leak-kinds=all $(OUTPUT) 2> check.txt
@@ -72,3 +72,6 @@ run: all
 
 clean:
 	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3
+
+copy:
+	zip -r Reconstrucao.zip $(BUILD_FOLDER)

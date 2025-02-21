@@ -6,6 +6,12 @@ Esse é o software de reconstrução de pista da temporada 2025 da equipe Tesla.
 
 Todos os passos para a instalação das dependencias aqui são para Linux! Caso você use o Windows, baixe o WSL!
 
+Antes de tudo, sempre de um:
+
+```
+sudo apt update
+```
+
 Para instalar o compilador e o make, você pode usar o seguinte comando.
 
 ```
@@ -15,7 +21,7 @@ apt-get install build-essential
 Para compilar para Windows para passar o .exe para os colegas, você também pode instalar o mingw32.
 
 ```
-sudo apt install g++-mingw-w64-x86-64
+sudo apt install mingw-w64
 ```
 
 Além disso, para a compilação em Linux, você precisa instalar o SDL2.
