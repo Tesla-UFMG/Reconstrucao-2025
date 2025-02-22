@@ -21,12 +21,12 @@ INCLUDES := -I./include -I./lib -I./lib/sqlite3 -I./lib/SQLiteCpp -I./lib/imgui 
 
 ifeq ($(WINDOWS), 1)
 	CXX := x86_64-w64-mingw32-g++
-	LINKFLAGS := -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mconsole -static-libgcc -static-libstdc++
+	LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mconsole -static-libgcc -static-libstdc++
 	LDFLAGS := -Llib/SDL2
 	OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
 else
 	CXX := g++
-	LINKFLAGS := -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -static-libgcc -static-libstdc++
+	LINKFLAGS := -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -static-libgcc -static-libstdc++
 	LDFLAGS := 
 	OUTPUT := $(BUILD_FOLDER)/$(PROJECT)
 endif
@@ -73,7 +73,7 @@ run: all
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 .interface-layout
 
 copy:
 	zip -r Reconstrucao.zip $(BUILD_FOLDER)

@@ -46,13 +46,22 @@ void MenuBar::saveLayout() {
     }
 }
 
+void MenuBar::openOrCloseWindow(std::string windowName, bool* isOpen) {
+    if (ImGui::MenuItem(windowName.c_str(), nullptr, isOpen)) {
+        std::string message = Pages::showPlayback ? "Foi aberta a janela " + windowName + ".": "Foi fechada a janela " + windowName + ".";
+        Log::getInstance().message("TRACE", message);
+    }
+}
+
 void MenuBar::windowsTab() {
     if (ImGui::BeginMenu("Janelas")) {
-        ImGui::MenuItem("Playback", nullptr, &Pages::showPlayback);
-        ImGui::MenuItem("Selecionador de Dados", nullptr, &Pages::showDataPicker);
-        ImGui::MenuItem("Reconstrução de Pista", nullptr, &Pages::showReconstruction);
-        ImGui::MenuItem("Video", nullptr, &Pages::showVideo);
-        ImGui::MenuItem("Plot", nullptr, &Pages::showPlot);
+
+        MenuBar::openOrCloseWindow("Playback", &Pages::showPlayback);
+        MenuBar::openOrCloseWindow("Selecionador de Dados", &Pages::showDataPicker);
+        MenuBar::openOrCloseWindow("Reconstrução de Pista", &Pages::showReconstruction);
+        MenuBar::openOrCloseWindow("Video", &Pages::showVideo);
+        MenuBar::openOrCloseWindow("Plot", &Pages::showPlot);
+
         ImGui::EndMenu();
     }
 }
@@ -71,7 +80,7 @@ void MenuBar::layoutTab() {
 
 void MenuBar::helpTab() {
     if (ImGui::BeginMenu("Ajuda")) {
-        ImGui::MenuItem("Sobre", nullptr, &Pages::showAbout);
+        MenuBar::openOrCloseWindow("Sobre", &Pages::showAbout);
         ImGui::EndMenu();
     }
 }

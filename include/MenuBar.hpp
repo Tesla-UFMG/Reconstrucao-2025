@@ -17,6 +17,7 @@ namespace MenuBar {
     void layoutTab();
     void configurationTab();
     void helpTab();
+    void openOrCloseWindow(std::string windowName, bool* isOpen);
 
     void saveLayout();
     void loadLayout();

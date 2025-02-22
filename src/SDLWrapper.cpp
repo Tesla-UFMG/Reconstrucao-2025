@@ -92,6 +92,7 @@ void SDLWrapper::handleWindowEvents(SDL_Event& events) {
 void SDLWrapper::changeFullscreen() {
     SDLWrapper::isFullscreen = !SDLWrapper::isFullscreen;
     SDL_SetWindowFullscreen(SDLWrapper::window, SDLWrapper::isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+    Log::getInstance().message("TRACE", SDLWrapper::getIsFullscreen() ? "Mudou a tela para modo fullscreen." : "Mudou a tela para modo janela.");
 }
 
 bool SDLWrapper::getIsFullscreen() { return SDLWrapper::isFullscreen; }

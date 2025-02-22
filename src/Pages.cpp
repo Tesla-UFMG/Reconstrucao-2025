@@ -3,7 +3,7 @@
 namespace Pages {
     bool showAbout = false;
     bool showPlayback = false;
-    bool showDataPicker = false;
+    bool showDataPicker = true;
     bool showReconstruction = false;
     bool showVideo = false;
     bool showPlot = false;
@@ -44,7 +44,8 @@ void Pages::playback() {
 
 
         if (ImGui::Button("<")) {
-            current -= 0.01;
+            if (current > 0)
+                current -= 0.01;
         } ImGui::SameLine();
         ImGui::RadioButton("Parar", &selectedButton, 0); ImGui::SameLine();
         ImGui::RadioButton("Iniciar", &selectedButton, 1); ImGui::SameLine();

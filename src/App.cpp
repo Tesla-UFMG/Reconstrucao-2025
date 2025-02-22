@@ -28,6 +28,7 @@ bool App::handleEvent() {
 }
 
 void App::loop() {
+    Log::getInstance().message("TRACE", "Entrou no loop principal.");
     while (true) {
         // Fecha o programa caso cliquem em fechar.
         if (App::handleEvent()){
