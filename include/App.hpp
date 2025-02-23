@@ -9,8 +9,8 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "MenuBar.hpp"
-#include "Window.hpp"
 #include "SDLWrapper.hpp"
+#include "Window.hpp"
 
 class App {
     private:

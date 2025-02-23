@@ -11,14 +11,14 @@ DB::DB(const std::string& filepath) {
         this->db        = std::unique_ptr<SQLite::Database>(new SQLite::Database(filepath, SQLiteFlags));
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao abrir banco de dados: ") + e.what();
-        Log::getInstance().message("FATAL", error);
+        LOG("FATAL", error);
         std::cerr << error << std::endl;
         throw;
     }
-    Log::getInstance().message("TRACE", "Banco de dados inicializado com sucesso.");
+    LOG("TRACE", "Banco de dados inicializado com sucesso.");
 }
 
-DB::~DB() { Log::getInstance().message("TRACE", "Banco de dados encerrado."); }
+DB::~DB() { LOG("TRACE", "Banco de dados encerrado."); }
 
 void DB::createTable(const std::string& table, std::vector<std::string>& columns) {
     std::string query;
@@ -31,11 +31,11 @@ void DB::createTable(const std::string& table, std::vector<std::string>& columns
         }
         query += ");";
         this->db->exec(query);
-        Log::getInstance().message("AUDIT", "Tabela '" + table + "' criada com sucesso.");
+        LOG("AUDIT", "Tabela '" + table + "' criada com sucesso.");
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao criar tabela: ") + e.what();
-        Log::getInstance().message("ERROR", error);
-        Log::getInstance().message("DEBUG", query);
+        LOG("ERROR", error);
+        LOG("DEBUG", query);
         std::cerr << error << std::endl;
         std::cerr << query << std::endl;
     }
@@ -45,11 +45,11 @@ void DB::dropTable(const std::string& table) {
     std::string query = "DROP TABLE " + table + ";";
     try {
         this->db->exec(query);
-        Log::getInstance().message("AUDIT", "Tabela '" + table + "' apagada.");
+        LOG("AUDIT", "Tabela '" + table + "' apagada.");
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao apagar tabela: ") + e.what();
-        Log::getInstance().message("ERROR", error);
-        Log::getInstance().message("DEBUG", query);
+        LOG("ERROR", error);
+        LOG("DEBUG", query);
         std::cerr << error << std::endl;
         std::cerr << query << std::endl;
     }
@@ -67,11 +67,11 @@ void DB::insert(const std::string& table, std::vector<std::string>& values) {
         }
         query += ");";
         this->db->exec(query);
-        Log::getInstance().message("AUDIT", "Inserção na tabela '" + table + "' realizada com sucesso.");
+        LOG("AUDIT", "Inserção na tabela '" + table + "' realizada com sucesso.");
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao inserir na tabela: ") + e.what();
-        Log::getInstance().message("ERROR", error);
-        Log::getInstance().message("DEBUG", query);
+        LOG("ERROR", error);
+        LOG("DEBUG", query);
         std::cerr << error << std::endl;
         std::cerr << query << std::endl;
     }
@@ -98,8 +98,8 @@ void DB::select(const std::string& table, std::vector<std::string>& columns) {
         }
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao selecionar da tabela: ") + e.what();
-        Log::getInstance().message("ERROR", error);
-        Log::getInstance().message("DEBUG", query);
+        LOG("ERROR", error);
+        LOG("DEBUG", query);
         std::cerr << error << std::endl;
         std::cerr << query << std::endl;
     }
@@ -116,11 +116,11 @@ void DB::update(const std::string& table, std::vector<std::string>& columns, std
         }
         query += ";";
         this->db->exec(query);
-        Log::getInstance().message("AUDIT", "Atualização na tabela '" + table + "' realizada com sucesso.");
+        LOG("AUDIT", "Atualização na tabela '" + table + "' realizada com sucesso.");
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao atualizar na tabela: ") + e.what();
-        Log::getInstance().message("ERROR", error);
-        Log::getInstance().message("DEBUG", query);
+        LOG("ERROR", error);
+        LOG("DEBUG", query);
         std::cerr << error << std::endl;
         std::cerr << query << std::endl;
     }
@@ -138,11 +138,11 @@ void DB::remove(const std::string& table, std::vector<std::string>& columns, std
         }
         query += ";";
         this->db->exec(query);
-        Log::getInstance().message("AUDIT", "Remoção na tabela '" + table + "' realizada com sucesso.");
+        LOG("AUDIT", "Remoção na tabela '" + table + "' realizada com sucesso.");
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao remover da tabela: ") + e.what();
-        Log::getInstance().message("ERROR", error);
-        Log::getInstance().message("DEBUG", query);
+        LOG("ERROR", error);
+        LOG("DEBUG", query);
         std::cerr << error << std::endl;
         std::cerr << query << std::endl;
     }
@@ -151,11 +151,11 @@ void DB::remove(const std::string& table, std::vector<std::string>& columns, std
 void DB::execute(const std::string& query) {
     try {
         this->db->exec(query);
-        Log::getInstance().message("AUDIT", "Query executada com sucesso.");
+        LOG("AUDIT", "Query executada com sucesso.");
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao executar query: ") + e.what();
-        Log::getInstance().message("ERROR", error);
-        Log::getInstance().message("DEBUG", query);
+        LOG("ERROR", error);
+        LOG("DEBUG", query);
         std::cerr << error << std::endl;
         std::cerr << query << std::endl;
     }

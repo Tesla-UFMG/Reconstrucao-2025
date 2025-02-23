@@ -9,7 +9,7 @@ SDL_Event     SDLWrapper::events;
 
 void SDLWrapper::initSubsystem() {
     if (SDLWrapper::isSubsystemInited) {
-        Log::getInstance().message("WARN", "SDL já está iniciado. Não é possível iniciá-lo novamente.");
+        LOG("WARN", "SDL já está iniciado. Não é possível iniciá-lo novamente.");
         return;
     }
 
@@ -19,7 +19,7 @@ void SDLWrapper::initSubsystem() {
         }
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao iniciar SDL: ") + e.what();
-        Log::getInstance().message("FATAL", error);
+        LOG("FATAL", error);
         std::cerr << error << "\n";
         SDLWrapper::closeSubystem();
         throw;
@@ -27,10 +27,10 @@ void SDLWrapper::initSubsystem() {
 
     if (!SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")) {
         std::cout << "Warning: Linear texture filtering not enabled!\n";
-        Log::getInstance().message("ERROR", "Não foi possível habilitar a filtragem linear.");
+        LOG("ERROR", "Não foi possível habilitar a filtragem linear.");
     }
 
-    Log::getInstance().message("TRACE", "SDL foi iniciado com sucesso.");
+    LOG("TRACE", "SDL foi iniciado com sucesso.");
     SDLWrapper::isSubsystemInited = true;
 }
 
@@ -51,17 +51,17 @@ void SDLWrapper::createWindowAndRenderer(const std::string& windowTitle, int win
             throw std::runtime_error(SDL_GetError());
         }
 
-        Log::getInstance().message("TRACE", "SDL Window e Renderer criados.");
+        LOG("TRACE", "SDL Window e Renderer criados.");
     } catch (const std::exception& e) {
         std::string error = std::string("Erro ao iniciar SDL: ") + e.what();
-        Log::getInstance().message("FATAL", error);
+        LOG("FATAL", error);
         std::cerr << error << "\n";
         SDLWrapper::closeSubystem();
         throw;
     }
 }
 
-void SDLWrapper::handleWindowEvents(SDL_Event& events) {
+void SDLWrapper::handleEvent(SDL_Event& events) {
     if (events.type == SDL_WINDOWEVENT) {
         switch (events.window.event) {
             case SDL_WINDOWEVENT_SIZE_CHANGED:
@@ -92,7 +92,8 @@ void SDLWrapper::handleWindowEvents(SDL_Event& events) {
 void SDLWrapper::changeFullscreen() {
     SDLWrapper::isFullscreen = !SDLWrapper::isFullscreen;
     SDL_SetWindowFullscreen(SDLWrapper::window, SDLWrapper::isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-    Log::getInstance().message("TRACE", SDLWrapper::getIsFullscreen() ? "Mudou a tela para modo fullscreen." : "Mudou a tela para modo janela.");
+    LOG("TRACE",
+        SDLWrapper::getIsFullscreen() ? "Mudou a tela para modo fullscreen." : "Mudou a tela para modo janela.");
 }
 
 bool SDLWrapper::getIsFullscreen() { return SDLWrapper::isFullscreen; }
@@ -110,18 +111,18 @@ void SDLWrapper::closeSubystem() {
     if (SDLWrapper::renderer) {
         SDL_DestroyRenderer(SDLWrapper::renderer);
         SDLWrapper::renderer = nullptr;
-        Log::getInstance().message("TRACE", "SDL Renderer destruído.");
+        LOG("TRACE", "SDL Renderer destruído.");
     }
 
     if (SDLWrapper::window) {
         SDL_DestroyWindow(SDLWrapper::window);
         SDLWrapper::window = nullptr;
-        Log::getInstance().message("TRACE", "SDL Window destruída.");
+        LOG("TRACE", "SDL Window destruída.");
     }
 
     if (SDLWrapper::isSubsystemInited) {
         SDL_Quit();
-        Log::getInstance().message("TRACE", "SDL encerrado.");
+        LOG("TRACE", "SDL encerrado.");
         SDLWrapper::isSubsystemInited = false;
     }
 }

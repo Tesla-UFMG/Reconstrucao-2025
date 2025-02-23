@@ -1,12 +1,12 @@
 #include "ImGuiWrapper.hpp"
 
-bool     ImGuiWrapper::isSubsystemInited = false;
-ImGuiIO* ImGuiWrapper::io                = nullptr;
-std::vector<std::string> ImGuiWrapper::layoutQueue;
+bool                  ImGuiWrapper::isSubsystemInited = false;
+ImGuiIO*              ImGuiWrapper::io                = nullptr;
+std::filesystem::path ImGuiWrapper::layoutQueue;
 
 void ImGuiWrapper::initSubsystem() {
     if (ImGuiWrapper::isSubsystemInited) {
-        Log::getInstance().message("WARN", "ImGui já está iniciado. Não é possível iniciá-lo novamente.");
+        LOG("WARN", "ImGui já está iniciado. Não é possível iniciá-lo novamente.");
         return;
     }
 
@@ -23,7 +23,7 @@ void ImGuiWrapper::initSubsystem() {
     ImGui_ImplSDL2_InitForSDLRenderer(SDLWrapper::window, SDLWrapper::renderer);
     ImGui_ImplSDLRenderer2_Init(SDLWrapper::renderer);
     ImGuiWrapper::isSubsystemInited = true;
-    Log::getInstance().message("TRACE", "ImGui foi iniciado com sucesso.");
+    LOG("TRACE", "ImGui foi iniciado com sucesso.");
 }
 
 void ImGuiWrapper::prepareForNewFrame() {
@@ -40,7 +40,7 @@ void ImGuiWrapper::render() {
 
 void ImGuiWrapper::closeSubystem() {
     if (ImGuiWrapper::isSubsystemInited == false) {
-        Log::getInstance().message("WARN", "ImGui já está fechado. Não é possível fechá-lo novamente.");
+        LOG("WARN", "ImGui já está fechado. Não é possível fechá-lo novamente.");
         return;
     }
 
@@ -49,19 +49,26 @@ void ImGuiWrapper::closeSubystem() {
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     ImGuiWrapper::isSubsystemInited = false;
-    Log::getInstance().message("TRACE", "ImGui encerrado.");
+    LOG("TRACE", "ImGui encerrado.");
 }
 
-void ImGuiWrapper::saveLayout(const std::string& output) {
-    size_t        size;
-    const char*   iniData = ImGui::SaveIniSettingsToMemory(&size);
-    std::ofstream outFile(output, std::ios::binary);
+void ImGuiWrapper::saveLayout(const std::filesystem::path& filepath) {
+    size_t      size;
+    const char* iniData = ImGui::SaveIniSettingsToMemory(&size);
+
+    std::filesystem::path parentPath = filepath.parent_path();
+    if (std::filesystem::exists(parentPath) && std::filesystem::is_directory(parentPath)) {
+        std::filesystem::create_directories(parentPath);
+        LOG("INFO", "Criada pasta '" + parentPath.string() + "'.");
+    }
+
+    std::ofstream outFile(filepath, std::ios::binary);
     if (outFile.is_open()) {
         outFile.write(iniData, size);
         outFile.close();
-        Log::getInstance().message("TRACE", "Layout salvo com sucesso.");
+        LOG("TRACE", "Layout '" + filepath.string() + "' salvo com sucesso.");
     } else {
-        Log::getInstance().message("ERROR", "Não foi possível salvar o layout.");
+        LOG("ERROR", "Não foi possível salvar o layout '" + filepath.string() + "'.");
     }
 }
 
@@ -70,10 +77,10 @@ void ImGuiWrapper::loadLayoutFromQueue() {
         return;
     }
 
-    std::string sourcePath = ImGuiWrapper::layoutQueue.back();
-    ImGuiWrapper::layoutQueue.pop_back();                  
+    std::filesystem::path filepath = ImGuiWrapper::layoutQueue;
+    ImGuiWrapper::layoutQueue.clear();
 
-    std::ifstream inFile(sourcePath, std::ios::binary);
+    std::ifstream inFile(filepath, std::ios::binary);
     if (inFile.is_open()) {
         std::string iniData, line;
         while (std::getline(inFile, line))
@@ -81,14 +88,27 @@ void ImGuiWrapper::loadLayoutFromQueue() {
 
         ImGui::LoadIniSettingsFromMemory(iniData.c_str(), iniData.size());
         inFile.close();
-        Log::getInstance().message("TRACE", "Layout carregado com sucesso.");
+
+        LOG("TRACE", "Layout '" + filepath.string() + "' carregado com sucesso.");
     } else {
-        Log::getInstance().message("ERROR", "Não foi possível carregar o layout.");
+        LOG("ERROR", "Não foi possível carregar o layout '" + filepath.string() + "'.");
     }
 }
 
-void ImGuiWrapper::loadLayout(const std::string& source) {
-    ImGuiWrapper::layoutQueue.push_back(source);
+void ImGuiWrapper::loadLayout(const std::filesystem::path& filepath) { ImGuiWrapper::layoutQueue = filepath; }
+
+void ImGuiWrapper::handleEvent(SDL_Event& event) {
+    ImGui_ImplSDL2_ProcessEvent(&event);
+
+    if (event.type == SDL_KEYDOWN) {
+        int offset = 1073741881;
+        if (event.key.keysym.sym > offset &&
+            event.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
+            std::filesystem::path filepath = "./data/layouts_" + std::to_string(event.key.keysym.sym - offset);
+            (event.key.keysym.mod & KMOD_CTRL) ? ImGuiWrapper::saveLayout(filepath)
+                                               : ImGuiWrapper::loadLayout(filepath);
+        }
+    }
 }
 
 void ImGuiWrapper::configStyle() {
@@ -115,8 +135,9 @@ void ImGuiWrapper::configStyle() {
     colors[ImGuiCol_FrameBgActive]  = HI(0.67f);
 
     // Title
-    colors[ImGuiCol_TitleBg]          = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-    colors[ImGuiCol_TitleBgActive]    = ImVec4(0.082f, 0.509f, 0.231f, 1.00f);
+    colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+    // colors[ImGuiCol_TitleBgActive]    = ImVec4(0.082f, 0.509f, 0.231f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]    = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
     colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
     colors[ImGuiCol_MenuBarBg]        = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
 
@@ -175,8 +196,8 @@ void ImGuiWrapper::configStyle() {
 
     // Table
     colors[ImGuiCol_TableHeaderBg]     = ImVec4(0.19f, 0.19f, 0.20f, 1.00f);
-    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.31f, 0.31f, 0.35f, 1.00f); 
-    colors[ImGuiCol_TableBorderLight]  = ImVec4(0.23f, 0.23f, 0.25f, 1.00f); 
+    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.31f, 0.31f, 0.35f, 1.00f);
+    colors[ImGuiCol_TableBorderLight]  = ImVec4(0.23f, 0.23f, 0.25f, 1.00f);
     colors[ImGuiCol_TableRowBg]        = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     colors[ImGuiCol_TableRowBgAlt]     = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
 

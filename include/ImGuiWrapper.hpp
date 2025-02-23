@@ -2,6 +2,7 @@
 #define IMGUIWRAPPER_HPP
 
 // C++
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -25,19 +26,20 @@
 
 class ImGuiWrapper {
     private:
-        static bool     isSubsystemInited;
-        static ImGuiIO* io;
-        static std::vector<std::string> layoutQueue;
-        static void     configStyle();
-        static void loadLayoutFromQueue();
+        static bool                  isSubsystemInited;
+        static ImGuiIO*              io;
+        static std::filesystem::path layoutQueue;
+        static void                  configStyle();
+        static void                  loadLayoutFromQueue();
 
     public:
         static void initSubsystem();      // Inicia todos os subsistemas do ImGui
         static void prepareForNewFrame(); // Prepara o ImGui para um novo frame
         static void render();             // Renderiza as janelas do ImGui
         static void closeSubystem();      // Fecha todos os subsistemas do ImGui
-        static void saveLayout(const std::string& output);
-        static void loadLayout(const std::string& source);
+        static void handleEvent(SDL_Event& event);
+        static void saveLayout(const std::filesystem::path& filepath);
+        static void loadLayout(const std::filesystem::path& filepath);
 };
 
 #endif

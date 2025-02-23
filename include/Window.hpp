@@ -5,18 +5,21 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 
+// C++
+#include <string>
+
 namespace Window {
 
     struct VisibilityFlags {
-        bool showAbout = true;
-        bool showPlayback = true;
-        bool showDataPicker = true;
-        bool showReconstruction = true;
-        bool showVideo = true;
-        bool showPlot = true;
-        bool showLog = true;
-        bool showImPlotDemo = false;
-        bool showImGuiDemo = false;
+            bool showPlayback       = true;
+            bool showDataPicker     = true;
+            bool showReconstruction = true;
+            bool showVideo          = true;
+            bool showPlot           = true;
+            bool showLog            = true;
+            bool showAbout          = false;
+            bool showImPlotDemo     = false;
+            bool showImGuiDemo      = false;
     };
 
     extern VisibilityFlags visibility;
@@ -35,6 +38,6 @@ namespace Window {
     void changeWindowVisibility(const std::string& windowName, bool* windowVisibility);
     void render();
 
-} // namespace WINDOW
+} // namespace Window
 
 #endif // WINDOW_HPP

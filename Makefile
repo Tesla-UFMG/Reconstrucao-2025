@@ -16,7 +16,7 @@ OBJ_FILES += $(patsubst lib/sqlite3/%.c, $(OBJ_FOLDER)/lib/%.o, $(SQLITE3_FILES)
 OBJ_FILES += $(patsubst lib/imgui/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(IMGUI_FILES))
 OBJ_FILES += $(patsubst lib/implot/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(IMPLOT_FILES))
 
-CXX_FLAGS := -Wall -Wextra -pedantic -std=c++11 
+CXX_FLAGS := -Wall -Wextra -pedantic -std=c++17
 INCLUDES := -I./include -I./lib -I./lib/sqlite3 -I./lib/SQLiteCpp -I./lib/imgui -I./lib/SDL2 -I./lib/implot
 
 ifeq ($(WINDOWS), 1)
@@ -62,7 +62,7 @@ $(OBJ_FOLDER) :
 	@mkdir -p $@
 	@mkdir -p $@/lib
 
-.PHONY: clean run check copy
+.PHONY: clean run check copy format
 
 check: all
 	valgrind --leak-check=full --show-leak-kinds=all $(OUTPUT) 2> check.txt
@@ -77,3 +77,6 @@ clean:
 
 copy:
 	zip -r Reconstrucao.zip $(BUILD_FOLDER)
+
+format:
+	clang-format -i src/* include/*

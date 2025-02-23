@@ -25,8 +25,8 @@ void Window::about() {
 }
 
 void Window::playback() {
-    static float current = 0;
-    static int selectedButton = 0;
+    static float current        = 0;
+    static int   selectedButton = 0;
 
     if (Window::visibility.showPlayback) {
         ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize;
@@ -35,16 +35,19 @@ void Window::playback() {
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
         ImGui::SliderFloat("##playbackSlider", &current, 0.00f, 10.00f, "%.2f");
 
-
         if (ImGui::Button("<")) {
             if (current > 0)
                 current -= 0.01;
-        } ImGui::SameLine();
-        ImGui::RadioButton("Parar", &selectedButton, 0); ImGui::SameLine();
-        ImGui::RadioButton("Iniciar", &selectedButton, 1); ImGui::SameLine();
+        }
+        ImGui::SameLine();
+        ImGui::RadioButton("Parar", &selectedButton, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("Iniciar", &selectedButton, 1);
+        ImGui::SameLine();
         if (ImGui::Button(">")) {
             current += 0.01;
-        } ImGui::SameLine();
+        }
+        ImGui::SameLine();
         ImGui::Text("%.2f/10.00s", current);
 
         ImGui::End();
@@ -85,7 +88,7 @@ void Window::plot() {
 
 void Window::log() {
     if (Window::visibility.showLog) {
-        std::vector<std::string> lines = Log::getInstance().getMessages();
+        std::vector<std::string> lines = Log::getInstance().getLog();
         ImGui::Begin("Log", &Window::visibility.showLog);
 
         ImGui::BeginChild("LogScroll", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -93,7 +96,7 @@ void Window::log() {
             ImGui::TextUnformatted(line.c_str());
         }
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
-            ImGui::SetScrollHereY(1.0f);  
+            ImGui::SetScrollHereY(1.0f);
         }
         ImGui::EndChild();
 
@@ -115,12 +118,12 @@ void Window::ImPlotDemo() {
 
 void Window::changeWindowVisibility(const std::string& windowName, bool* windowVisibility) {
     *windowVisibility = !(*windowVisibility);
-    std::string message = *windowVisibility ? "Foi aberta a janela '" + windowName + "'." : "Foi fechada a janela '" + windowName + "'.";
-    Log::getInstance().message("TRACE", message);
+    std::string message =
+        *windowVisibility ? "Foi aberta a janela '" + windowName + "'." : "Foi fechada a janela '" + windowName + "'.";
+    LOG("TRACE", message);
 }
 
-
-void Window::render() { 
+void Window::render() {
     Window::about();
     Window::playback();
     Window::dataPicker();

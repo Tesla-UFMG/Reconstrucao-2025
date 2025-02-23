@@ -1,14 +1,20 @@
 #include "Log.hpp"
 
-Log& Log::getInstance(const std::string& filepath) {
+Log& Log::getInstance(const std::filesystem::path& filepath) {
     static Log instance(filepath);
     return instance;
 }
 
-Log::Log(const std::string& filepath) {
+Log::Log(const std::filesystem::path& filepath) {
+
+    std::filesystem::path parentPath = filepath.parent_path();
+    if (std::filesystem::exists(parentPath) && std::filesystem::is_directory(parentPath)) {
+        std::filesystem::create_directories(parentPath);
+    }
+
     this->file.open(filepath, std::ios::trunc | std::ios::in | std::ios::out);
     if (!this->file) {
-        std::string error = "Erro ao abrir arquivo de log: " + filepath;
+        std::string error = "Erro ao abrir arquivo de log: " + filepath.string();
         std::cerr << error << std::endl;
         throw std::runtime_error(error);
     }
@@ -16,16 +22,16 @@ Log::Log(const std::string& filepath) {
     std::string line;
     this->file.clear();
     this->file.seekg(0, std::ios::beg);
-    while (std::getline(this->file, line)) { 
+    while (std::getline(this->file, line)) {
         this->messages.push_back(line);
     }
 
-    this->message("TRACE", "Log iniciado com sucesso.");
+    this->log("TRACE", "Log iniciado com sucesso.");
 }
 
 Log::~Log() {
     if (this->file.is_open()) {
-        this->message("TRACE", "Log encerrado.");
+        this->log("TRACE", "Log encerrado.");
         this->file.close();
     }
 }
@@ -41,12 +47,10 @@ std::string Log::getCurrentTime() {
     return str;
 }
 
-void Log::message(const std::string& level, const std::string& message) {
-    std::string formattedMessage ("[" + getCurrentTime() + "] " +  level + " - " + message);  
+void Log::log(const std::string& level, const std::string& message) {
+    std::string formattedMessage("[" + getCurrentTime() + "] " + level + " - " + message);
     this->file << formattedMessage << "\n";
     this->messages.push_back(formattedMessage);
 }
 
-std::vector<std::string> Log::getMessages() {
-    return this->messages;
-}
+std::vector<std::string> Log::getLog() { return this->messages; }

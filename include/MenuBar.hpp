@@ -2,6 +2,7 @@
 #define MENU_BAR_HPP
 
 // C++
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -9,11 +10,11 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
-#include "Window.hpp"
 #include "SDLWrapper.hpp"
+#include "Window.hpp"
 
 namespace MenuBar {
-    void showWindowVisibility(const std::string& windowName, bool* windowVisibility);
+    void showWindowVisibility(const std::filesystem::path& windowName, bool* windowVisibility);
     void windowsTab();
     void configurationTab();
     void helpTab();

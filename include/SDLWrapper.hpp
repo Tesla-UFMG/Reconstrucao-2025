@@ -27,13 +27,12 @@ class SDLWrapper {
         static void createWindowAndRenderer(const std::string& windowTitle, int windowWidth,
                                             int windowHeight); // Cria uma janela e um renderizador
         static void clearScreen();                             // Limpa a tela de fundo
-        static void handleWindowEvents(SDL_Event& event);      // Cria
+        static void handleEvent(SDL_Event& event);             // Cria
         static bool getWindowIsMinimized();                    // Pega se a janela está minimizada
         static void closeSubystem();                           // Fecha todos os subsistemas do SDL
         static void changeFullscreen();                        // Tira/Coloca em tela cheia
         static bool getIsFullscreen();                         // Checa se a tela esta cheia
         static void render();                                  // Renderiza a tela
-
 };
 
 #endif

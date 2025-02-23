@@ -18,20 +18,21 @@ void App::close() {
 bool App::handleEvent() {
     while (SDL_PollEvent(&SDLWrapper::events)) {
         if (SDLWrapper::events.type == SDL_QUIT) {
-            Log::getInstance().message("TRACE", "Evento de fechar janela detectado.");
+            LOG("TRACE", "Evento de fechar janela detectado.");
             return true;
         }
-        ImGui_ImplSDL2_ProcessEvent(&SDLWrapper::events);
-        SDLWrapper::handleWindowEvents(SDLWrapper::events);
+
+        ImGuiWrapper::handleEvent(SDLWrapper::events);
+        SDLWrapper::handleEvent(SDLWrapper::events);
     }
     return false;
 }
 
 void App::loop() {
-    Log::getInstance().message("TRACE", "Entrou no loop principal.");
+    LOG("TRACE", "Entrou no loop principal.");
     while (true) {
         // Fecha o programa caso cliquem em fechar.
-        if (App::handleEvent()){
+        if (App::handleEvent()) {
             break;
         }
 
@@ -41,8 +42,9 @@ void App::loop() {
             SDLWrapper::clearScreen();
 
             ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
-            ImGui::DockSpaceOverViewport(dockspace_id, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
-            
+            ImGui::DockSpaceOverViewport(dockspace_id, ImGui::GetMainViewport(),
+                                         ImGuiDockNodeFlags_PassthruCentralNode);
+
             MenuBar::render();
             Window::render();
 

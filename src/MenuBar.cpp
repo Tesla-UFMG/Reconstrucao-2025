@@ -9,11 +9,11 @@ void MenuBar::renderCurrentTime() {
     ImGui::Text("%s", buffer);
 }
 
-void MenuBar::renderProgramName(){
+void MenuBar::renderProgramName() {
     std::string programName = "Fórmula Tesla";
-    float windowWidth = ImGui::GetWindowWidth();
-    float textWidth = ImGui::CalcTextSize(programName.c_str())[0];
-    float textOffsetX = (windowWidth - textWidth) / 2.0f;
+    float       windowWidth = ImGui::GetWindowWidth();
+    float       textWidth   = ImGui::CalcTextSize(programName.c_str())[0];
+    float       textOffsetX = (windowWidth - textWidth) / 2.0f;
     ImGui::SetCursorPosX(textOffsetX);
     ImGui::Text("%s", programName.c_str());
 }
@@ -25,29 +25,43 @@ void MenuBar::windowsTab() {
         }
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Salvar Layout")) {
-            ImGuiWrapper::saveLayout(".interface-layout");
+        if (ImGui::BeginMenu("Salvar Layout")) {
+            for (int i = 1; i <= 10; i++) {
+                std::string layoutName = "Layout " + std::to_string(i);
+                if (ImGui::MenuItem(layoutName.c_str(), ("CTRL + F" + std::to_string(i)).c_str())) {
+                    ImGuiWrapper::saveLayout("./data/layouts/.layout_" + std::to_string(i));
+                }
+            }
+            ImGui::EndMenu();
         }
-        if (ImGui::MenuItem("Carregar Layout")) {
-            ImGuiWrapper::loadLayout(".interface-layout");
+
+        if (ImGui::BeginMenu("Carregar Layout")) {
+            for (int i = 1; i <= 10; i++) {
+                std::string layoutName = "Layout " + std::to_string(i);
+                if (ImGui::MenuItem(layoutName.c_str(), ("F" + std::to_string(i)).c_str())) {
+                    ImGuiWrapper::loadLayout("./data/layouts/.layout_" + std::to_string(i));
+                }
+            }
+            ImGui::EndMenu();
         }
 
         ImGui::Separator();
-        
+
         MenuBar::showWindowVisibility("Playback", &Window::visibility.showPlayback);
         MenuBar::showWindowVisibility("Selecionador de Dados", &Window::visibility.showDataPicker);
         MenuBar::showWindowVisibility("Reconstrução de Pista", &Window::visibility.showReconstruction);
         MenuBar::showWindowVisibility("Video", &Window::visibility.showVideo);
         MenuBar::showWindowVisibility("Plot", &Window::visibility.showPlot);
-        MenuBar::showWindowVisibility("Log", &Window::visibility.showLog);
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Desenvolvedor")) {
+        if (ImGui::BeginMenu("Desenvolvedor")) {
+            MenuBar::showWindowVisibility("Log", &Window::visibility.showLog);
             MenuBar::showWindowVisibility("ImGui Demo", &Window::visibility.showImGuiDemo);
-            MenuBar::showWindowVisibility("ImPlot Demo", &Window::visibility.showImPlotDemo);    
+            MenuBar::showWindowVisibility("ImPlot Demo", &Window::visibility.showImPlotDemo);
+            ImGui::EndMenu();
         }
-        
+
         ImGui::EndMenu();
     }
 }
@@ -61,23 +75,25 @@ void MenuBar::helpTab() {
 
 void MenuBar::configurationTab() {
     if (ImGui::BeginMenu("Configurações")) {
-        
+        ImGui::Separator();
+        if (ImGui::MenuItem("Sair", "ALT + F4")) {
+            SDL_Event event = {SDL_QUIT};
+            SDL_PushEvent(&event);
+        }
         ImGui::EndMenu();
     }
 }
 
-void MenuBar::showWindowVisibility(const std::string& windowName, bool* windowVisibility) {
+void MenuBar::showWindowVisibility(const std::filesystem::path& windowName, bool* windowVisibility) {
     if (windowVisibility == nullptr) {
-        Log::getInstance().message("ERROR", "Ponteiro nulo ao tentar acessar a visibilidade da janela '" + windowName + "'.");
+        LOG("ERROR", "Ponteiro nulo ao tentar acessar a visibilidade da janela '" + windowName.string() + "'.");
         return;
     }
 
-    if (ImGui::MenuItem(windowName.c_str(), nullptr, *windowVisibility)) {
-        Window::changeWindowVisibility(windowName, windowVisibility);
+    if (ImGui::MenuItem(windowName.string().c_str(), nullptr, *windowVisibility)) {
+        Window::changeWindowVisibility(windowName.string(), windowVisibility);
     }
 }
-
-
 
 void MenuBar::render() {
     if (ImGui::BeginMainMenuBar()) {

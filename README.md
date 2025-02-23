@@ -58,8 +58,9 @@ Compilar e checar memory leak: `make check`
 
 Limpar os binários e o executável: `make clean`
 
-Copia e 'zipa' o executável: make  `make copy`
+Copia e 'zipa' o executável: `make copy`
 
+Formata o código: `make format`
 
 
 Se a compilação estiver lenta, use a flag `-j` após o comando desejado para se compilar em paralelo, dessa forma, a compilação irá ocorrer de forma mais rápida.
@@ -98,7 +99,6 @@ A interface foi inspirada nesses projetos:
 
 https://trinacriasimracing.wordpress.com/beginners-guide-to-telemetry-analysis-motec/
 https://jpieper.com/tag/diagnostics/
-
 
 ## Datasets
 

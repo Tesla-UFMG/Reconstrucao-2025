@@ -15,6 +15,7 @@ METRICS → Dados de desempenho (ex: tempo de resposta de uma função).
 
 // C++
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -25,12 +26,14 @@ METRICS → Dados de desempenho (ex: tempo de resposta de uma função).
 
 #define LOG_OUTPUT "log.txt"
 
+#define LOG(level, message) Log::getInstance().log(level, message);
+
 class Log {
     private:
-        explicit Log(const std::string& filepath);
+        explicit Log(const std::filesystem::path& filepath);
 
-        std::string   getCurrentTime();
-        std::fstream file;
+        std::string              getCurrentTime();
+        std::fstream             file;
         std::vector<std::string> messages;
 
     public:
@@ -38,9 +41,9 @@ class Log {
         Log& operator=(Log&&) = delete;
         ~Log();
 
-        static Log& getInstance(const std::string& filepath = LOG_OUTPUT);
-        void        message(const std::string& level, const std::string& message);
-        std::vector<std::string> getMessages();
+        static Log&              getInstance(const std::filesystem::path& filepath = LOG_OUTPUT);
+        void                     log(const std::string& level, const std::string& message);
+        std::vector<std::string> getLog();
 };
 
 #endif // LOG_HPP
