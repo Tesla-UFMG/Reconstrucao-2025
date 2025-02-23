@@ -2,10 +2,31 @@
 
 Window::VisibilityFlags Window::visibility;
 
+void Window::saveWindowVisibility(const std::filesystem::path& filepath) {
+    std::ofstream file(filepath, std::ios::binary);
+    if (file) {
+        file.write(reinterpret_cast<const char*>(&visibility), sizeof(VisibilityFlags));
+        LOG("INFO", "Visibilidade '" + filepath.string() + "' salvo com sucesso.");
+    } else {
+        LOG("WARN", "Não foi possível salvar a visiblidade '" + filepath.string() + "'.");
+    }
+}
+
+void Window::loadWindowVisibility(const std::filesystem::path& filepath) {
+    std::ifstream file(filepath, std::ios::binary);
+    if (file) {
+        file.read(reinterpret_cast<char*>(&visibility), sizeof(VisibilityFlags));
+        LOG("INFO", "Visibilidade '" + filepath.string() + "' carregado com sucesso.")
+    } else {
+        LOG("WARN", "Não foi possível carregar a visibilidade '" + filepath.string() + "'.");
+    }
+}
+
 void Window::about() {
     if (Window::visibility.showAbout) {
         ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize |
-                                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
+                                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking |
+                                 ImGuiWindowFlags_UnsavedDocument;
         ImGui::Begin("Sobre", &Window::visibility.showAbout, flags);
         ImGui::SeparatorText("Resconstrução de Pista");
         ImGui::Text("Formula Tesla");
@@ -88,17 +109,25 @@ void Window::plot() {
 
 void Window::log() {
     if (Window::visibility.showLog) {
-        std::vector<std::string> lines = Log::getInstance().getLog();
-        ImGui::Begin("Log", &Window::visibility.showLog);
+        ImGui::Begin("Log", &Window::visibility.showLog, ImGuiWindowFlags_NoScrollbar);
 
-        ImGui::BeginChild("LogScroll", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
+        ImVec2 available_size  = ImGui::GetContentRegionAvail();
+        available_size.y      -= ImGui::GetFrameHeightWithSpacing(); // Subtraindo o tamanho do botão
+        ImGui::BeginChild("LogScroll", available_size, true, ImGuiWindowFlags_HorizontalScrollbar);
+        std::vector<std::string> lines = Log::getInstance().getLog();
         for (const std::string& line : lines) {
             ImGui::TextUnformatted(line.c_str());
         }
+
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
             ImGui::SetScrollHereY(1.0f);
         }
+
         ImGui::EndChild();
+
+        if (ImGui::Button("Limpar")) {
+            Log::getInstance().clearLog();
+        }
 
         ImGui::End();
     }
@@ -121,26 +150,6 @@ void Window::changeWindowVisibility(const std::string& windowName, bool* windowV
     std::string message =
         *windowVisibility ? "Foi aberta a janela '" + windowName + "'." : "Foi fechada a janela '" + windowName + "'.";
     LOG("TRACE", message);
-}
-
-void Window::saveWindowVisibility(const std::filesystem::path& filepath) {
-    std::ofstream file(filepath, std::ios::binary);
-    if (file) {
-        file.write(reinterpret_cast<const char*>(&visibility), sizeof(VisibilityFlags));
-        LOG("INFO", "Visibilidade '" + filepath.string() + "' salvo com sucesso.");
-    } else {
-        LOG("ERROR", "Não foi possível salvar a visiblidade '" + filepath.string() + "'.");
-    }
-}
-
-void Window::loadWindowVisibility(const std::filesystem::path& filepath) {
-    std::ifstream file(filepath, std::ios::binary);
-    if (file) {
-        file.read(reinterpret_cast<char*>(&visibility), sizeof(VisibilityFlags));
-        LOG("INFO", "Visibilidade '" + filepath.string() + "' carregado com sucesso.")
-    } else {
-        LOG("ERROR", "Não foi possível carregar a visibilidade '" + filepath.string() + "'.");
-    }
 }
 
 void Window::render() {

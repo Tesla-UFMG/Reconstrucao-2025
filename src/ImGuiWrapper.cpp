@@ -67,7 +67,7 @@ void ImGuiWrapper::saveLayout(const std::filesystem::path& filepath) {
         outFile.close();
         LOG("INFO", "Layout '" + filepath.string() + "' salvo com sucesso.");
     } else {
-        LOG("ERROR", "Não foi possível salvar o layout '" + filepath.string() + "'.");
+        LOG("WARN", "Não foi possível salvar o layout '" + filepath.string() + "'.");
     }
 }
 
@@ -90,7 +90,7 @@ void ImGuiWrapper::loadLayoutFromQueue() {
 
         LOG("INFO", "Layout '" + filepath.string() + "' carregado com sucesso.");
     } else {
-        LOG("ERROR", "Não foi possível carregar o layout '" + filepath.string() + "'.");
+        LOG("WARN", "Não foi possível carregar o layout '" + filepath.string() + "'.");
     }
 }
 

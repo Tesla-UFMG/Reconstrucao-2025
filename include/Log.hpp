@@ -44,6 +44,7 @@ class Log {
         static Log&              getInstance(const std::filesystem::path& filepath = LOG_OUTPUT);
         void                     log(const std::string& level, const std::string& message);
         std::vector<std::string> getLog();
+        void                     clearLog();
 };
 
 #endif // LOG_HPP

@@ -54,3 +54,5 @@ void Log::log(const std::string& level, const std::string& message) {
 }
 
 std::vector<std::string> Log::getLog() { return this->messages; }
+
+void Log::clearLog() { this->messages.clear(); }
