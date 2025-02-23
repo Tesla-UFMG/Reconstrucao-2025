@@ -40,13 +40,11 @@ void App::loop() {
             ImGuiWrapper::prepareForNewFrame();
             SDLWrapper::clearScreen();
 
-            ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
-
-            ImGui::ShowDemoWindow(nullptr);
-            ImPlot::ShowDemoWindow(nullptr);
+            ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
+            ImGui::DockSpaceOverViewport(dockspace_id, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
             
             MenuBar::render();
-            Pages::render();
+            Window::render();
 
             ImGuiWrapper::render();
             SDLWrapper::render();

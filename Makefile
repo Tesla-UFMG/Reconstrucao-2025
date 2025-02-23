@@ -34,7 +34,7 @@ endif
 all: $(BUILD_FOLDER) $(OBJ_FOLDER) $(OUTPUT)
 
 $(OUTPUT): $(OBJ_FILES)
-	@echo $@
+	@echo "Compilando o executável" $@
 	@$(CXX) $(INCLUDES) $(OBJ_FILES) -o $(OUTPUT) $(LDFLAGS) $(LINKFLAGS)
 
 $(OBJ_FOLDER)/%.o: src/%.cpp $(wildcard include/%.hpp)
@@ -73,7 +73,7 @@ run: all
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 .interface-layout
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3
 
 copy:
 	zip -r Reconstrucao.zip $(BUILD_FOLDER)

@@ -9,18 +9,14 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
-#include "Pages.hpp"
+#include "Window.hpp"
 #include "SDLWrapper.hpp"
 
 namespace MenuBar {
+    void showWindowVisibility(const std::string& windowName, bool* windowVisibility);
     void windowsTab();
-    void layoutTab();
     void configurationTab();
     void helpTab();
-    void openOrCloseWindow(std::string windowName, bool* isOpen);
-
-    void saveLayout();
-    void loadLayout();
 
     void renderCurrentTime();
     void renderProgramName();

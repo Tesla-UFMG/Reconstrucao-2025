@@ -18,88 +18,72 @@ void MenuBar::renderProgramName(){
     ImGui::Text("%s", programName.c_str());
 }
 
-void MenuBar::loadLayout() {
-    std::ifstream inFile(".interface-layout", std::ios::binary);
-    if (inFile.is_open()) {
-        std::string iniData, line;
-        while (std::getline(inFile, line))
-            iniData += line + '\n';
-
-        ImGui::LoadIniSettingsFromMemory(iniData.c_str(), iniData.size());
-        inFile.close();
-        Log::getInstance().message("TRACE", "Layout carregado com sucesso.");
-    } else {
-        Log::getInstance().message("ERROR", "Não foi possível carregar o layout.");
-    }
-}
-
-void MenuBar::saveLayout() {
-    size_t        size;
-    const char*   iniData = ImGui::SaveIniSettingsToMemory(&size);
-    std::ofstream outFile(".interface-layout", std::ios::binary);
-    if (outFile.is_open()) {
-        outFile.write(iniData, size);
-        outFile.close();
-        Log::getInstance().message("TRACE", "Layout salvo com sucesso.");
-    } else {
-        Log::getInstance().message("ERROR", "Não foi possível salvar o layout.");
-    }
-}
-
-void MenuBar::openOrCloseWindow(std::string windowName, bool* isOpen) {
-    if (ImGui::MenuItem(windowName.c_str(), nullptr, isOpen)) {
-        std::string message = Pages::showPlayback ? "Foi aberta a janela " + windowName + ".": "Foi fechada a janela " + windowName + ".";
-        Log::getInstance().message("TRACE", message);
-    }
-}
-
 void MenuBar::windowsTab() {
     if (ImGui::BeginMenu("Janelas")) {
+        if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
+            SDLWrapper::changeFullscreen();
+        }
+        ImGui::Separator();
 
-        MenuBar::openOrCloseWindow("Playback", &Pages::showPlayback);
-        MenuBar::openOrCloseWindow("Selecionador de Dados", &Pages::showDataPicker);
-        MenuBar::openOrCloseWindow("Reconstrução de Pista", &Pages::showReconstruction);
-        MenuBar::openOrCloseWindow("Video", &Pages::showVideo);
-        MenuBar::openOrCloseWindow("Plot", &Pages::showPlot);
-
-        ImGui::EndMenu();
-    }
-}
-
-void MenuBar::layoutTab() {
-    if (ImGui::BeginMenu("Layouts")) {
         if (ImGui::MenuItem("Salvar Layout")) {
-            MenuBar::saveLayout();
+            ImGuiWrapper::saveLayout(".interface-layout");
         }
         if (ImGui::MenuItem("Carregar Layout")) {
-            MenuBar::loadLayout();
+            ImGuiWrapper::loadLayout(".interface-layout");
         }
+
+        ImGui::Separator();
+        
+        MenuBar::showWindowVisibility("Playback", &Window::visibility.showPlayback);
+        MenuBar::showWindowVisibility("Selecionador de Dados", &Window::visibility.showDataPicker);
+        MenuBar::showWindowVisibility("Reconstrução de Pista", &Window::visibility.showReconstruction);
+        MenuBar::showWindowVisibility("Video", &Window::visibility.showVideo);
+        MenuBar::showWindowVisibility("Plot", &Window::visibility.showPlot);
+        MenuBar::showWindowVisibility("Log", &Window::visibility.showLog);
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Desenvolvedor")) {
+            MenuBar::showWindowVisibility("ImGui Demo", &Window::visibility.showImGuiDemo);
+            MenuBar::showWindowVisibility("ImPlot Demo", &Window::visibility.showImPlotDemo);    
+        }
+        
         ImGui::EndMenu();
     }
 }
 
 void MenuBar::helpTab() {
     if (ImGui::BeginMenu("Ajuda")) {
-        MenuBar::openOrCloseWindow("Sobre", &Pages::showAbout);
+        MenuBar::showWindowVisibility("Sobre", &Window::visibility.showAbout);
         ImGui::EndMenu();
     }
 }
 
 void MenuBar::configurationTab() {
     if (ImGui::BeginMenu("Configurações")) {
-        if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
-            SDLWrapper::changeFullscreen();
-        }
+        
         ImGui::EndMenu();
     }
 }
+
+void MenuBar::showWindowVisibility(const std::string& windowName, bool* windowVisibility) {
+    if (windowVisibility == nullptr) {
+        Log::getInstance().message("ERROR", "Ponteiro nulo ao tentar acessar a visibilidade da janela '" + windowName + "'.");
+        return;
+    }
+
+    if (ImGui::MenuItem(windowName.c_str(), nullptr, *windowVisibility)) {
+        Window::changeWindowVisibility(windowName, windowVisibility);
+    }
+}
+
+
 
 void MenuBar::render() {
     if (ImGui::BeginMainMenuBar()) {
 
         MenuBar::configurationTab();
         MenuBar::windowsTab();
-        MenuBar::layoutTab();
         MenuBar::helpTab();
 
         MenuBar::renderCurrentTime();

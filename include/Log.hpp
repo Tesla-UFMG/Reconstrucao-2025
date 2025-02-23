@@ -21,6 +21,7 @@ METRICS → Dados de desempenho (ex: tempo de resposta de uma função).
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #define LOG_OUTPUT "log.txt"
 
@@ -29,7 +30,8 @@ class Log {
         explicit Log(const std::string& filepath);
 
         std::string   getCurrentTime();
-        std::ofstream file;
+        std::fstream file;
+        std::vector<std::string> messages;
 
     public:
         Log(Log&&)            = delete;
@@ -38,6 +40,7 @@ class Log {
 
         static Log& getInstance(const std::string& filepath = LOG_OUTPUT);
         void        message(const std::string& level, const std::string& message);
+        std::vector<std::string> getMessages();
 };
 
 #endif // LOG_HPP

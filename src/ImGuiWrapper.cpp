@@ -2,6 +2,7 @@
 
 bool     ImGuiWrapper::isSubsystemInited = false;
 ImGuiIO* ImGuiWrapper::io                = nullptr;
+std::vector<std::string> ImGuiWrapper::layoutQueue;
 
 void ImGuiWrapper::initSubsystem() {
     if (ImGuiWrapper::isSubsystemInited) {
@@ -26,6 +27,7 @@ void ImGuiWrapper::initSubsystem() {
 }
 
 void ImGuiWrapper::prepareForNewFrame() {
+    ImGuiWrapper::loadLayoutFromQueue();
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
@@ -48,6 +50,45 @@ void ImGuiWrapper::closeSubystem() {
     ImGui::DestroyContext();
     ImGuiWrapper::isSubsystemInited = false;
     Log::getInstance().message("TRACE", "ImGui encerrado.");
+}
+
+void ImGuiWrapper::saveLayout(const std::string& output) {
+    size_t        size;
+    const char*   iniData = ImGui::SaveIniSettingsToMemory(&size);
+    std::ofstream outFile(output, std::ios::binary);
+    if (outFile.is_open()) {
+        outFile.write(iniData, size);
+        outFile.close();
+        Log::getInstance().message("TRACE", "Layout salvo com sucesso.");
+    } else {
+        Log::getInstance().message("ERROR", "Não foi possível salvar o layout.");
+    }
+}
+
+void ImGuiWrapper::loadLayoutFromQueue() {
+    if (ImGuiWrapper::layoutQueue.empty()) {
+        return;
+    }
+
+    std::string sourcePath = ImGuiWrapper::layoutQueue.back();
+    ImGuiWrapper::layoutQueue.pop_back();                  
+
+    std::ifstream inFile(sourcePath, std::ios::binary);
+    if (inFile.is_open()) {
+        std::string iniData, line;
+        while (std::getline(inFile, line))
+            iniData += line + '\n';
+
+        ImGui::LoadIniSettingsFromMemory(iniData.c_str(), iniData.size());
+        inFile.close();
+        Log::getInstance().message("TRACE", "Layout carregado com sucesso.");
+    } else {
+        Log::getInstance().message("ERROR", "Não foi possível carregar o layout.");
+    }
+}
+
+void ImGuiWrapper::loadLayout(const std::string& source) {
+    ImGuiWrapper::layoutQueue.push_back(source);
 }
 
 void ImGuiWrapper::configStyle() {

@@ -60,6 +60,10 @@ Limpar os binários e o executável: `make clean`
 
 Copia e 'zipa' o executável: make  `make copy`
 
+
+
+Se a compilação estiver lenta, use a flag `-j` após o comando desejado para se compilar em paralelo, dessa forma, a compilação irá ocorrer de forma mais rápida.
+
 Ao compilar, será gerado o executável na pasta build. Você pode executar esse arquivo em todos os computadores com o sistema operacional que você selecionou no Makefile. Se você selecionou para compilar para Windows, lembre-se de também copiar os arquivos .dll para o programa executar!
 
 ## Executação
@@ -94,3 +98,14 @@ A interface foi inspirada nesses projetos:
 
 https://trinacriasimracing.wordpress.com/beginners-guide-to-telemetry-analysis-motec/
 https://jpieper.com/tag/diagnostics/
+
+
+## Datasets
+
+Diante da falta de dados do nosso caro, começamos usando esses datasets.
+
+Drone: https://www.kaggle.com/datasets/kunalkarnik95/drone-flight-video-with-telemetry-gps-esc
+
+Camera: https://www.kaggle.com/datasets/hassanmojab/autvi
+
+Race: https://www.kaggle.com/datasets/alexhexan/fm7-rio-de-janeiro-race-telemetry

@@ -9,7 +9,7 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "MenuBar.hpp"
-#include "Pages.hpp"
+#include "Window.hpp"
 #include "SDLWrapper.hpp"
 
 class App {

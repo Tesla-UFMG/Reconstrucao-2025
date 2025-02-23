@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 // Project
 #include "Log.hpp"
@@ -26,13 +27,17 @@ class ImGuiWrapper {
     private:
         static bool     isSubsystemInited;
         static ImGuiIO* io;
+        static std::vector<std::string> layoutQueue;
         static void     configStyle();
+        static void loadLayoutFromQueue();
 
     public:
         static void initSubsystem();      // Inicia todos os subsistemas do ImGui
         static void prepareForNewFrame(); // Prepara o ImGui para um novo frame
         static void render();             // Renderiza as janelas do ImGui
         static void closeSubystem();      // Fecha todos os subsistemas do ImGui
+        static void saveLayout(const std::string& output);
+        static void loadLayout(const std::string& source);
 };
 
 #endif
