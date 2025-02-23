@@ -29,6 +29,7 @@ void MenuBar::windowsTab() {
             for (int i = 1; i <= 10; i++) {
                 std::string layoutName = "Layout " + std::to_string(i);
                 if (ImGui::MenuItem(layoutName.c_str(), ("CTRL + F" + std::to_string(i)).c_str())) {
+                    Window::saveWindowVisibility("./data/layouts/.visibility_" + std::to_string(i));
                     ImGuiWrapper::saveLayout("./data/layouts/.layout_" + std::to_string(i));
                 }
             }
@@ -39,6 +40,7 @@ void MenuBar::windowsTab() {
             for (int i = 1; i <= 10; i++) {
                 std::string layoutName = "Layout " + std::to_string(i);
                 if (ImGui::MenuItem(layoutName.c_str(), ("F" + std::to_string(i)).c_str())) {
+                    Window::loadWindowVisibility("./data/layouts/.visibility_" + std::to_string(i));
                     ImGuiWrapper::loadLayout("./data/layouts/.layout_" + std::to_string(i));
                 }
             }

@@ -57,8 +57,7 @@ void ImGuiWrapper::saveLayout(const std::filesystem::path& filepath) {
     const char* iniData = ImGui::SaveIniSettingsToMemory(&size);
 
     std::filesystem::path parentPath = filepath.parent_path();
-    if (std::filesystem::exists(parentPath) && std::filesystem::is_directory(parentPath)) {
-        std::filesystem::create_directories(parentPath);
+    if (!parentPath.empty() && std::filesystem::create_directories(parentPath)) {
         LOG("INFO", "Criada pasta '" + parentPath.string() + "'.");
     }
 
@@ -66,7 +65,7 @@ void ImGuiWrapper::saveLayout(const std::filesystem::path& filepath) {
     if (outFile.is_open()) {
         outFile.write(iniData, size);
         outFile.close();
-        LOG("TRACE", "Layout '" + filepath.string() + "' salvo com sucesso.");
+        LOG("INFO", "Layout '" + filepath.string() + "' salvo com sucesso.");
     } else {
         LOG("ERROR", "Não foi possível salvar o layout '" + filepath.string() + "'.");
     }
@@ -89,7 +88,7 @@ void ImGuiWrapper::loadLayoutFromQueue() {
         ImGui::LoadIniSettingsFromMemory(iniData.c_str(), iniData.size());
         inFile.close();
 
-        LOG("TRACE", "Layout '" + filepath.string() + "' carregado com sucesso.");
+        LOG("INFO", "Layout '" + filepath.string() + "' carregado com sucesso.");
     } else {
         LOG("ERROR", "Não foi possível carregar o layout '" + filepath.string() + "'.");
     }
@@ -104,9 +103,16 @@ void ImGuiWrapper::handleEvent(SDL_Event& event) {
         int offset = 1073741881;
         if (event.key.keysym.sym > offset &&
             event.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
-            std::filesystem::path filepath = "./data/layouts_" + std::to_string(event.key.keysym.sym - offset);
-            (event.key.keysym.mod & KMOD_CTRL) ? ImGuiWrapper::saveLayout(filepath)
-                                               : ImGuiWrapper::loadLayout(filepath);
+        
+            int F_number = (event.key.keysym.sym - offset);
+            // Se CTRL estiver precionado...
+            if ((event.key.keysym.mod & KMOD_CTRL)) {
+                Window::saveWindowVisibility("./data/layouts/.visibility_" + std::to_string(F_number));
+                ImGuiWrapper::saveLayout("./data/layouts/.layout_" + std::to_string(F_number));
+            } else {
+                Window::loadWindowVisibility("./data/layouts/.visibility_" + std::to_string(F_number));
+                ImGuiWrapper::loadLayout("./data/layouts/.layout_" + std::to_string(F_number));
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ Log& Log::getInstance(const std::filesystem::path& filepath) {
 Log::Log(const std::filesystem::path& filepath) {
 
     std::filesystem::path parentPath = filepath.parent_path();
-    if (std::filesystem::exists(parentPath) && std::filesystem::is_directory(parentPath)) {
+    if (!parentPath.empty() && std::filesystem::create_directories(parentPath)) {
         std::filesystem::create_directories(parentPath);
     }
 
