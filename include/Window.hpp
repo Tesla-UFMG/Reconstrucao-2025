@@ -6,9 +6,9 @@
 #include "SDLWrapper.hpp"
 
 // C++
-#include <string>
 #include <filesystem>
 #include <fstream>
+#include <string>
 
 namespace Window {
 
@@ -38,11 +38,10 @@ namespace Window {
     void circuitReconstruction();
 
     void changeWindowVisibility(const std::string& windowName, bool* windowVisibility);
-    
+
     void saveWindowVisibility(const std::filesystem::path& filepath);
     void loadWindowVisibility(const std::filesystem::path& filepath);
 
-    
     void render();
 
 } // namespace Window

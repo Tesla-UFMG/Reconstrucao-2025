@@ -127,23 +127,21 @@ void Window::saveWindowVisibility(const std::filesystem::path& filepath) {
     std::ofstream file(filepath, std::ios::binary);
     if (file) {
         file.write(reinterpret_cast<const char*>(&visibility), sizeof(VisibilityFlags));
-        LOG("INFO", "Visibilidade '" + filepath.string()  + "' salvo com sucesso.");
+        LOG("INFO", "Visibilidade '" + filepath.string() + "' salvo com sucesso.");
     } else {
         LOG("ERROR", "Não foi possível salvar a visiblidade '" + filepath.string() + "'.");
-    }   
+    }
 }
 
 void Window::loadWindowVisibility(const std::filesystem::path& filepath) {
     std::ifstream file(filepath, std::ios::binary);
     if (file) {
         file.read(reinterpret_cast<char*>(&visibility), sizeof(VisibilityFlags));
-        LOG("INFO", "Visibilidade '" + filepath.string()  + "' carregado com sucesso.")
+        LOG("INFO", "Visibilidade '" + filepath.string() + "' carregado com sucesso.")
     } else {
         LOG("ERROR", "Não foi possível carregar a visibilidade '" + filepath.string() + "'.");
     }
 }
-
-
 
 void Window::render() {
     Window::about();

@@ -103,15 +103,13 @@ void ImGuiWrapper::handleEvent(SDL_Event& event) {
         int offset = 1073741881;
         if (event.key.keysym.sym > offset &&
             event.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
-        
-            int F_number = (event.key.keysym.sym - offset);
-            // Se CTRL estiver precionado...
-            if ((event.key.keysym.mod & KMOD_CTRL)) {
-                Window::saveWindowVisibility("./data/layouts/.visibility_" + std::to_string(F_number));
-                ImGuiWrapper::saveLayout("./data/layouts/.layout_" + std::to_string(F_number));
+            std::string F_number = std::to_string(event.key.keysym.sym - offset);
+            if ((event.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver precionado...
+                Window::saveWindowVisibility("./data/layouts/.visibility_" + F_number);
+                ImGuiWrapper::saveLayout("./data/layouts/.layout_" + F_number);
             } else {
-                Window::loadWindowVisibility("./data/layouts/.visibility_" + std::to_string(F_number));
-                ImGuiWrapper::loadLayout("./data/layouts/.layout_" + std::to_string(F_number));
+                Window::loadWindowVisibility("./data/layouts/.visibility_" + F_number);
+                ImGuiWrapper::loadLayout("./data/layouts/.layout_" + F_number);
             }
         }
     }

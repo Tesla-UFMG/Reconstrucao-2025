@@ -73,7 +73,7 @@ run: all
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip
 
 copy:
 	zip -r Reconstrucao.zip $(BUILD_FOLDER)
