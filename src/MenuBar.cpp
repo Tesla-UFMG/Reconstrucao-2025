@@ -18,6 +18,37 @@ void MenuBar::renderProgramName() {
     ImGui::Text("%s", programName.c_str());
 }
 
+void MenuBar::teslaTab() {
+    if (ImGui::BeginMenu("Tesla")) {
+
+        if (ImGui::MenuItem("Novo")) {
+            const char* filters[] = {"*.tesla", NULL};
+            char*       filepath =
+                tinyfd_saveFileDialog("Novo Projeto", "./project.tesla", 1, filters, ".tesla (Tesla Project)");
+        }
+
+        if (ImGui::MenuItem("Salvar")) {
+            const char* filters[] = {"*.tesla", NULL};
+            char*       filepath =
+                tinyfd_saveFileDialog("Salvar Projeto", "./project.tesla", 1, filters, ".tesla (Tesla Project)");
+        }
+
+        if (ImGui::MenuItem("Carregar")) {
+            const char* filters[] = {"*.tesla", NULL};
+            char*       filepath =
+                tinyfd_openFileDialog("Carregar Projeto", "./project.tesla", 1, filters, ".tesla (Tesla Project)", 0);
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Sair", "ALT + F4")) {
+            SDL_Event event = {SDL_QUIT};
+            SDL_PushEvent(&event);
+        }
+        ImGui::EndMenu();
+    }
+}
+
 void MenuBar::windowsTab() {
     if (ImGui::BeginMenu("Janelas")) {
         if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
@@ -75,17 +106,6 @@ void MenuBar::helpTab() {
     }
 }
 
-void MenuBar::configurationTab() {
-    if (ImGui::BeginMenu("Configurações")) {
-        ImGui::Separator();
-        if (ImGui::MenuItem("Sair", "ALT + F4")) {
-            SDL_Event event = {SDL_QUIT};
-            SDL_PushEvent(&event);
-        }
-        ImGui::EndMenu();
-    }
-}
-
 void MenuBar::showWindowVisibility(const std::filesystem::path& windowName, bool* windowVisibility) {
     if (windowVisibility == nullptr) {
         LOG("ERROR", "Ponteiro nulo ao tentar acessar a visibilidade da janela '" + windowName.string() + "'.");
@@ -100,7 +120,7 @@ void MenuBar::showWindowVisibility(const std::filesystem::path& windowName, bool
 void MenuBar::render() {
     if (ImGui::BeginMainMenuBar()) {
 
-        MenuBar::configurationTab();
+        MenuBar::teslaTab();
         MenuBar::windowsTab();
         MenuBar::helpTab();
 

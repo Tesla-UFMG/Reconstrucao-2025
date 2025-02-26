@@ -5,6 +5,15 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 
+#include "ui/aboutWindow.hpp"
+#include "ui/circuitReconstructionWindow.hpp"
+#include "ui/dataPickerWindow.hpp"
+#include "ui/demoWindow.hpp"
+#include "ui/logWindow.hpp"
+#include "ui/playbackWindow.hpp"
+#include "ui/plotWindow.hpp"
+#include "ui/videoWindow.hpp"
+
 // C++
 #include <filesystem>
 #include <fstream>
@@ -25,17 +34,6 @@ namespace Window {
     };
 
     extern VisibilityFlags visibility;
-
-    void about();
-    void playback();
-    void dataPicker();
-    void video();
-    void plot();
-    void log();
-    void ImGuiDemo();
-    void ImPlotDemo();
-
-    void circuitReconstruction();
 
     void changeWindowVisibility(const std::string& windowName, bool* windowVisibility);
 

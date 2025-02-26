@@ -62,7 +62,6 @@ Copia e 'zipa' o executável: `make copy`
 
 Formata o código: `make format`
 
-
 Se a compilação estiver lenta, use a flag `-j` após o comando desejado para se compilar em paralelo, dessa forma, a compilação irá ocorrer de forma mais rápida.
 
 Ao compilar, será gerado o executável na pasta build. Você pode executar esse arquivo em todos os computadores com o sistema operacional que você selecionou no Makefile. Se você selecionou para compilar para Windows, lembre-se de também copiar os arquivos .dll para o programa executar!
@@ -92,6 +91,8 @@ Apesar do ImGui ser otimo para interfaces, foi levantado a necessidade de se ins
 ### Banco de Dados
 
 Para o banco de dados estamos utilizando o SQLite3. O escolhemos por ser uma biblioteca leve, simples, e uma das mais utilizadas em C++ para se mexer com SQL.
+
+Também, para podermos abrir e fechar os arquivos, usamos a biblioteca tinyDialogs.
 
 ## Inteface
 

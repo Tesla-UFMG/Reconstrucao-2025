@@ -34,13 +34,13 @@ class ImGuiWrapper {
         static void                  loadLayoutFromQueue();
 
     public:
-        static void initSubsystem();      // Inicia todos os subsistemas do ImGui
-        static void prepareForNewFrame(); // Prepara o ImGui para um novo frame
-        static void render();             // Renderiza as janelas do ImGui
-        static void closeSubystem();      // Fecha todos os subsistemas do ImGui
-        static void handleEvent(SDL_Event& event);
-        static void saveLayout(const std::filesystem::path& filepath);
-        static void loadLayout(const std::filesystem::path& filepath);
+        static void initSubsystem();                                   // Inicia todos os subsistemas do ImGui
+        static void prepareForNewFrame();                              // Prepara o ImGui para um novo frame
+        static void render();                                          // Renderiza as janelas do ImGui
+        static void closeSubystem();                                   // Fecha todos os subsistemas do ImGui
+        static void handleEvent(SDL_Event& event);                     // Trata os eventos
+        static void saveLayout(const std::filesystem::path& filepath); // Salva o layout
+        static void loadLayout(const std::filesystem::path& filepath); // Carrega o layout
 };
 
 #endif

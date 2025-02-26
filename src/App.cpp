@@ -24,6 +24,32 @@ bool App::handleEvent() {
 
         ImGuiWrapper::handleEvent(SDLWrapper::events);
         SDLWrapper::handleEvent(SDLWrapper::events);
+
+        if (SDLWrapper::events.type == SDL_KEYDOWN) {
+
+            // Carrega ou salva os layouts -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+            int offset = 1073741881;
+            if (SDLWrapper::events.key.keysym.sym > offset &&
+                SDLWrapper::events.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
+                std::string F_number = std::to_string(SDLWrapper::events.key.keysym.sym - offset);
+                if ((SDLWrapper::events.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver precionado...
+                    Window::saveWindowVisibility("./data/layouts/.visibility_" + F_number);
+                    ImGuiWrapper::saveLayout("./data/layouts/.layout_" + F_number);
+                } else {
+                    Window::loadWindowVisibility("./data/layouts/.visibility_" + F_number);
+                    ImGuiWrapper::loadLayout("./data/layouts/.layout_" + F_number);
+                }
+            }
+            // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+            // Limpa o terminal -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+            if (SDLWrapper::events.key.keysym.mod & KMOD_CTRL) {
+                if (SDLWrapper::events.key.keysym.sym == SDLK_l) {
+                    Log::getInstance().clearLog();
+                }
+            }
+            // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        }
     }
     return false;
 }

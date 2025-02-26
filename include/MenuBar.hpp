@@ -13,10 +13,12 @@
 #include "SDLWrapper.hpp"
 #include "Window.hpp"
 
+// Third Party
+#include "tinyfiledialogs.h"
 namespace MenuBar {
     void showWindowVisibility(const std::filesystem::path& windowName, bool* windowVisibility);
     void windowsTab();
-    void configurationTab();
+    void teslaTab();
     void helpTab();
 
     void renderCurrentTime();
