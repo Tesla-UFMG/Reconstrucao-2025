@@ -5,7 +5,7 @@
 #include "ImGuiWrapper.hpp"
 
 namespace Window {
-    void about(bool* isOpen);
+    void About(bool* isOpen);
 }
 
 #endif

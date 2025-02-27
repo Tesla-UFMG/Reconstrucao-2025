@@ -6,24 +6,16 @@ Log& Log::getInstance(const std::filesystem::path& filepath) {
 }
 
 Log::Log(const std::filesystem::path& filepath) {
-
     std::filesystem::path parentPath = filepath.parent_path();
-    if (!parentPath.empty() && std::filesystem::create_directories(parentPath)) {
+    if (!parentPath.empty()) {
         std::filesystem::create_directories(parentPath);
     }
 
-    this->file.open(filepath, std::ios::trunc | std::ios::in | std::ios::out);
+    this->file.open(filepath, std::ios::app | std::ios::out);
     if (!this->file) {
         std::string error = "Erro ao abrir arquivo de log: " + filepath.string();
         std::cerr << error << std::endl;
         throw std::runtime_error(error);
-    }
-
-    std::string line;
-    this->file.clear();
-    this->file.seekg(0, std::ios::beg);
-    while (std::getline(this->file, line)) {
-        this->messages.push_back(line);
     }
 
     this->log("TRACE", "Log iniciado com sucesso.");
@@ -42,14 +34,17 @@ std::string Log::getCurrentTime() {
 
     std::ostringstream oss;
     oss << std::put_time(&tm, "%H:%M:%S %d/%m/%Y");
-    std::string str = oss.str();
-
-    return str;
+    return oss.str();
 }
 
 void Log::log(const std::string& level, const std::string& message) {
-    std::string formattedMessage("[" + getCurrentTime() + "] " + level + " - " + message);
-    this->file << formattedMessage << "\n";
+    if (!this->file.is_open())
+        return;
+
+    std::string formattedMessage = "[" + getCurrentTime() + "] " + level + " - " + message;
+    this->file << formattedMessage << std::endl;
+    this->file.flush();
+
     this->messages.push_back(formattedMessage);
 }
 

@@ -5,7 +5,7 @@
 #include "ImGuiWrapper.hpp"
 
 namespace Window {
-    void plot(bool* isOpen);
+    void Plot(bool* isOpen);
 }
 
 #endif

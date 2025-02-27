@@ -1,6 +1,6 @@
-#include "ui/playbackWindow.hpp"
+#include "ui/PlaybackWindow.hpp"
 
-void Window::playback(bool* isOpen) {
+void Window::Playback(bool* isOpen) {
     static float counter        = 0;
     static int   selectedButton = 0;
 

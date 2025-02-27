@@ -6,6 +6,7 @@ bool          SDLWrapper::isFullscreen      = false;
 SDL_Renderer* SDLWrapper::renderer          = nullptr;
 SDL_Window*   SDLWrapper::window            = nullptr;
 SDL_Event     SDLWrapper::events;
+std::string   SDLWrapper::windowTitle;
 
 void SDLWrapper::initSubsystem() {
     if (SDLWrapper::isSubsystemInited) {
@@ -35,9 +36,9 @@ void SDLWrapper::initSubsystem() {
 }
 
 void SDLWrapper::createWindowAndRenderer(const std::string& windowTitle, int windowWidth, int windowHeight) {
-
     try {
-        int windowFlags    = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+        SDLWrapper::windowTitle = windowTitle;
+        int windowFlags         = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
         SDLWrapper::window = SDL_CreateWindow(windowTitle.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                               windowWidth, windowHeight, windowFlags);
 
@@ -106,6 +107,15 @@ void SDLWrapper::clearScreen() {
 void SDLWrapper::render() { SDL_RenderPresent(SDLWrapper::renderer); }
 
 bool SDLWrapper::getWindowIsMinimized() { return SDLWrapper::isMinimized; }
+
+void SDLWrapper::changeWindowTitle(const std::string& windowTitle) {
+    SDL_SetWindowTitle(SDLWrapper::window, windowTitle.c_str());
+}
+
+void SDLWrapper::raiseExitEvent() {
+    SDL_Event event = {SDL_QUIT};
+    SDL_PushEvent(&event);
+}
 
 void SDLWrapper::closeSubystem() {
     if (SDLWrapper::renderer) {

@@ -8,19 +8,16 @@
 #include <string>
 
 // Project
+#include "DB.hpp"
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
 #include "SDLWrapper.hpp"
 #include "Window.hpp"
 
-// Third Party
-#include "tinyfiledialogs.h"
+#include "menu/HelpMenu.hpp"
+#include "menu/TeslaMenu.hpp"
+#include "menu/WindowsMenu.hpp"
 namespace MenuBar {
-    void showWindowVisibility(const std::filesystem::path& windowName, bool* windowVisibility);
-    void windowsTab();
-    void teslaTab();
-    void helpTab();
-
     void renderCurrentTime();
     void renderProgramName();
     void render();

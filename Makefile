@@ -13,7 +13,7 @@ OBJ_FILES += $(patsubst lib/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(LIB_CPP_FILES))
 OBJ_FILES += $(patsubst lib/%.c, $(OBJ_FOLDER)/lib/%.o, $(LIB_C_FILES))
 
 CXX_FLAGS := -Wall -Wextra -pedantic -std=c++17
-INCLUDES := -I./include -I./lib -I./lib/sqlite3 -I./lib/SQLiteCpp -I./lib/imgui -I./lib/SDL2 -I./lib/implot -I./lib/tinyDialogs
+INCLUDES := -I./include -I./lib -I./lib/imgui -I./lib/SDL2 -I./lib/implot -I./lib/tinyDialogs -I./lib/rapidcsv
 
 ifeq ($(WINDOWS), 1)
     CXX := x86_64-w64-mingw32-g++
@@ -49,7 +49,7 @@ $(OBJ_FOLDER)/lib/%.o: lib/%.cpp
 $(OBJ_FOLDER)/lib/%.o: lib/%.c
 	@mkdir -p $(dir $@)
 	@echo $@
-	@$(CXX) -x c $(CXX_FLAGS) $(INCLUDES) -c $< -o $@
+	@$(CXX) -x c $(INCLUDES) -c $< -o $@
 
 # Criar pastas de compilação e copiar DLLs se for Windows
 ifeq ($(WINDOWS), 1)
@@ -76,7 +76,7 @@ run: all
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip cache
 
 copy:
 	zip -r Reconstrucao.zip $(BUILD_FOLDER)

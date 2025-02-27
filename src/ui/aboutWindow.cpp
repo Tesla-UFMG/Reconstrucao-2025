@@ -1,6 +1,6 @@
-#include "ui/aboutWindow.hpp"
+#include "ui/AboutWindow.hpp"
 
-void Window::about(bool* isOpen) {
+void Window::About(bool* isOpen) {
     if (*isOpen) {
         ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize |
                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking |

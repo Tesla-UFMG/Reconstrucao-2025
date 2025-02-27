@@ -62,13 +62,14 @@ void ImGuiWrapper::saveLayout(const std::filesystem::path& filepath) {
     }
 
     std::ofstream outFile(filepath, std::ios::binary);
-    if (outFile.is_open()) {
-        outFile.write(iniData, size);
-        outFile.close();
-        LOG("INFO", "Layout '" + filepath.string() + "' salvo com sucesso.");
-    } else {
+    if (outFile.is_open() == false) {
         LOG("WARN", "Não foi possível salvar o layout '" + filepath.string() + "'.");
+        return;
     }
+
+    outFile.write(iniData, size);
+    outFile.close();
+    LOG("INFO", "Layout '" + filepath.string() + "' salvo com sucesso.");
 }
 
 void ImGuiWrapper::loadLayoutFromQueue() {
@@ -80,18 +81,19 @@ void ImGuiWrapper::loadLayoutFromQueue() {
     ImGuiWrapper::layoutQueue.clear();
 
     std::ifstream inFile(filepath, std::ios::binary);
-    if (inFile.is_open()) {
-        std::string iniData, line;
-        while (std::getline(inFile, line))
-            iniData += line + '\n';
-
-        ImGui::LoadIniSettingsFromMemory(iniData.c_str(), iniData.size());
-        inFile.close();
-
-        LOG("INFO", "Layout '" + filepath.string() + "' carregado com sucesso.");
-    } else {
+    if (inFile.is_open() == false) {
         LOG("WARN", "Não foi possível carregar o layout '" + filepath.string() + "'.");
+        return;
     }
+
+    std::string iniData, line;
+    while (std::getline(inFile, line)) {
+        iniData += line + '\n';
+    }
+    ImGui::LoadIniSettingsFromMemory(iniData.c_str(), iniData.size());
+    inFile.close();
+
+    LOG("INFO", "Layout '" + filepath.string() + "' carregado com sucesso.");
 }
 
 void ImGuiWrapper::loadLayout(const std::filesystem::path& filepath) { ImGuiWrapper::layoutQueue = filepath; }

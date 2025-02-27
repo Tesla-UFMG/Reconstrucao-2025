@@ -2,13 +2,16 @@
 #define DATAPICKER_WINDOW_HPP
 
 // Project
+#include "App.hpp"
+#include "DB.hpp"
 #include "ImGuiWrapper.hpp"
 
 // Third Party
+#include "rapidcsv.h"
 #include "tinyfiledialogs.h"
 
 namespace Window {
-    void dataPicker(bool* isOpen);
+    void Datapicker(bool* isOpen);
 }
 
 #endif

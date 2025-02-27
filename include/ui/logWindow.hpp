@@ -6,7 +6,7 @@
 #include "Log.hpp"
 
 namespace Window {
-    void log(bool* isOpen);
+    void Log(bool* isOpen);
 }
 
 #endif

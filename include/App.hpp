@@ -2,6 +2,7 @@
 #define APP_HPP
 
 // C++
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -14,11 +15,13 @@
 
 class App {
     private:
-        bool handleEvent();
+        std::string windowTitle;
+        bool        handleEvent();
 
     public:
         App();
         ~App();
+
         void init(const std::string& windowTitle, int windowWidth,
                   int windowHeight); // Inicia os subsistemas e cria uma janela
         void loop();                 // Loop principal da janela

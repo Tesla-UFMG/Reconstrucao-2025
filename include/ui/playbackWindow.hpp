@@ -5,7 +5,7 @@
 #include "ImGuiWrapper.hpp"
 
 namespace Window {
-    void playback(bool* isOpen);
+    void Playback(bool* isOpen);
 }
 
 #endif

@@ -3,23 +3,30 @@
 Window::VisibilityFlags Window::visibility;
 
 void Window::saveWindowVisibility(const std::filesystem::path& filepath) {
-    std::ofstream file(filepath, std::ios::binary);
-    if (file) {
-        file.write(reinterpret_cast<const char*>(&visibility), sizeof(VisibilityFlags));
-        LOG("INFO", "Visibilidade '" + filepath.string() + "' salvo com sucesso.");
-    } else {
-        LOG("WARN", "Não foi possível salvar a visiblidade '" + filepath.string() + "'.");
+    std::filesystem::path parentPath = filepath.parent_path();
+    if (!parentPath.empty() && std::filesystem::create_directories(parentPath)) {
+        LOG("INFO", "Criada pasta '" + parentPath.string() + "'.");
     }
+
+    std::ofstream file(filepath, std::ios::binary);
+    if (!file) {
+        LOG("WARN", "Não foi possível salvar a visiblidade '" + filepath.string() + "'.");
+        return;
+    }
+
+    file.write(reinterpret_cast<const char*>(&visibility), sizeof(VisibilityFlags));
+    LOG("INFO", "Visibilidade '" + filepath.string() + "' salvo com sucesso.");
 }
 
 void Window::loadWindowVisibility(const std::filesystem::path& filepath) {
     std::ifstream file(filepath, std::ios::binary);
-    if (file) {
-        file.read(reinterpret_cast<char*>(&visibility), sizeof(VisibilityFlags));
-        LOG("INFO", "Visibilidade '" + filepath.string() + "' carregado com sucesso.")
-    } else {
+    if (!file) {
         LOG("WARN", "Não foi possível carregar a visibilidade '" + filepath.string() + "'.");
+        return;
     }
+
+    file.read(reinterpret_cast<char*>(&visibility), sizeof(VisibilityFlags));
+    LOG("INFO", "Visibilidade '" + filepath.string() + "' carregado com sucesso.")
 }
 
 void Window::changeWindowVisibility(const std::string& windowName, bool* windowVisibility) {
@@ -30,13 +37,13 @@ void Window::changeWindowVisibility(const std::string& windowName, bool* windowV
 }
 
 void Window::render() {
-    Window::about(&Window::visibility.showAbout);
-    Window::playback(&Window::visibility.showPlayback);
-    Window::dataPicker(&Window::visibility.showDataPicker);
-    Window::circuitReconstruction(&Window::visibility.showReconstruction);
-    Window::video(&Window::visibility.showVideo);
-    Window::plot(&Window::visibility.showPlot);
-    Window::log(&Window::visibility.showLog);
+    Window::About(&Window::visibility.showAbout);
+    Window::Playback(&Window::visibility.showPlayback);
+    Window::Datapicker(&Window::visibility.showDataPicker);
+    Window::Reconstruction(&Window::visibility.showReconstruction);
+    Window::Video(&Window::visibility.showVideo);
+    Window::Plot(&Window::visibility.showPlot);
+    Window::Log(&Window::visibility.showLog);
     Window::ImGuiDemo(&Window::visibility.showImGuiDemo);
     Window::ImPlotDemo(&Window::visibility.showImPlotDemo);
 }

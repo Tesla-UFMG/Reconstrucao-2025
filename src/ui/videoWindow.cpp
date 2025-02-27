@@ -1,6 +1,6 @@
-#include "ui/videoWindow.hpp"
+#include "ui/VideoWindow.hpp"
 
-void Window::video(bool* isOpen) {
+void Window::Video(bool* isOpen) {
     if (*isOpen) {
         ImGuiWindowFlags flags = 0;
         ImGui::Begin("Vídeo", isOpen, flags);

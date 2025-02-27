@@ -5,8 +5,9 @@ App::App() {}
 App::~App() {}
 
 void App::init(const std::string& windowTitle, int windowWidth, int windowHeight) {
+    this->windowTitle = windowTitle;
     SDLWrapper::initSubsystem();
-    SDLWrapper::createWindowAndRenderer(windowTitle, windowWidth, windowHeight);
+    SDLWrapper::createWindowAndRenderer(this->windowTitle, windowWidth, windowHeight);
     ImGuiWrapper::initSubsystem();
 }
 
@@ -33,22 +34,37 @@ bool App::handleEvent() {
                 SDLWrapper::events.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
                 std::string F_number = std::to_string(SDLWrapper::events.key.keysym.sym - offset);
                 if ((SDLWrapper::events.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver precionado...
-                    Window::saveWindowVisibility("./data/layouts/.visibility_" + F_number);
-                    ImGuiWrapper::saveLayout("./data/layouts/.layout_" + F_number);
+                    Window::saveWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
+                    ImGuiWrapper::saveLayout("./cache/layouts/.layout_" + F_number + ".ini");
                 } else {
-                    Window::loadWindowVisibility("./data/layouts/.visibility_" + F_number);
-                    ImGuiWrapper::loadLayout("./data/layouts/.layout_" + F_number);
+                    Window::loadWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
+                    ImGuiWrapper::loadLayout("./cache/layouts/.layout_" + F_number + ".ini");
                 }
             }
-            // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-            // Limpa o terminal -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+            // Se CTRL estiver pressionado...
             if (SDLWrapper::events.key.keysym.mod & KMOD_CTRL) {
+
+                // L - Limpar o log
                 if (SDLWrapper::events.key.keysym.sym == SDLK_l) {
                     Log::getInstance().clearLog();
                 }
+
+                // S - Salvar o projeto
+                if (SDLWrapper::events.key.keysym.sym == SDLK_s) {
+                    DB::getInstance().saveProjectDialog();
+                }
+
+                // N - Carregar o projeto
+                if (SDLWrapper::events.key.keysym.sym == SDLK_n) {
+                    DB::getInstance().loadProjectDialog();
+                }
+
+                // C - Cria o projeto
+                if (SDLWrapper::events.key.keysym.sym == SDLK_c) {
+                    DB::getInstance().createProjectDialog();
+                }
             }
-            // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         }
     }
     return false;
@@ -70,9 +86,13 @@ void App::loop() {
             ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
             ImGui::DockSpaceOverViewport(dockspace_id, ImGui::GetMainViewport(),
                                          ImGuiDockNodeFlags_PassthruCentralNode);
-
             MenuBar::render();
-            Window::render();
+
+            if (DB::getInstance().getCurrentProject().empty()) {
+                Window::Initial();
+            } else {
+                Window::render();
+            }
 
             ImGuiWrapper::render();
             SDLWrapper::render();

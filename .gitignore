@@ -3,5 +3,6 @@ build/
 imgui.ini
 log.txt
 dataset/
+cache/
 data/
 Reconstrucao.zip

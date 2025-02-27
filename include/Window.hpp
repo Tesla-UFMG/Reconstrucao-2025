@@ -5,14 +5,15 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 
-#include "ui/aboutWindow.hpp"
-#include "ui/circuitReconstructionWindow.hpp"
-#include "ui/dataPickerWindow.hpp"
-#include "ui/demoWindow.hpp"
-#include "ui/logWindow.hpp"
-#include "ui/playbackWindow.hpp"
-#include "ui/plotWindow.hpp"
-#include "ui/videoWindow.hpp"
+#include "ui/AboutWindow.hpp"
+#include "ui/DatapickerWindow.hpp"
+#include "ui/DemoWindow.hpp"
+#include "ui/InitialWindow.hpp"
+#include "ui/LogWindow.hpp"
+#include "ui/PlaybackWindow.hpp"
+#include "ui/PlotWindow.hpp"
+#include "ui/ReconstructionWindow.hpp"
+#include "ui/VideoWindow.hpp"
 
 // C++
 #include <filesystem>
