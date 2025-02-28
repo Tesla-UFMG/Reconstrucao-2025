@@ -11,7 +11,7 @@ void Menu::Tesla() {
             DB::getInstance().loadProjectDialog();
         }
 
-        if (DB::getInstance().getCurrentProject().empty() == false) {
+        if (DB::getInstance().getProject().currentProject.empty() == false) {
             if (ImGui::MenuItem("Salvar", "CTRL + S")) {
                 DB::getInstance().saveProjectDialog();
             }

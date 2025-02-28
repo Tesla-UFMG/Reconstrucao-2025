@@ -88,7 +88,7 @@ void App::loop() {
                                          ImGuiDockNodeFlags_PassthruCentralNode);
             MenuBar::render();
 
-            if (DB::getInstance().getCurrentProject().empty()) {
+            if (DB::getInstance().getProject().currentProject.empty()) {
                 Window::Initial();
             } else {
                 Window::render();

@@ -1,4 +1,5 @@
 WINDOWS := 1
+CARD_VIDEO_RENDEREING := 1
 
 PROJECT := app
 BUILD_FOLDER := build
@@ -26,6 +27,11 @@ else
     LDFLAGS := 
     OUTPUT := $(BUILD_FOLDER)/$(PROJECT)
 endif
+
+ifeq ($(CARD_VIDEO_RENDEREING), 1)
+CXX_FLAGS += -DACCELERATED
+endif
+
 
 all: $(BUILD_FOLDER) $(OBJ_FOLDER) $(OUTPUT)
 

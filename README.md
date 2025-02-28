@@ -48,6 +48,14 @@ Para compilar para WINDOWS, deixe a variável como verdadeira.
 WINDOWS := 1
 ```
 
+Se você quiser usar a renderização da sua placa de vídeo, mude a seguinte variável para verdadeiro. Caso não, deixe em falso. Essa opção pode dar erro se você está usando o WSL!
+
+```
+CARD_VIDEO_RENDEREING := 1
+```
+
+
+
 Nosso Makefile possui alguns comandos, que além de compilarem o programa, adiciona algumas funcionalidades, são eles:
 
 Compilação padrão: `make`

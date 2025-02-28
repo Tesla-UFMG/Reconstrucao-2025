@@ -23,7 +23,7 @@ void MenuBar::render() {
 
         Menu::Tesla();
 
-        if (DB::getInstance().getCurrentProject().empty() == false) {
+        if (DB::getInstance().getProject().currentProject.empty() == false) {
             Menu::Windows();
         }
 
