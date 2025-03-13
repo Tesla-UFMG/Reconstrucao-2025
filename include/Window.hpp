@@ -5,16 +5,16 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 
-#include "ui/AboutWindow.hpp"
-#include "ui/DatapickerWindow.hpp"
-#include "ui/DemoWindow.hpp"
-#include "ui/InitialWindow.hpp"
-#include "ui/LogWindow.hpp"
-#include "ui/PlaybackWindow.hpp"
-#include "ui/PlotWindow.hpp"
-#include "ui/ReconstructionWindow.hpp"
-#include "ui/VideoWindow.hpp"
-#include "ui/wheelWindow.hpp"
+#include "ui/w_About.hpp"
+#include "ui/w_DataPicker.hpp"
+#include "ui/w_Demo.hpp"
+#include "ui/w_HomePage.hpp"
+#include "ui/w_Log.hpp"
+#include "ui/w_Playback.hpp"
+#include "ui/w_Plot.hpp"
+#include "ui/w_Reconstruction.hpp"
+#include "ui/w_Video.hpp"
+#include "ui/w_WheelControl.hpp"
 
 
 // C++

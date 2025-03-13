@@ -1,4 +1,4 @@
-#include "ui/DemoWindow.hpp"
+#include "ui/w_Demo.hpp"
 
 void Window::ImGuiDemo(bool* isOpen) {
     if (*isOpen) {

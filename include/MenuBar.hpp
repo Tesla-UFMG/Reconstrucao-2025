@@ -14,9 +14,10 @@
 #include "SDLWrapper.hpp"
 #include "Window.hpp"
 
-#include "menu/HelpMenu.hpp"
-#include "menu/TeslaMenu.hpp"
-#include "menu/WindowsMenu.hpp"
+#include "menu/m_Help.hpp"
+#include "menu/m_Tesla.hpp"
+#include "menu/m_Windows.hpp"
+
 namespace MenuBar {
     void renderCurrentTime();
     void renderProgramName();

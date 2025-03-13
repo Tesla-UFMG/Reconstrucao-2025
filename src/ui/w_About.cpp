@@ -1,4 +1,4 @@
-#include "ui/AboutWindow.hpp"
+#include "ui/w_About.hpp"
 
 void Window::About(bool* isOpen) {
     if (*isOpen) {

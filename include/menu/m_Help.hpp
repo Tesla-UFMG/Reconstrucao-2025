@@ -3,7 +3,7 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "UtilsMenu.hpp"
+#include "m_Utils.hpp"
 #include "Window.hpp"
 
 namespace Menu {

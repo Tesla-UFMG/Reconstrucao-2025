@@ -1,4 +1,4 @@
-#include "menu/UtilsMenu.hpp"
+#include "menu/m_Utils.hpp"
 
 void Menu::showWindowVisibility(const std::filesystem::path& windowName, bool* isOpen) {
     if (isOpen == nullptr) {

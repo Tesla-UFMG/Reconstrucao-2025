@@ -1,4 +1,6 @@
-#include "ui/PlotWindow.hpp"
+#include "ui/w_Plot.hpp"
+
+
 #include "imgui.h"
 #include "implot.h"
 #include <algorithm>

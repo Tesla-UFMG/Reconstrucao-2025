@@ -1,4 +1,4 @@
-#include "ui/InitialWindow.hpp"
+#include "ui/w_HomePage.hpp"
 
 void Window::Initial() {
 

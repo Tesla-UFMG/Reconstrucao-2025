@@ -9,7 +9,7 @@
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
 #include "Window.hpp"
-#include "menu/UtilsMenu.hpp"
+#include "menu/m_Utils.hpp"
 
 namespace Menu {
     void Windows();
