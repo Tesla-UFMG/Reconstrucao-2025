@@ -14,6 +14,7 @@
 #include "ui/PlotWindow.hpp"
 #include "ui/ReconstructionWindow.hpp"
 #include "ui/VideoWindow.hpp"
+#include "ui/wheelWindow.hpp"
 
 
 // C++
@@ -42,8 +43,6 @@ namespace Window {
     void saveWindowVisibility(const std::filesystem::path& filepath);
     void loadWindowVisibility(const std::filesystem::path& filepath);
 
-    // Declare as funções dentro do namespace Window
-    void WheelControl(bool* show);
     void render();
 
 } // namespace Window
