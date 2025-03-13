@@ -11,7 +11,11 @@
 #include "tinyfiledialogs.h"
 
 namespace Window {
+    namespace MenuBar {
+        void Datapicker();
+    }
+
     void Datapicker(bool* isOpen);
-}
+} // namespace Window
 
 #endif

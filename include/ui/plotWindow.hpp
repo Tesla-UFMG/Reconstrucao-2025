@@ -5,7 +5,12 @@
 #include "ImGuiWrapper.hpp"
 
 namespace Window {
+
+    namespace MenuBar {
+        void Plot();
+    }
+
     void Plot(bool* isOpen);
-}
+} // namespace Window
 
 #endif

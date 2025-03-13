@@ -12,8 +12,7 @@ void Window::Initial() {
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                              ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground;
-    if (ImGui::Begin("Aviso", nullptr, flags)) {
-        ImGui::Text(text.c_str());
-        ImGui::End();
-    }
+    ImGui::Begin("Aviso", nullptr, flags);
+    ImGui::Text(text.c_str());
+    ImGui::End();
 }

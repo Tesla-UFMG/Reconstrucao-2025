@@ -89,6 +89,7 @@ void App::loop() {
             MenuBar::render();
 
             if (DB::getInstance().getProject().currentProject.empty()) {
+                Window::About(&Window::visibility.showAbout);
                 Window::Initial();
             } else {
                 Window::render();
