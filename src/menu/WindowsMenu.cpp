@@ -36,6 +36,7 @@ void Menu::Windows() {
         Menu::showWindowVisibility("Reconstrução de Pista", &Window::visibility.showReconstruction);
         Menu::showWindowVisibility("Video", &Window::visibility.showVideo);
         Menu::showWindowVisibility("Plot", &Window::visibility.showPlot);
+        Menu::showWindowVisibility("Volante", &Window::visibility.showWheelControl);
 
         ImGui::Separator();
 

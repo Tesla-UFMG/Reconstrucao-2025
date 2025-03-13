@@ -15,6 +15,7 @@
 #include "ui/ReconstructionWindow.hpp"
 #include "ui/VideoWindow.hpp"
 
+
 // C++
 #include <filesystem>
 #include <fstream>
@@ -23,24 +24,26 @@
 namespace Window {
 
     struct VisibilityFlags {
-            bool showPlayback       = true;
-            bool showDataPicker     = true;
-            bool showReconstruction = true;
-            bool showVideo          = true;
-            bool showPlot           = true;
-            bool showLog            = true;
-            bool showAbout          = false;
-            bool showImPlotDemo     = false;
-            bool showImGuiDemo      = false;
+        bool showPlayback       = true;
+        bool showDataPicker     = true;
+        bool showReconstruction = true;
+        bool showVideo          = true;
+        bool showPlot           = true;
+        bool showLog            = true;
+        bool showWheelControl   = true;
+        bool showAbout          = false;
+        bool showImPlotDemo     = false;
+        bool showImGuiDemo      = false;
     };
 
     extern VisibilityFlags visibility;
 
     void changeWindowVisibility(const std::string& windowName, bool* windowVisibility);
-
     void saveWindowVisibility(const std::filesystem::path& filepath);
     void loadWindowVisibility(const std::filesystem::path& filepath);
 
+    // Declare as funções dentro do namespace Window
+    void WheelControl(bool* show);
     void render();
 
 } // namespace Window
