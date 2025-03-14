@@ -1,4 +1,4 @@
-#include "ui/w_Reconstruction.hpp"
+#include "ui/windows/w_Reconstruction.hpp"
 
 void Window::Reconstruction(bool* isOpen) {
     if (*isOpen) {

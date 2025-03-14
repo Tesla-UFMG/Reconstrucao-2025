@@ -5,16 +5,21 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 
-#include "ui/w_About.hpp"
-#include "ui/w_DataPicker.hpp"
-#include "ui/w_Demo.hpp"
-#include "ui/w_HomePage.hpp"
-#include "ui/w_Log.hpp"
-#include "ui/w_Playback.hpp"
-#include "ui/w_Plot.hpp"
-#include "ui/w_Reconstruction.hpp"
-#include "ui/w_Video.hpp"
-#include "ui/w_WheelControl.hpp"
+#include "ui/windows/w_About.hpp"
+#include "ui/windows/w_DataPicker.hpp"
+#include "ui/windows/w_Demo.hpp"
+#include "ui/windows/w_HomePage.hpp"
+#include "ui/windows/w_Log.hpp"
+#include "ui/windows/w_Playback.hpp"
+#include "ui/windows/w_Plot.hpp"
+#include "ui/windows/w_Reconstruction.hpp"
+#include "ui/windows/w_Video.hpp"
+#include "ui/windows/w_WheelControl.hpp"
+
+#include "ui/menubar/m_Help.hpp"
+#include "ui/menubar/m_Tesla.hpp"
+#include "ui/menubar/m_Utils.hpp"
+#include "ui/menubar/m_Windows.hpp"
 
 // C++
 #include <filesystem>
@@ -48,7 +53,8 @@ class WindowManager {
         static void saveWindowVisibility(const std::filesystem::path& filepath);
         static void loadWindowVisibility(const std::filesystem::path& filepath);
 
-        void render();
+        static void MenuBar();
+        static void render();
 };
 
 #endif // WINDOW_HPP

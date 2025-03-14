@@ -5,7 +5,7 @@ PROJECT := app
 BUILD_FOLDER := build
 OBJ_FOLDER := obj
 
-SRC_FILES := $(wildcard src/**/*.cpp) $(wildcard src/*.cpp)
+SRC_FILES := $(wildcard src/**/**/*.cpp) $(wildcard src/**/*.cpp) $(wildcard src/*.cpp)
 LIB_CPP_FILES := $(wildcard lib/**/*.cpp)
 LIB_C_FILES := $(wildcard lib/**/*.c)
 

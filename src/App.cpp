@@ -86,14 +86,14 @@ void App::loop() {
             ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
             ImGui::DockSpaceOverViewport(dockspace_id, ImGui::GetMainViewport(),
                                          ImGuiDockNodeFlags_PassthruCentralNode);
-            MenuBar::render();
+
+            WindowManager::MenuBar();
 
             if (DB::getInstance().getProject().currentProject.empty()) {
                 Window::HomePage();
                 Window::About(&WindowManager::visibility.showAbout);
             } else {
-                // WindowManager::render();
-                WindowManager::getInstance().render();
+                WindowManager::render();
             }
 
             ImGuiWrapper::render();

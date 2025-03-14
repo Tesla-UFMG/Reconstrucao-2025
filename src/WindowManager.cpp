@@ -38,6 +38,19 @@ void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) 
     LOG("INFO", "Visibilidade '" + filepath.string() + "' carregada com sucesso.");
 }
 
+void WindowManager::MenuBar() {
+    if (ImGui::BeginMainMenuBar()) {
+        Menu::Tesla();
+        if (DB::getInstance().getProject().currentProject.empty() == false) {
+            Menu::Windows();
+        }
+        Menu::Help();
+        Menu::renderCurrentTime();
+        Menu::renderProgramName();
+        ImGui::EndMainMenuBar();
+    }
+}
+
 void WindowManager::render() {
     Window::About(&WindowManager::visibility.showAbout);
     Window::Playback(&WindowManager::visibility.showPlayback);

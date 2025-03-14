@@ -11,6 +11,8 @@
 
 namespace Menu {
     void showWindowVisibility(const std::filesystem::path& windowName, bool* isOpen);
-}
+    void renderCurrentTime();
+    void renderProgramName();
+} // namespace Menu
 
 #endif

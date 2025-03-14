@@ -9,7 +9,6 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "MenuBar.hpp"
 #include "SDLWrapper.hpp"
 #include "WindowManager.hpp"
 

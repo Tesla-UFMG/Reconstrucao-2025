@@ -1,4 +1,4 @@
-#include "ui/w_WheelControl.hpp"
+#include "ui/windows/w_WheelControl.hpp"
 
 // Função auxiliar para desenhar a imagem rotacionada
 void DrawRotatedImage(ImTextureID texture, const ImVec2& pos, float size, float angleDeg) {

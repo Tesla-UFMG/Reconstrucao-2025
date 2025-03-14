@@ -1,4 +1,4 @@
-#include "ui/w_Log.hpp"
+#include "ui/windows/w_Log.hpp"
 
 void Window::Log(bool* isOpen) {
     if (*isOpen) {

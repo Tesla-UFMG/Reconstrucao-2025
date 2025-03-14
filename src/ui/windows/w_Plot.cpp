@@ -1,4 +1,4 @@
-#include "ui/w_Plot.hpp"
+#include "ui/windows/w_Plot.hpp"
 
 #include "imgui.h"
 #include "implot.h"

@@ -1,4 +1,4 @@
-#include "ui/w_Video.hpp"
+#include "ui/windows/w_Video.hpp"
 
 void Window::Video(bool* isOpen) {
     if (*isOpen) {
