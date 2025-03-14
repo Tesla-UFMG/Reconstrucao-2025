@@ -11,7 +11,7 @@ void Menu::Windows() {
             for (int i = 1; i <= 10; i++) {
                 std::string layoutName = "Layout " + std::to_string(i);
                 if (ImGui::MenuItem(layoutName.c_str(), ("CTRL + F" + std::to_string(i)).c_str())) {
-                    Window::saveWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
+                    WindowManager::saveWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
                     ImGuiWrapper::saveLayout("./cache/layouts/.layout_" + std::to_string(i) + ".ini");
                 }
             }
@@ -22,7 +22,7 @@ void Menu::Windows() {
             for (int i = 1; i <= 10; i++) {
                 std::string layoutName = "Layout " + std::to_string(i);
                 if (ImGui::MenuItem(layoutName.c_str(), ("F" + std::to_string(i)).c_str())) {
-                    Window::loadWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
+                    WindowManager::loadWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
                     ImGuiWrapper::loadLayout("./cache/layouts/.layout_" + std::to_string(i) + ".ini");
                 }
             }
@@ -31,19 +31,19 @@ void Menu::Windows() {
 
         ImGui::Separator();
 
-        Menu::showWindowVisibility("Playback", &Window::visibility.showPlayback);
-        Menu::showWindowVisibility("Selecionador de Dados", &Window::visibility.showDataPicker);
-        Menu::showWindowVisibility("Reconstrução de Pista", &Window::visibility.showReconstruction);
-        Menu::showWindowVisibility("Video", &Window::visibility.showVideo);
-        Menu::showWindowVisibility("Plot", &Window::visibility.showPlot);
-        Menu::showWindowVisibility("Volante", &Window::visibility.showWheelControl);
+        Menu::showWindowVisibility("Playback", &WindowManager::visibility.showPlayback);
+        Menu::showWindowVisibility("Selecionador de Dados", &WindowManager::visibility.showDataPicker);
+        Menu::showWindowVisibility("Reconstrução de Pista", &WindowManager::visibility.showReconstruction);
+        Menu::showWindowVisibility("Video", &WindowManager::visibility.showVideo);
+        Menu::showWindowVisibility("Plot", &WindowManager::visibility.showPlot);
+        Menu::showWindowVisibility("Volante", &WindowManager::visibility.showWheelControl);
 
         ImGui::Separator();
 
         if (ImGui::BeginMenu("Desenvolvedor")) {
-            Menu::showWindowVisibility("Log", &Window::visibility.showLog);
-            Menu::showWindowVisibility("ImGui Demo", &Window::visibility.showImGuiDemo);
-            Menu::showWindowVisibility("ImPlot Demo", &Window::visibility.showImPlotDemo);
+            Menu::showWindowVisibility("Log", &WindowManager::visibility.showLog);
+            Menu::showWindowVisibility("ImGui Demo", &WindowManager::visibility.showImGuiDemo);
+            Menu::showWindowVisibility("ImPlot Demo", &WindowManager::visibility.showImPlotDemo);
             ImGui::EndMenu();
         }
 

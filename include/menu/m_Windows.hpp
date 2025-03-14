@@ -8,7 +8,7 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
-#include "Window.hpp"
+#include "WindowManager.hpp"
 #include "menu/m_Utils.hpp"
 
 namespace Menu {

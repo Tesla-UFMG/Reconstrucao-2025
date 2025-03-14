@@ -34,10 +34,10 @@ bool App::handleEvent() {
                 SDLWrapper::events.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
                 std::string F_number = std::to_string(SDLWrapper::events.key.keysym.sym - offset);
                 if ((SDLWrapper::events.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver precionado...
-                    Window::saveWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
+                    WindowManager::saveWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
                     ImGuiWrapper::saveLayout("./cache/layouts/.layout_" + F_number + ".ini");
                 } else {
-                    Window::loadWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
+                    WindowManager::loadWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
                     ImGuiWrapper::loadLayout("./cache/layouts/.layout_" + F_number + ".ini");
                 }
             }
@@ -89,10 +89,10 @@ void App::loop() {
             MenuBar::render();
 
             if (DB::getInstance().getProject().currentProject.empty()) {
-                Window::About(&Window::visibility.showAbout);
-                Window::Initial();
+                Window::About(&WindowManager::visibility.showAbout);
+                Window::HomePage();
             } else {
-                Window::render();
+                WindowManager::render();
             }
 
             ImGuiWrapper::render();

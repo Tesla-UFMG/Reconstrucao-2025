@@ -12,7 +12,7 @@
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
 #include "SDLWrapper.hpp"
-#include "Window.hpp"
+#include "WindowManager.hpp"
 
 #include "menu/m_Help.hpp"
 #include "menu/m_Tesla.hpp"

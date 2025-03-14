@@ -7,7 +7,7 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
-#include "Window.hpp"
+#include "WindowManager.hpp"
 
 namespace Menu {
     void showWindowVisibility(const std::filesystem::path& windowName, bool* isOpen);

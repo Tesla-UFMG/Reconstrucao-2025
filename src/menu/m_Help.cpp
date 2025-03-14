@@ -2,7 +2,7 @@
 
 void Menu::Help() {
     if (ImGui::BeginMenu("Ajuda")) {
-        Menu::showWindowVisibility("Sobre", &Window::visibility.showAbout);
+        Menu::showWindowVisibility("Sobre", &WindowManager::visibility.showAbout);
         ImGui::EndMenu();
     }
 }

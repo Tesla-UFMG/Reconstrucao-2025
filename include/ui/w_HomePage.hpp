@@ -3,9 +3,10 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
+#include "ui/iWindow.hpp"
 
 namespace Window {
-    void Initial();
+    void HomePage();
 }
 
 #endif

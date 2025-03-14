@@ -4,6 +4,7 @@
 // Project
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
+#include "ui/iWindow.hpp"
 
 namespace Window {
     void Log(bool* isOpen);

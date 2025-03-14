@@ -1,6 +1,5 @@
 #include "ui/w_Plot.hpp"
 
-
 #include "imgui.h"
 #include "implot.h"
 #include <algorithm>
@@ -35,7 +34,7 @@ void Window::MenuBar::Plot() {
 
             ImGui::EndMenu();
         }
-        
+
         ImGui::EndMenuBar();
     }
 }

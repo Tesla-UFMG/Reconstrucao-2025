@@ -5,9 +5,7 @@ AssetManager& AssetManager::getInstance() {
     return instance;
 }
 
-AssetManager::AssetManager() {
-    LOG("TRACE", "AssetManager iniciado com sucesso.");
-}
+AssetManager::AssetManager() { LOG("TRACE", "AssetManager iniciado com sucesso."); }
 
 AssetManager::~AssetManager() {
     clearTextures();
@@ -41,6 +39,7 @@ SDL_Texture* AssetManager::getTexture(const std::string& filePath) const {
 void AssetManager::clearTextures() {
     for (auto& pair : textures) {
         SDL_DestroyTexture(pair.second);
+        LOG("INFO", "Textura liberada: " + pair.first);
     }
     textures.clear();
 }

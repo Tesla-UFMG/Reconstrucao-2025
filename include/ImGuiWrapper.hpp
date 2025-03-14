@@ -11,7 +11,6 @@
 // Project
 #include "Log.hpp"
 #include "SDLWrapper.hpp"
-#include "Window.hpp"
 
 // Third party
 #include <imgui.h>

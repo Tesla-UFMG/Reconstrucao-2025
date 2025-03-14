@@ -16,25 +16,24 @@
 #include "ui/w_Video.hpp"
 #include "ui/w_WheelControl.hpp"
 
-
 // C++
 #include <filesystem>
 #include <fstream>
 #include <string>
 
-namespace Window {
+namespace WindowManager {
 
     struct VisibilityFlags {
-        bool showPlayback       = true;
-        bool showDataPicker     = true;
-        bool showReconstruction = true;
-        bool showVideo          = true;
-        bool showPlot           = true;
-        bool showLog            = true;
-        bool showWheelControl   = true;
-        bool showAbout          = false;
-        bool showImPlotDemo     = false;
-        bool showImGuiDemo      = false;
+            bool showPlayback       = true;
+            bool showDataPicker     = true;
+            bool showReconstruction = true;
+            bool showVideo          = true;
+            bool showPlot           = true;
+            bool showLog            = true;
+            bool showWheelControl   = true;
+            bool showAbout          = false;
+            bool showImPlotDemo     = false;
+            bool showImGuiDemo      = false;
     };
 
     extern VisibilityFlags visibility;
@@ -45,6 +44,6 @@ namespace Window {
 
     void render();
 
-} // namespace Window
+} // namespace WindowManager
 
 #endif // WINDOW_HPP

@@ -3,6 +3,11 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
+#include "ui/iWindow.hpp"
+
+// C++
+#include <string>
+#include <vector>
 
 namespace Window {
     void About(bool* isOpen);

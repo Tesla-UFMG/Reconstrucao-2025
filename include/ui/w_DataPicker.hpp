@@ -5,6 +5,7 @@
 #include "App.hpp"
 #include "DB.hpp"
 #include "ImGuiWrapper.hpp"
+#include "ui/iWindow.hpp"
 
 // Third Party
 #include "rapidcsv.h"

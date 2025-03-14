@@ -1,6 +1,6 @@
 #include "ui/w_HomePage.hpp"
 
-void Window::Initial() {
+void Window::HomePage() {
 
     std::string text = "Abra ou crie um projeto";
 

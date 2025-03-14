@@ -7,6 +7,6 @@ void Menu::showWindowVisibility(const std::filesystem::path& windowName, bool* i
     }
 
     if (ImGui::MenuItem(windowName.string().c_str(), nullptr, *isOpen)) {
-        Window::changeWindowVisibility(windowName.string(), isOpen);
+        WindowManager::changeWindowVisibility(windowName.string(), isOpen);
     }
 }

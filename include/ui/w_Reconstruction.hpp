@@ -3,6 +3,7 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
+#include "ui/iWindow.hpp"
 
 namespace Window {
     void Reconstruction(bool* isOpen);
