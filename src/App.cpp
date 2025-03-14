@@ -89,10 +89,11 @@ void App::loop() {
             MenuBar::render();
 
             if (DB::getInstance().getProject().currentProject.empty()) {
-                Window::About(&WindowManager::visibility.showAbout);
                 Window::HomePage();
+                Window::About(&WindowManager::visibility.showAbout);
             } else {
-                WindowManager::render();
+                // WindowManager::render();
+                WindowManager::getInstance().render();
             }
 
             ImGuiWrapper::render();

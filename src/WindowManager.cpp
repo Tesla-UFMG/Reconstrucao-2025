@@ -1,10 +1,15 @@
 #include "WindowManager.hpp"
-#include <SDL2/SDL.h>
-#include <SDL_image.h>
-#include <filesystem>
-#include <fstream>
 
-WindowManager::VisibilityFlags WindowManager::visibility;
+VisibilityFlags WindowManager::visibility;
+
+WindowManager& WindowManager::getInstance() {
+    static WindowManager instance;
+    return instance;
+}
+
+WindowManager::WindowManager() { LOG("TRACE", "Window Manager iniciado com sucesso."); }
+
+WindowManager::~WindowManager() { LOG("TRACE", "Window Manager encerrado."); }
 
 void WindowManager::saveWindowVisibility(const std::filesystem::path& filepath) {
     std::filesystem::path parentPath = filepath.parent_path();
@@ -31,13 +36,6 @@ void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) 
 
     file.read(reinterpret_cast<char*>(&visibility), sizeof(VisibilityFlags));
     LOG("INFO", "Visibilidade '" + filepath.string() + "' carregada com sucesso.");
-}
-
-void WindowManager::changeWindowVisibility(const std::string& windowName, bool* windowVisibility) {
-    *windowVisibility = !(*windowVisibility);
-    std::string message =
-        *windowVisibility ? "Foi aberta a janela '" + windowName + "'." : "Foi fechada a janela '" + windowName + "'.";
-    LOG("TRACE", message);
 }
 
 void WindowManager::render() {

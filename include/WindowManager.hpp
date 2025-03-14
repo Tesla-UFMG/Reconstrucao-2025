@@ -1,5 +1,5 @@
-#ifndef WINDOW_HPP
-#define WINDOW_HPP
+#ifndef WINDOW_MANAGER_HPP
+#define WINDOW_MANAGER_HPP
 
 // Project
 #include "ImGuiWrapper.hpp"
@@ -21,29 +21,34 @@
 #include <fstream>
 #include <string>
 
-namespace WindowManager {
+struct VisibilityFlags {
+        bool showPlayback       = true;
+        bool showDataPicker     = true;
+        bool showReconstruction = true;
+        bool showVideo          = true;
+        bool showPlot           = true;
+        bool showLog            = true;
+        bool showWheelControl   = true;
+        bool showAbout          = false;
+        bool showImPlotDemo     = false;
+        bool showImGuiDemo      = false;
+};
 
-    struct VisibilityFlags {
-            bool showPlayback       = true;
-            bool showDataPicker     = true;
-            bool showReconstruction = true;
-            bool showVideo          = true;
-            bool showPlot           = true;
-            bool showLog            = true;
-            bool showWheelControl   = true;
-            bool showAbout          = false;
-            bool showImPlotDemo     = false;
-            bool showImGuiDemo      = false;
-    };
+class WindowManager {
+    private:
+        explicit WindowManager();
 
-    extern VisibilityFlags visibility;
+    public:
+        static VisibilityFlags visibility;
+        WindowManager(WindowManager&&)            = delete;
+        WindowManager& operator=(WindowManager&&) = delete;
+        ~WindowManager();
+        static WindowManager& getInstance();
 
-    void changeWindowVisibility(const std::string& windowName, bool* windowVisibility);
-    void saveWindowVisibility(const std::filesystem::path& filepath);
-    void loadWindowVisibility(const std::filesystem::path& filepath);
+        static void saveWindowVisibility(const std::filesystem::path& filepath);
+        static void loadWindowVisibility(const std::filesystem::path& filepath);
 
-    void render();
-
-} // namespace WindowManager
+        void render();
+};
 
 #endif // WINDOW_HPP

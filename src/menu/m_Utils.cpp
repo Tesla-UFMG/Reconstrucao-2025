@@ -7,6 +7,9 @@ void Menu::showWindowVisibility(const std::filesystem::path& windowName, bool* i
     }
 
     if (ImGui::MenuItem(windowName.string().c_str(), nullptr, *isOpen)) {
-        WindowManager::changeWindowVisibility(windowName.string(), isOpen);
+        *isOpen             = !(*isOpen);
+        std::string message = *isOpen ? "Foi aberta a janela '" + windowName.string() + "'."
+                                      : "Foi fechada a janela '" + windowName.string() + "'.";
+        LOG("TRACE", message);
     }
 }
