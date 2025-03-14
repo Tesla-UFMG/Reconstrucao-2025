@@ -11,7 +11,7 @@
 #include "WindowManager.hpp"
 #include "ui/menubar/m_Utils.hpp"
 
-namespace Menu {
+namespace MenuBar {
     void Windows();
 }
 

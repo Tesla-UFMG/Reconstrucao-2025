@@ -1,6 +1,6 @@
 #include "ui/menubar/m_Tesla.hpp"
 
-void Menu::Tesla() {
+void MenuBar::Tesla() {
     if (ImGui::BeginMenu("Tesla")) {
 
         if (ImGui::MenuItem("Novo", "CTRL + C")) {

@@ -1,12 +1,16 @@
 #include "ui/windows/w_Playback.hpp"
 
-void Window::Playback(bool* isOpen) {
+Window::Playback::Playback(bool* isOpen) : IWindow(isOpen) {
+    this->title = "Playback";
+    this->flags = ImGuiWindowFlags_NoScrollbar;
+}
+
+void Window::Playback::render() {
     static float counter        = 0;
     static int   selectedButton = 0;
 
-    if (*isOpen) {
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollbar;
-        ImGui::Begin("Playback", isOpen, flags);
+    if (this->isOpen && *this->isOpen) {
+        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
         ImGui::SliderFloat("##playbackSlider", &counter, 0.00f, 10.00f, "%.2f");

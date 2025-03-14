@@ -1,8 +1,13 @@
-#include "ui/windows/w_Log.hpp"
+#include "ui/windows/w_Terminal.hpp"
 
-void Window::Log(bool* isOpen) {
-    if (*isOpen) {
-        ImGui::Begin("Log", isOpen, ImGuiWindowFlags_NoScrollbar);
+Window::Terminal::Terminal(bool* isOpen) : IWindow(isOpen) {
+    this->title = "Terminal";
+    this->flags = ImGuiWindowFlags_NoScrollbar;
+}
+
+void Window::Terminal::render() {
+    if (this->isOpen && *this->isOpen) {
+        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
         {
             ImVec2 available_size  = ImGui::GetContentRegionAvail();

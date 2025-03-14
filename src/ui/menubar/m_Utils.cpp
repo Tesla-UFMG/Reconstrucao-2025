@@ -1,6 +1,6 @@
 #include "ui/menubar/m_Utils.hpp"
 
-void Menu::showWindowVisibility(const std::filesystem::path& windowName, bool* isOpen) {
+void MenuBar::changeWindowVisibility(const std::filesystem::path& windowName, bool* isOpen) {
     if (isOpen == nullptr) {
         LOG("ERROR", "Ponteiro nulo ao tentar acessar a visibilidade da janela '" + windowName.string() + "'.");
         return;
@@ -14,7 +14,7 @@ void Menu::showWindowVisibility(const std::filesystem::path& windowName, bool* i
     }
 }
 
-void Menu::renderCurrentTime() {
+void MenuBar::renderCurrentTime() {
     std::time_t t   = std::time(nullptr);
     std::tm*    now = std::localtime(&t);
     char        buffer[64];
@@ -23,7 +23,7 @@ void Menu::renderCurrentTime() {
     ImGui::Text("%s", buffer);
 }
 
-void Menu::renderProgramName() {
+void MenuBar::renderProgramName() {
     std::string programName = "Fórmula Tesla";
     float       windowWidth = ImGui::GetWindowWidth();
     float       textWidth   = ImGui::CalcTextSize(programName.c_str())[0];

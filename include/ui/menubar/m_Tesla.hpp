@@ -13,7 +13,7 @@
 // Third Party
 #include "tinyfiledialogs.h"
 
-namespace Menu {
+namespace MenuBar {
     void Tesla();
 }
 

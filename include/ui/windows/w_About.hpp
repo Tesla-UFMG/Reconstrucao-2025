@@ -3,14 +3,22 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "ui/iWindow.hpp"
+#include "ui/windows/iWindow.hpp"
 
 // C++
 #include <string>
 #include <vector>
 
 namespace Window {
-    void About(bool* isOpen);
-}
+    class About : public IWindow {
+        public:
+            explicit About(bool* isOpen = nullptr);
+            virtual void render() override;
+
+        private:
+            std::vector<std::string> developers;
+    };
+
+} // namespace Window
 
 #endif

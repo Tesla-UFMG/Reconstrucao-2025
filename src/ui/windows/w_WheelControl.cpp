@@ -38,64 +38,64 @@ void DrawRotatedImage(ImTextureID texture, const ImVec2& pos, float size, float 
     ImGui::GetWindowDrawList()->AddImageQuad(texture, p1, p2, p3, p4, uv0, uv1, uv2, uv3, IM_COL32_WHITE);
 }
 
-void Window::WheelControl(bool* show) {
+Window::WheelControl::WheelControl(bool* isOpen) : IWindow(isOpen) {
+    this->title = "Controle do Volante";
+    this->flags = ImGuiWindowFlags_NoScrollbar;
+}
+
+void Window::WheelControl::render() {
     static float anguloVolante = 0.0f; // Guarda a rotação do volante
 
-    if (*show) {
-        if (ImGui::Begin("Controle do Volante", show)) {
-            ImGui::Text("Configuração do Volante");
+    if (this->isOpen && *this->isOpen) {
+        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+        ImGui::Text("Configuração do Volante");
 
-            static float sensibilidade = 1.0f;
-            ImGui::SliderFloat("Sensibilidade", &sensibilidade, 0.1f, 5.0f, "%.1f");
+        static float sensibilidade = 1.0f;
+        ImGui::SliderFloat("Sensibilidade", &sensibilidade, 0.1f, 5.0f, "%.1f");
 
-            static int anguloMaximo = 900;
-            ImGui::SliderInt("Ângulo Máximo", &anguloMaximo, 90, 1080);
+        static int anguloMaximo = 900;
+        ImGui::SliderInt("Ângulo Máximo", &anguloMaximo, 90, 1080);
 
-            static bool forceFeedback = true;
-            ImGui::Checkbox("Force Feedback", &forceFeedback);
+        static bool forceFeedback = true;
+        ImGui::Checkbox("Force Feedback", &forceFeedback);
 
-            // Atualiza o ângulo do volante com base na entrada do teclado
-            const Uint8* keystates = SDL_GetKeyboardState(NULL);
-            if (keystates[SDL_SCANCODE_LEFT]) {
-                anguloVolante -= 5.0f * sensibilidade;
-            }
-            if (keystates[SDL_SCANCODE_RIGHT]) {
-                anguloVolante += 5.0f * sensibilidade;
-            }
+        // Atualiza o ângulo do volante com base na entrada do teclado
+        const Uint8* keystates = SDL_GetKeyboardState(NULL);
+        if (keystates[SDL_SCANCODE_LEFT]) {
+            anguloVolante -= 5.0f * sensibilidade;
+        }
+        if (keystates[SDL_SCANCODE_RIGHT]) {
+            anguloVolante += 5.0f * sensibilidade;
+        }
 
-            // Limita o ângulo ao máximo configurado
-            if (anguloVolante > anguloMaximo / 2.0f)
-                anguloVolante = anguloMaximo / 2.0f;
-            if (anguloVolante < -anguloMaximo / 2.0f)
-                anguloVolante = -anguloMaximo / 2.0f;
+        // Limita o ângulo ao máximo configurado
+        if (anguloVolante > anguloMaximo / 2.0f)
+            anguloVolante = anguloMaximo / 2.0f;
+        if (anguloVolante < -anguloMaximo / 2.0f)
+            anguloVolante = -anguloMaximo / 2.0f;
 
-            ImGui::Text("Ângulo Atual: %.1f°", anguloVolante);
+        ImGui::Text("Ângulo Atual: %.1f°", anguloVolante);
 
-            // Carrega a imagem do volante (idealmente, isso deveria ocorrer apenas uma vez)
-            SDL_Texture* volanteTexture = GET_TEXTURE(VOLANTE_PATH);
+        // Carrega a imagem do volante (idealmente, isso deveria ocorrer apenas uma vez)
+        SDL_Texture* volanteTexture = GET_TEXTURE(VOLANTE_PATH);
 
-            // Se a textura estiver disponível, desenha o volante rotacionado
-            if (volanteTexture) {
-                // Obtém a área disponível dentro da janela do ImGui para o conteúdo
-                ImVec2 avail = ImGui::GetContentRegionAvail();
-                // Calcula o tamanho do volante como o mínimo entre a largura e a altura disponíveis,
-                // garantindo que a imagem não seja cortada ao redimensionar a janela
-                float size = (avail.x < avail.y) ? avail.x : avail.y;
+        // Se a textura estiver disponível, desenha o volante rotacionado
+        if (volanteTexture) {
+            // Obtém a área disponível dentro da janela do ImGui para o conteúdo
+            ImVec2 avail = ImGui::GetContentRegionAvail();
+            // Calcula o tamanho do volante como o mínimo entre a largura e a altura disponíveis,
+            // garantindo que a imagem não seja cortada ao redimensionar a janela
+            float size = (avail.x < avail.y) ? avail.x : avail.y;
 
-                // Obtém a posição atual do cursor na tela
-                ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-                // Ajusta a posição para centralizar horizontalmente o volante
-                cursorPos.x += (avail.x - size) / 2.0f;
+            // Obtém a posição atual do cursor na tela
+            ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+            // Ajusta a posição para centralizar horizontalmente o volante
+            cursorPos.x += (avail.x - size) / 2.0f;
 
-                DrawRotatedImage((ImTextureID)volanteTexture, cursorPos, size, anguloVolante);
+            DrawRotatedImage((ImTextureID)volanteTexture, cursorPos, size, anguloVolante);
 
-                // Reserva espaço equivalente ao tamanho da imagem para evitar sobreposição dos elementos
-                ImGui::Dummy(ImVec2(avail.x, size));
-            }
-
-            if (ImGui::Button("Fechar")) {
-                *show = false;
-            }
+            // Reserva espaço equivalente ao tamanho da imagem para evitar sobreposição dos elementos
+            ImGui::Dummy(ImVec2(avail.x, size));
         }
         ImGui::End();
     }

@@ -1,13 +1,14 @@
 #include "WindowManager.hpp"
 
-VisibilityFlags WindowManager::visibility;
-
 WindowManager& WindowManager::getInstance() {
     static WindowManager instance;
     return instance;
 }
 
-WindowManager::WindowManager() { LOG("TRACE", "Window Manager iniciado com sucesso."); }
+WindowManager::WindowManager() {
+    this->setup();
+    LOG("TRACE", "Window Manager iniciado com sucesso.");
+}
 
 WindowManager::~WindowManager() { LOG("TRACE", "Window Manager encerrado."); }
 
@@ -38,28 +39,30 @@ void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) 
     LOG("INFO", "Visibilidade '" + filepath.string() + "' carregada com sucesso.");
 }
 
-void WindowManager::MenuBar() {
-    if (ImGui::BeginMainMenuBar()) {
-        Menu::Tesla();
-        if (DB::getInstance().getProject().currentProject.empty() == false) {
-            Menu::Windows();
-        }
-        Menu::Help();
-        Menu::renderCurrentTime();
-        Menu::renderProgramName();
-        ImGui::EndMainMenuBar();
-    }
+void WindowManager::setup() {
+    home = std::make_unique<Window::HomePage>();
+
+    windows.emplace_back(std::make_unique<Window::About>(&visibility.showAbout));
+    windows.emplace_back(std::make_unique<Window::Playback>(&visibility.showPlayback));
+    windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
+    windows.emplace_back(std::make_unique<Window::Reconstruction>(&visibility.showReconstruction));
+    windows.emplace_back(std::make_unique<Window::Video>(&visibility.showVideo));
+    windows.emplace_back(std::make_unique<Window::Plot>(&visibility.showPlot));
+    windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
+    windows.emplace_back(std::make_unique<Window::ImGuiDemo>(&visibility.showImGuiDemo));
+    windows.emplace_back(std::make_unique<Window::ImPlotDemo>(&visibility.showImPlotDemo));
+    windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
 }
 
-void WindowManager::render() {
-    Window::About(&WindowManager::visibility.showAbout);
-    Window::Playback(&WindowManager::visibility.showPlayback);
-    Window::Datapicker(&WindowManager::visibility.showDataPicker);
-    Window::Reconstruction(&WindowManager::visibility.showReconstruction);
-    Window::Video(&WindowManager::visibility.showVideo);
-    Window::Plot(&WindowManager::visibility.showPlot);
-    Window::Log(&WindowManager::visibility.showLog);
-    Window::ImGuiDemo(&WindowManager::visibility.showImGuiDemo);
-    Window::ImPlotDemo(&WindowManager::visibility.showImPlotDemo);
-    Window::WheelControl(&WindowManager::visibility.showWheelControl);
+void WindowManager::homePage() {
+    MenuBar::render();
+    windows[0]->render(); // About
+    home->render();       // Home page
+}
+
+void WindowManager::mainPage() {
+    MenuBar::render();
+    for (auto& window : windows) {
+        window->render();
+    }
 }

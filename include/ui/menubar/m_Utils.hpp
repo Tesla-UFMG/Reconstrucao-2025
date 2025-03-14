@@ -9,10 +9,10 @@
 #include "Log.hpp"
 #include "WindowManager.hpp"
 
-namespace Menu {
-    void showWindowVisibility(const std::filesystem::path& windowName, bool* isOpen);
+namespace MenuBar {
+    void changeWindowVisibility(const std::filesystem::path& windowName, bool* isOpen);
     void renderCurrentTime();
     void renderProgramName();
-} // namespace Menu
+} // namespace MenuBar
 
 #endif

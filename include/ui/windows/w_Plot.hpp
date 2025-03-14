@@ -3,15 +3,16 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "ui/iWindow.hpp"
+#include "ui/windows/iWindow.hpp"
 
 namespace Window {
+    class Plot : public IWindow {
+        public:
+            explicit Plot(bool* isOpen = nullptr);
+            void         MenuBar();
+            virtual void render() override;
+    };
 
-    namespace MenuBar {
-        void Plot();
-    }
-
-    void Plot(bool* isOpen);
 } // namespace Window
 
 #endif

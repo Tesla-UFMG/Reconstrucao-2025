@@ -19,7 +19,12 @@ static std::vector<GraphData> graphs;
 static float                  plotHeight = 200.0f;
 static bool                   autoFit    = true;
 
-void Window::MenuBar::Plot() {
+Window::Plot::Plot(bool* isOpen) : IWindow(isOpen) {
+    this->title = "Plot";
+    this->flags = ImGuiWindowFlags_MenuBar;
+}
+
+void Window::Plot::MenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::MenuItem("Novo Gráfico")) {
             GraphData newGraph;
@@ -39,12 +44,12 @@ void Window::MenuBar::Plot() {
     }
 }
 
-void Window::Plot(bool* isOpen) {
+void Window::Plot::render() {
 
-    if (*isOpen) {
-        ImGui::Begin("Plot", isOpen, ImGuiWindowFlags_MenuBar);
+    if (this->isOpen && *this->isOpen) {
+        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
-        Window::MenuBar::Plot();
+        Window::Plot::MenuBar();
 
         // Atualiza os limites comuns com base nos dados (no eixo X fixo e Y de acordo com a amplitude máxima)
         const int num_points = 100;

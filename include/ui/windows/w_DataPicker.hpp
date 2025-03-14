@@ -5,18 +5,20 @@
 #include "App.hpp"
 #include "DB.hpp"
 #include "ImGuiWrapper.hpp"
-#include "ui/iWindow.hpp"
+#include "ui/windows/iWindow.hpp"
 
 // Third Party
 #include "rapidcsv.h"
 #include "tinyfiledialogs.h"
 
 namespace Window {
-    namespace MenuBar {
-        void Datapicker();
-    }
+    class DataPicker : public IWindow {
+        public:
+            explicit DataPicker(bool* isOpen = nullptr);
+            void         MenuBar();
+            virtual void render() override;
+    };
 
-    void Datapicker(bool* isOpen);
 } // namespace Window
 
 #endif

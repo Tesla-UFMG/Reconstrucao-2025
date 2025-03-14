@@ -3,11 +3,21 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "ui/iWindow.hpp"
+#include "ui/windows/iWindow.hpp"
 
 namespace Window {
-    void ImGuiDemo(bool* isOpen);
-    void ImPlotDemo(bool* isOpen);
+    class ImGuiDemo : public IWindow {
+        public:
+            explicit ImGuiDemo(bool* isOpen = nullptr);
+            virtual void render() override;
+    };
+
+    class ImPlotDemo : public IWindow {
+        public:
+            explicit ImPlotDemo(bool* isOpen = nullptr);
+            virtual void render() override;
+    };
+
 } // namespace Window
 
 #endif

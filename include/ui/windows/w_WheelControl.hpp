@@ -4,13 +4,17 @@
 // Project
 #include "AssetManager.hpp"
 #include "ImGuiWrapper.hpp"
-#include "ui/iWindow.hpp"
+#include "ui/windows/iWindow.hpp"
 
 #define VOLANTE_PATH "assets/volantetesla.png"
 
 namespace Window {
+    class WheelControl : public IWindow {
+        public:
+            explicit WheelControl(bool* isOpen = nullptr);
+            virtual void render() override;
+    };
 
-    void WheelControl(bool* isOpen);
 } // namespace Window
 
 #endif

@@ -1,13 +1,17 @@
 #include "ui/windows/w_Demo.hpp"
 
-void Window::ImGuiDemo(bool* isOpen) {
-    if (*isOpen) {
-        ImGui::ShowDemoWindow(isOpen);
+Window::ImGuiDemo::ImGuiDemo(bool* isOpen) : IWindow(isOpen) {}
+
+void Window::ImGuiDemo::render() {
+    if (this->isOpen && *this->isOpen) {
+        ImGui::ShowDemoWindow(this->isOpen);
     }
 }
 
-void Window::ImPlotDemo(bool* isOpen) {
-    if (*isOpen) {
-        ImPlot::ShowDemoWindow(isOpen);
+Window::ImPlotDemo::ImPlotDemo(bool* isOpen) : IWindow(isOpen) {}
+
+void Window::ImPlotDemo::render() {
+    if (this->isOpen && *this->isOpen) {
+        ImPlot::ShowDemoWindow(this->isOpen);
     }
 }

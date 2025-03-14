@@ -1,9 +1,14 @@
 #include "ui/windows/w_Video.hpp"
 
-void Window::Video(bool* isOpen) {
-    if (*isOpen) {
-        ImGuiWindowFlags flags = 0;
-        ImGui::Begin("Vídeo", isOpen, flags);
+Window::Video::Video(bool* isOpen) : IWindow(isOpen) {
+    this->title = "Vídeo";
+    this->flags = ImGuiWindowFlags_NoScrollbar;
+}
+
+void Window::Video::render() {
+    if (this->isOpen && *this->isOpen) {
+        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+
         ImGui::End();
     }
 }

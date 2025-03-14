@@ -1,8 +1,9 @@
 #include "ui/menubar/m_Help.hpp"
 
-void Menu::Help() {
+void MenuBar::Help() {
+    WindowManager& vw = WindowManager::getInstance();
     if (ImGui::BeginMenu("Ajuda")) {
-        Menu::showWindowVisibility("Sobre", &WindowManager::visibility.showAbout);
+        MenuBar::changeWindowVisibility("Sobre", &vw.visibility.showAbout);
         ImGui::EndMenu();
     }
 }

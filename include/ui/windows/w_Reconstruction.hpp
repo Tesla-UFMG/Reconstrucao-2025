@@ -3,10 +3,14 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "ui/iWindow.hpp"
-
+#include "ui/windows/iWindow.hpp"
 namespace Window {
-    void Reconstruction(bool* isOpen);
-}
+    class Reconstruction : public IWindow {
+        public:
+            explicit Reconstruction(bool* isOpen = nullptr);
+            virtual void render() override;
+    };
+
+} // namespace Window
 
 #endif

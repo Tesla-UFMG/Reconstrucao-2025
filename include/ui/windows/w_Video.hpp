@@ -3,10 +3,15 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "ui/iWindow.hpp"
+#include "ui/windows/iWindow.hpp"
 
 namespace Window {
-    void Video(bool* isOpen);
-}
+    class Video : public IWindow {
+        public:
+            explicit Video(bool* isOpen = nullptr);
+            virtual void render() override;
+    };
+
+} // namespace Window
 
 #endif

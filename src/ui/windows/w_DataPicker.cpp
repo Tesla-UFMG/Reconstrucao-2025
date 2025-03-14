@@ -3,7 +3,12 @@
 #include "imgui.h"
 #include <string>
 
-void Window::MenuBar::Datapicker() {
+Window::DataPicker::DataPicker(bool* isOpen) : IWindow(isOpen) {
+    title = "Selecionador de Dados";
+    flags = ImGuiWindowFlags_MenuBar;
+}
+
+void Window::DataPicker::MenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Arquivos")) {
             if (ImGui::MenuItem("Carregar")) {
@@ -25,12 +30,11 @@ void Window::MenuBar::Datapicker() {
     }
 }
 
-void Window::Datapicker(bool* isOpen) {
-    if (*isOpen) {
-        ImGuiWindowFlags flags = ImGuiWindowFlags_MenuBar;
-        ImGui::Begin("Selecionador de Dados", isOpen, flags);
+void Window::DataPicker::render() {
+    if (this->isOpen && *this->isOpen) {
+        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
-        Window::MenuBar::Datapicker();
+        Window::DataPicker::MenuBar();
 
         if (ImGui::BeginChild("##dataPicker", ImGui::GetContentRegionAvail(), true,
                               ImGuiWindowFlags_HorizontalScrollbar)) {
