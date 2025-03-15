@@ -1,79 +1,91 @@
 #include "ui/windows/w_DataPicker.hpp"
-#include "DB.hpp"
-#include "imgui.h"
-#include <string>
+
+// TODO: carregar os dados somente quando carregar/deletar um arquivo
 
 Window::DataPicker::DataPicker(bool* isOpen) : IWindow(isOpen) {
     title = "Selecionador de Dados";
     flags = ImGuiWindowFlags_MenuBar;
+    // this->refreshData();
 }
 
-void Window::DataPicker::MenuBar() {
+void Window::DataPicker::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Arquivos")) {
             if (ImGui::MenuItem("Carregar")) {
-                DB::getInstance().loadDataDialog();
+                DB::getInstance().loadCSVDialog();
+                // this->refreshData();
             }
-
-            if (ImGui::BeginMenu("Fechar")) {
-                for (const std::filesystem::path& path : DB::getInstance().getCsvPaths()) {
-                    if (ImGui::MenuItem(path.filename().string().c_str())) {
-                        DB::getInstance().removeData(path);
-                    }
-                }
-                ImGui::EndMenu();
-            }
-
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
     }
 }
 
+void Window::DataPicker::sendArchivePayload(const std::string& filename) {
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+        std::string payload = filename;
+        ImGui::SetDragDropPayload("FILE_NAME", payload.c_str(), payload.size() + 1);
+        ImGui::Text("Arquivo: %s", filename.c_str());
+        ImGui::EndDragDropSource();
+    }
+}
+
+void Window::DataPicker::sendColumnPayload(const std::string& filename, const std::string& columnName) {
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+        std::string payload = filename + ":" + columnName;
+        ImGui::SetDragDropPayload("COLUMN_NAME", payload.c_str(), payload.size() + 1);
+        ImGui::Text("%s", columnName.c_str());
+        ImGui::EndDragDropSource();
+    }
+}
+
+void Window::DataPicker::renderArchiveContextPopup(const std::filesystem::path& archivePath) {
+    if (ImGui::BeginPopupContextItem((archivePath.filename().string() + "_popup").c_str())) {
+        if (ImGui::MenuItem("Fechar")) {
+            DB::getInstance().deleteCSV(archivePath);
+            // this->refreshData();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void Window::DataPicker::refreshData() {
+    this->paths   = DB::getInstance().getCsvPaths();
+    this->columns = DB::getInstance().getCsvColumns();
+}
+
+void Window::DataPicker::renderArchiveNode(const std::filesystem::path& archivePath, size_t index) {
+    std::string filename = archivePath.filename().string();
+    if (ImGui::TreeNode(filename.c_str())) {
+        this->sendArchivePayload(filename); // Inicia o payload de drag & drop para o arquivo
+
+        // Renderiza cada coluna do arquivo
+        const std::vector<std::string>& cols = this->columns[index];
+        for (const std::string& colName : cols) {
+            this->renderColumnItem(filename, colName);
+        }
+        ImGui::TreePop();
+    }
+}
+
+void Window::DataPicker::renderColumnItem(const std::string& filename, const std::string& colName) {
+    ImGui::Selectable(colName.c_str());
+    this->sendColumnPayload(filename, colName);
+}
+
 void Window::DataPicker::render() {
     if (this->isOpen && *this->isOpen) {
+        this->refreshData();
         ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+        this->renderMenuBar();
+        ImGui::BeginChild("##dataPicker", ImGui::GetContentRegionAvail(), true, ImGuiWindowFlags_HorizontalScrollbar);
 
-        Window::DataPicker::MenuBar();
-
-        if (ImGui::BeginChild("##dataPicker", ImGui::GetContentRegionAvail(), true,
-                              ImGuiWindowFlags_HorizontalScrollbar)) {
-
-            const std::vector<std::filesystem::path>&    paths   = DB::getInstance().getCsvPaths();
-            const std::vector<std::vector<std::string>>& columns = DB::getInstance().getCsvColumns();
-
-            for (size_t i = 0; i < paths.size(); i++) {
-                std::string filename = paths[i].filename().string();
-                if (ImGui::TreeNode(filename.c_str())) {
-
-                    // Payload nome do arquivo ----------------
-                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-                        std::string payload = filename;
-                        ImGui::SetDragDropPayload("FILE_NAME", payload.c_str(), payload.size() + 1);
-                        ImGui::Text("Arquivo: %s", filename.c_str());
-                        ImGui::EndDragDropSource();
-                    }
-
-                    // Itera sobre cada coluna do arquivo
-                    const std::vector<std::string>& cols = columns[i];
-                    for (const std::string& colName : cols) {
-                        ImGui::Selectable(colName.c_str());
-
-                        // Payload nome da coluna ----------------
-                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-                            std::string payload = filename + ":" + colName;
-                            ImGui::SetDragDropPayload("COLUMN_NAME", payload.c_str(), payload.size() + 1);
-                            ImGui::Text("%s", colName.c_str());
-                            ImGui::EndDragDropSource();
-                        }
-                    }
-
-                    ImGui::TreePop();
-                }
-            }
-            ImGui::EndChild();
+        // Renderiza cada arquivo e seu respectivo menu de contexto
+        for (size_t i = 0; i < this->paths.size(); i++) {
+            this->renderArchiveNode(paths[i], i);
+            this->renderArchiveContextPopup(paths[i]);
         }
-
+        ImGui::EndChild();
         ImGui::End();
     }
 }

@@ -51,7 +51,7 @@ void DB::loadProjectDialog() {
     }
 }
 
-void DB::loadDataDialog() {
+void DB::loadCSVDialog() {
     const char* filters[] = {"*.csv", nullptr};
     char*       filepath  = tinyfd_openFileDialog("Carregar dados", "./", 1, filters, "*.csv", 0);
     if (!filepath) {
@@ -77,10 +77,26 @@ void DB::loadProject(const std::filesystem::path& filepath) {
     }
 }
 
-void DB::removeData(const std::filesystem::path& filepath) { this->projectData.removeData(filepath); }
+void DB::deleteCSV(const std::filesystem::path& filepath) { this->projectData.removeData(filepath); }
 
 ProjectData DB::getProject() const { return this->projectData; }
 
 std::vector<std::filesystem::path> DB::getCsvPaths() const { return this->projectData.csvPaths; }
 
 std::vector<std::vector<std::string>> DB::getCsvColumns() const { return this->projectData.csvColumns; }
+
+std::vector<double> DB::getCSVData(const std::string& filename, const std::string& columnName) const {
+    for (size_t i = 0; i < projectData.csvData.size(); ++i) {
+        const std::string csvName = projectData.csvPaths[i].filename().string();
+        if (csvName == filename) {
+            try {
+                return projectData.csvData[i].GetColumn<double>(columnName);
+            } catch (const std::exception& e) {
+                LOG("ERROR", "Coluna não encontrada: " + columnName);
+                return {};
+            }
+        }
+    }
+    LOG("ERROR", "Arquivo CSV não encontrado: " + filename);
+    return {};
+}

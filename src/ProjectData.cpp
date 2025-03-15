@@ -13,7 +13,7 @@ void ProjectData::loadData(const std::filesystem::path& filepath) {
         csvPaths.push_back(filepath);
         csvData.push_back(doc);
         csvColumns.push_back(doc.GetColumnNames());
-        LOG("INFO", "CSV carregado com sucesso.");
+        LOG("INFO", "CSV carregado com sucesso " + filepath.string());
     } catch (const std::exception& e) {
         LOG("ERROR", std::string("Erro ao abrir o CSV: ") + e.what());
     }
