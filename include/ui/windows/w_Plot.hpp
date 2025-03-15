@@ -22,8 +22,8 @@ struct GraphData {
         std::vector<std::vector<double>> y;
 
         GraphType type       = GRAPH_LINE;
-        bool      showXAxis   = false;
-        bool      showYAxis   = true;
+        bool      showXAxis  = false;
+        bool      showYAxis  = true;
         double    plotHeight = 200;
 };
 

@@ -6,7 +6,7 @@ void ProjectData::loadCSV(const std::filesystem::path& filepath) {
         LOG("WARN", "Arquivo já carregado: " + filepath.string());
         return;
     }
-    
+
     std::ifstream file(filepath);
     if (!file) {
         LOG("ERROR", "Não foi possível carregar o CSV em '" + filepath.string() + "'.");
