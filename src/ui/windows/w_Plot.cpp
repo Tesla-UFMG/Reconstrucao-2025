@@ -100,9 +100,14 @@ void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex, int& gr
             for (size_t j = 0; j < graphData.columns.size(); j++) {
                 std::string btnLabel = "X##" + std::to_string(j);
                 if (ImGui::Button(btnLabel.c_str())) {
+
+                    graphData.columns.erase(graphData.columns.begin() + j);
+                    graphData.x.erase(graphData.x.begin() + j);
+                    graphData.y.erase(graphData.y.begin() + j);
+
                     LOG("DEBUG",
                         "Coluna " + graphData.columns[j] + " removida do gráfico " + std::to_string(graphIndex) + ".");
-                    graphData.columns.erase(graphData.columns.begin() + j);
+
                     break;
                 }
                 ImGui::SameLine();
@@ -128,7 +133,10 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
         if (autoFit) {
             axisFlags |= ImPlotAxisFlags_AutoFit;
         }
+
         ImPlot::SetupAxes(nullptr, nullptr, axisFlags, axisFlags);
+
+        ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
         // Plotagem de cada coluna conforme o tipo do gráfico
         for (size_t i = 0; i < graphData.columns.size(); i++) {

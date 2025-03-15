@@ -19,9 +19,10 @@ struct GraphData {
         std::vector<std::string>         columns;
         std::vector<std::vector<double>> x;
         std::vector<std::vector<double>> y;
-        GraphType                        type       = GRAPH_LINE;
-        bool                             hideAxes   = true;
-        double                           plotHeight = 200;
+
+        GraphType type       = GRAPH_LINE;
+        bool      hideAxes   = true;
+        double    plotHeight = 200;
 };
 
 namespace Window {
