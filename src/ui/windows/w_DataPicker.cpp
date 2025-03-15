@@ -56,7 +56,7 @@ void Window::DataPicker::refreshData() {
 
 void Window::DataPicker::renderArchiveNode(const std::filesystem::path& archivePath, size_t index) {
     std::string filename = archivePath.filename().string();
-    if (ImGui::TreeNode(filename.c_str())) {
+    if (ImGui::TreeNode((filename + "##" + std::to_string(index)).c_str())) {
         this->sendArchivePayload(filename); // Inicia o payload de drag & drop para o arquivo
 
         // Renderiza cada coluna do arquivo

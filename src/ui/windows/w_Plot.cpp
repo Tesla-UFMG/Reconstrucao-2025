@@ -52,10 +52,29 @@ void Window::Plot::drawMenuBar() {
 
 void Window::Plot::processColumnDragDrop(GraphData& graphData) {
     if (ImGui::BeginDragDropTarget()) {
+        // Aceita o payload
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
             std::stringstream ss(static_cast<const char*>(payload->Data));
             std::string       archiveName, columnName;
+
+            // Pega o nome do arquivo e a coluna
             if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
+
+                // Verifica se o a coluna do arquivo ja foi adicionadda
+                for (size_t i = 0; i < graphData.archives.size(); ++i) {
+                    if (graphData.archives[i] == archiveName && graphData.columns[i] == columnName) {
+                        LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + archiveName + " já existe.");
+                        ImGui::EndDragDropTarget();
+                        return;
+                    }
+                }
+            
+                // Adiciona a coluna e o nome do arquivo
+                graphData.columns.push_back(columnName);
+                graphData.archives.push_back(archiveName);
+                
+
+                // Adiciona os eixos
                 std::vector<double> y = DB::getInstance().getCSVData(archiveName, columnName);
                 graphData.y.push_back(y);
 
@@ -64,7 +83,6 @@ void Window::Plot::processColumnDragDrop(GraphData& graphData) {
                     x[i] = static_cast<double>(i);
                 }
                 graphData.x.push_back(x);
-                graphData.columns.push_back(columnName);
 
                 LOG("DEBUG",
                     "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graphs.size() - 1) + ".");
@@ -92,15 +110,19 @@ void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex, int& gr
             }
 
             // Configurações de exibição
+            ImGui::SeparatorText("Removevr Eixos");
+            ImGui::Checkbox("Eixo X", &graphData.showXAxis);
             ImGui::SameLine();
-            ImGui::Checkbox("Remover Eixos", &graphData.hideAxes);
+            ImGui::Checkbox("Eixo Y", &graphData.showYAxis);
 
             // Colunas
-            ImGui::SeparatorText("Colunas");
+            ImGui::SeparatorText("Remover Colunas");
             for (size_t j = 0; j < graphData.columns.size(); j++) {
                 std::string btnLabel = "X##" + std::to_string(j);
                 if (ImGui::Button(btnLabel.c_str())) {
 
+                    // Remove com os respectivos indexes
+                    graphData.archives.erase(graphData.archives.begin() + j);
                     graphData.columns.erase(graphData.columns.begin() + j);
                     graphData.x.erase(graphData.x.begin() + j);
                     graphData.y.erase(graphData.y.begin() + j);
@@ -125,16 +147,21 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
     std::string plotID = "##Plot " + std::to_string(graphIndex);
     if (ImPlot::BeginPlot(plotID.c_str(), ImVec2(-1, graphData.plotHeight), ImPlotFlags_NoFrame)) {
 
-        // Configura os eixos com base nas opções de exibição
-        ImPlotAxisFlags axisFlags = 0;
-        if (graphData.hideAxes) {
-            axisFlags |= ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels;
+        ImPlotAxisFlags xAxisFlags = 0;
+        ImPlotAxisFlags yAxisFlags = 0;
+ 
+        if (!graphData.showXAxis) {
+            xAxisFlags |= ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels;
+        }
+        if (!graphData.showYAxis) {
+            yAxisFlags |= ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels;
         }
         if (autoFit) {
-            axisFlags |= ImPlotAxisFlags_AutoFit;
+            xAxisFlags |= ImPlotAxisFlags_AutoFit;
+            yAxisFlags |= ImPlotAxisFlags_AutoFit;
         }
 
-        ImPlot::SetupAxes(nullptr, nullptr, axisFlags, axisFlags);
+        ImPlot::SetupAxes(nullptr, nullptr, xAxisFlags, yAxisFlags);
 
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
@@ -142,7 +169,7 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
         for (size_t i = 0; i < graphData.columns.size(); i++) {
             const std::string&         col       = graphData.columns[i];
             const std::vector<double>& x         = graphData.x[i];
-            const std::vector<double>& y         = graphData.y[i]; // Corrigido: usa os dados de y
+            const std::vector<double>& y         = graphData.y[i]; 
             int                        numPoints = static_cast<int>(x.size());
 
             switch (graphData.type) {
@@ -150,9 +177,11 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
                     ImPlot::PlotLine(col.c_str(), x.data(), y.data(), numPoints);
                     break;
                 case GRAPH_BAR:
+                    ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                     ImPlot::PlotBars(col.c_str(), x.data(), y.data(), numPoints, 0.8f);
                     break;
                 case GRAPH_SCATTER:
+                    ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                     ImPlot::PlotScatter(col.c_str(), x.data(), y.data(), numPoints);
                     break;
                 case GRAPH_FILLED_LINE:

@@ -17,11 +17,13 @@ enum GraphType { GRAPH_LINE, GRAPH_BAR, GRAPH_SCATTER, GRAPH_FILLED_LINE };
 
 struct GraphData {
         std::vector<std::string>         columns;
+        std::vector<std::string>         archives;
         std::vector<std::vector<double>> x;
         std::vector<std::vector<double>> y;
 
         GraphType type       = GRAPH_LINE;
-        bool      hideAxes   = true;
+        bool      showXAxis   = false;
+        bool      showYAxis   = true;
         double    plotHeight = 200;
 };
 
