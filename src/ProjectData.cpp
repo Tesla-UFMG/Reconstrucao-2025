@@ -1,6 +1,6 @@
 #include "ProjectData.hpp"
 
-void ProjectData::loadData(const std::filesystem::path& filepath) {
+void ProjectData::loadCSV(const std::filesystem::path& filepath) {
     std::ifstream file(filepath);
     if (!file) {
         LOG("ERROR", "Não foi possível carregar o CSV em '" + filepath.string() + "'.");
@@ -73,12 +73,12 @@ bool ProjectData::deserialize(const std::filesystem::path& filepath) {
         file.read(reinterpret_cast<char*>(&pathSize), sizeof(pathSize));
         std::string pathStr(pathSize, '\0');
         file.read(&pathStr[0], pathSize);
-        loadData(pathStr);
+        this->loadCSV(pathStr);
     }
     return true;
 }
 
-void ProjectData::removeData(const std::filesystem::path& filepath) {
+void ProjectData::removeCSV(const std::filesystem::path& filepath) {
     auto it = std::find(csvPaths.begin(), csvPaths.end(), filepath);
     if (it != csvPaths.end()) {
         size_t index = std::distance(csvPaths.begin(), it);

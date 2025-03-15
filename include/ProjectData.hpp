@@ -19,9 +19,9 @@ class ProjectData {
         std::vector<rapidcsv::Document>       csvData;
         std::vector<std::vector<std::string>> csvColumns;
 
-        void loadData(const std::filesystem::path& filepath);   // Carrega os dados de um arquivo CSV
-        void removeData(const std::filesystem::path& filepath); // Remove dados
-        void clear();                                           // Limpa os dados armazenados
+        void loadCSV(const std::filesystem::path& filepath);   // Carrega os dados de um arquivo CSV
+        void removeCSV(const std::filesystem::path& filepath); // Remove dados
+        void clear();                                          // Limpa os dados armazenados
         bool
         serialize(const std::filesystem::path& filepath) const; // Serializa os dados do projeto para um arquivo binário
         bool deserialize(

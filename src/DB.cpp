@@ -58,7 +58,7 @@ void DB::loadCSVDialog() {
         LOG("ERROR", "Arquivo não encontrado.");
         return;
     }
-    this->projectData.loadData(filepath);
+    this->projectData.loadCSV(filepath);
 }
 
 void DB::saveProject(const std::filesystem::path& filepath) {
@@ -77,7 +77,7 @@ void DB::loadProject(const std::filesystem::path& filepath) {
     }
 }
 
-void DB::deleteCSV(const std::filesystem::path& filepath) { this->projectData.removeData(filepath); }
+void DB::deleteCSV(const std::filesystem::path& filepath) { this->projectData.removeCSV(filepath); }
 
 ProjectData DB::getProject() const { return this->projectData; }
 

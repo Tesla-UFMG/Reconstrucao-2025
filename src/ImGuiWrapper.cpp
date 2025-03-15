@@ -101,6 +101,11 @@ void ImGuiWrapper::loadLayout(const std::filesystem::path& filepath) { ImGuiWrap
 void ImGuiWrapper::handleEvent(SDL_Event& event) { ImGui_ImplSDL2_ProcessEvent(&event); }
 
 void ImGuiWrapper::configStyle() {
+    // IMPLOT STYLE
+    ImPlotContext& gp = *GImPlot;
+    gp.Style.Colormap = ImPlotColormap_Paired;
+
+    // IMGUI STYLE
     ImGuiStyle& style  = ImGui::GetStyle();
     ImVec4*     colors = style.Colors;
 

@@ -19,8 +19,9 @@ struct GraphData {
         std::vector<std::string>         columns;
         std::vector<std::vector<double>> x;
         std::vector<std::vector<double>> y;
-        GraphType                        type     = GRAPH_LINE;
-        bool                             hideAxes = true;
+        GraphType                        type       = GRAPH_LINE;
+        bool                             hideAxes   = true;
+        double                           plotHeight = 200;
 };
 
 namespace Window {
@@ -42,6 +43,7 @@ namespace Window {
             // Funções de renderização dos gráficos
             void drawLegendPopup(GraphData& graphData, int graphIndex, int& graphToRemove);
             void renderGraph(size_t graphIndex, int& graphToRemove);
+            void renderResizeButton(size_t graphIndex);
     };
 
 } // namespace Window
