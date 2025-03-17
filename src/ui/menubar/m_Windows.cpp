@@ -7,6 +7,7 @@ void MenuBar::Windows() {
         if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
             SDLWrapper::changeFullscreen();
         }
+        MenuBar::changeColorMap();
         ImGui::Separator();
 
         if (ImGui::BeginMenu("Salvar Layout")) {
@@ -39,6 +40,7 @@ void MenuBar::Windows() {
         MenuBar::changeWindowVisibility("Video", &vw.visibility.showVideo);
         MenuBar::changeWindowVisibility("Plot", &vw.visibility.showPlot);
         MenuBar::changeWindowVisibility("Volante", &vw.visibility.showWheelControl);
+        MenuBar::changeWindowVisibility("Estatísticas", &vw.visibility.showStatistics);
 
         ImGui::Separator();
 

@@ -6,9 +6,10 @@ void MenuBar::render() {
         if (DB::getInstance().getProject().currentProject.empty() == false) {
             MenuBar::Windows();
         }
+
         MenuBar::Help();
-        MenuBar::renderCurrentTime();
         MenuBar::renderProgramName();
+        MenuBar::renderStatus();
         ImGui::EndMainMenuBar();
     }
 }

@@ -52,6 +52,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::ImGuiDemo>(&visibility.showImGuiDemo));
     windows.emplace_back(std::make_unique<Window::ImPlotDemo>(&visibility.showImPlotDemo));
     windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
+    windows.emplace_back(std::make_unique<Window::Statistics>(&visibility.showStatistics));
 }
 
 void WindowManager::homePage() {

@@ -14,6 +14,7 @@ void Window::Plot::drawMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::MenuItem("Novo Gráfico")) {
             graphs.emplace_back(GraphData());
+            ImPlot::BustItemCache();
             LOG("INFO", "Gráfico " + std::to_string(graphs.size() - 1) + " criado.");
         }
 
@@ -39,19 +40,7 @@ void Window::Plot::drawMenuBar() {
 
             ImGui::Separator();
 
-            if (ImGui::BeginMenu("Mudar Cores")) {
-                ImPlotContext&  gp       = *GImPlot;
-                ImPlotColormap& colormap = gp.Style.Colormap;
-
-                if (ImPlot::ColormapButton(ImPlot::GetColormapName(colormap), ImVec2(225, 0), colormap)) {
-                    colormap = (colormap + 1) % ImPlot::GetColormapCount();
-                    ImPlot::BustItemCache();
-                }
-
-                ImPlot::ShowColormapSelector("##");
-
-                ImGui::EndMenu();
-            }
+            MenuBar::changeColorMap();
 
             ImGui::EndMenu();
         }
@@ -80,12 +69,13 @@ void Window::Plot::processColumnDragDrop(GraphData& graphData) {
                     }
                 }
 
-                // Adiciona a coluna e o nome do arquivo
-                graphData.columns.push_back(columnName);
-                graphData.archives.push_back(archiveName);
-
-                // Adiciona os eixos
+                // Adiciona os eixos  
                 std::vector<double> y = DB::getInstance().getCSVData(archiveName, columnName);
+                if (y.size() == 0) {
+                    LOG("ERROR", "Não foi possível adicioanr a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
+                    ImGui::EndDragDropTarget();
+                    return;
+                }
                 graphData.y.push_back(y);
 
                 std::vector<double> x(y.size());
@@ -93,6 +83,12 @@ void Window::Plot::processColumnDragDrop(GraphData& graphData) {
                     x[i] = static_cast<double>(i);
                 }
                 graphData.x.push_back(x);
+
+                // Adiciona a coluna e o nome do arquivo
+                graphData.columns.push_back(columnName);
+                graphData.archives.push_back(archiveName);
+
+                
 
                 LOG("DEBUG",
                     "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graphs.size() - 1) + ".");
@@ -216,14 +212,12 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
 }
 
 void Window::Plot::renderResizeButton(size_t graphIndex) {
-    const float resizeAreaHeight = 5.0f;
-
     GraphData& graphData = graphs[graphIndex];
 
-    ImGui::Dummy(ImVec2(0, resizeAreaHeight));
+    ImGui::Dummy(ImVec2(0, RESIZE_BAR_SIZE));
     ImVec2 avail = ImGui::GetContentRegionAvail();
     ImGui::PushID(static_cast<int>(graphIndex));
-    ImGui::Button("PlotResize", ImVec2(avail.x, resizeAreaHeight));
+    ImGui::Button("PlotResize", ImVec2(avail.x, RESIZE_BAR_SIZE));
 
     // Se a área estiver ativa e o mouse estiver sendo arrastado, atualiza a altura.
     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {

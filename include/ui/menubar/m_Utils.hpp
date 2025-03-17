@@ -11,8 +11,9 @@
 
 namespace MenuBar {
     void changeWindowVisibility(const std::filesystem::path& windowName, bool* isOpen);
-    void renderCurrentTime();
+    void renderStatus();
     void renderProgramName();
+    void changeColorMap();
 } // namespace MenuBar
 
 #endif

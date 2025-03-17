@@ -16,6 +16,7 @@
 #include "ui/windows/w_Terminal.hpp"
 #include "ui/windows/w_Video.hpp"
 #include "ui/windows/w_WheelControl.hpp"
+#include "ui/windows/w_Statistics.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -36,7 +37,8 @@ struct VisibilityFlags {
         bool showAbout          = false;
         bool showImPlotDemo     = false;
         bool showImGuiDemo      = false;
-};
+        bool showStatistics     = true;
+    };
 
 class WindowManager {
     private:

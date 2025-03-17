@@ -5,6 +5,7 @@
 #include "DB.hpp"
 #include "ImGuiWrapper.hpp"
 #include "ui/windows/iWindow.hpp"
+#include "ui/menubar/m_Utils.hpp"
 
 // C++
 #include <algorithm>
@@ -12,6 +13,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#define RESIZE_BAR_SIZE 1.f
 
 enum GraphType { GRAPH_LINE, GRAPH_BAR, GRAPH_SCATTER, GRAPH_FILLED_LINE };
 
@@ -24,7 +27,7 @@ struct GraphData {
         GraphType type       = GRAPH_LINE;
         bool      showXAxis  = false;
         bool      showYAxis  = true;
-        double    plotHeight = 200;
+        double    plotHeight = 190;
 };
 
 namespace Window {

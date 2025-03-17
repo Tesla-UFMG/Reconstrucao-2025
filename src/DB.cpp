@@ -88,14 +88,14 @@ std::vector<std::vector<std::string>> DB::getCsvColumns() const { return this->p
 std::vector<double> DB::getCSVData(const std::string& filename, const std::string& columnName) const {
 
     for (size_t i = 0; i < this->projectData.csvData.size(); i++) {
-        std::string csvName = this->projectData.csvPaths[0].filename().string();
+        std::string csvName = this->projectData.csvPaths[i].filename().string();
 
         if (csvName == filename) {
             rapidcsv::Document csv = this->projectData.csvData[i];
             try {
                 return csv.GetColumn<double>(columnName);
             } catch (const std::exception& e) {
-                LOG("ERROR", "Coluna não encontrada.");
+                LOG("ERROR", "Coluna não encontrada. Erro: " + std::string(e.what()));
                 return {};
             }
         }

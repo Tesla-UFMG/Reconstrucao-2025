@@ -23,6 +23,8 @@ void ProjectData::loadCSV(const std::filesystem::path& filepath) {
     } catch (const std::exception& e) {
         LOG("ERROR", std::string("Erro ao abrir o CSV: ") + e.what());
     }
+
+    file.close();
 }
 
 void ProjectData::clear() {

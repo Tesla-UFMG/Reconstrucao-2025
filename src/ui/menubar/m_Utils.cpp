@@ -14,14 +14,24 @@ void MenuBar::changeWindowVisibility(const std::filesystem::path& windowName, bo
     }
 }
 
-void MenuBar::renderCurrentTime() {
-    std::time_t t   = std::time(nullptr);
-    std::tm*    now = std::localtime(&t);
-    char        buffer[64];
-    std::strftime(buffer, sizeof(buffer), "%H:%M:%S  %d-%m-%Y", now);
-    ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::CalcTextSize(buffer)[0] * 1.1);
-    ImGui::Text("%s", buffer);
+void MenuBar::renderStatus() {
+    // Get Hour
+    std::time_t t = std::time(nullptr);
+    std::tm* now = std::localtime(&t);
+    char currentTime[64];
+    std::strftime(currentTime, sizeof(currentTime), "%H:%M:%S  %d-%m-%Y", now);
+
+    // Get FPS
+    float fps = ImGui::GetIO().Framerate;
+
+
+    char status[128];
+    std::snprintf(status, sizeof(status), "%.1f  %s", fps, currentTime);
+    float statusWidth = ImGui::CalcTextSize(status)[0];
+    ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth * 1.1f);
+    ImGui::Text("%s", status);
 }
+
 
 void MenuBar::renderProgramName() {
     std::string programName = "Fórmula Tesla";
@@ -30,4 +40,21 @@ void MenuBar::renderProgramName() {
     float       textOffsetX = (windowWidth - textWidth) / 2.0f;
     ImGui::SetCursorPosX(textOffsetX);
     ImGui::Text("%s", programName.c_str());
+}
+
+void MenuBar::changeColorMap() {
+    if (ImGui::BeginMenu("Mudar Cores")) {
+        ImPlotContext&  gp       = *GImPlot;
+        ImPlotColormap& colormap = gp.Style.Colormap;
+    
+        if (ImPlot::ColormapButton(ImPlot::GetColormapName(colormap), ImVec2(225, 0), colormap)) {
+            colormap = (colormap + 1) % ImPlot::GetColormapCount();
+            ImPlot::BustItemCache();
+        }
+        
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        ImPlot::ShowColormapSelector("##");
+    
+        ImGui::EndMenu();
+    }
 }
