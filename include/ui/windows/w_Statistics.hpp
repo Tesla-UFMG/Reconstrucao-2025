@@ -3,18 +3,17 @@
 
 // Project
 #include "ImGuiWrapper.hpp"
-#include "ui/windows/iWindow.hpp"
 #include "ui/menubar/m_Utils.hpp"
+#include "ui/windows/iWindow.hpp"
 
 namespace Window {
     class Statistics : public IWindow {
         private:
-            void processColumnDragDrop();    
+            void processColumnDragDrop();
             void renderMenuBar();
             void renderTable();
-            
-        
-            public:
+
+        public:
             explicit Statistics(bool* isOpen = nullptr);
             virtual void render() override;
     };

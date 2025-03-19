@@ -13,10 +13,10 @@
 #include "ui/windows/w_Playback.hpp"
 #include "ui/windows/w_Plot.hpp"
 #include "ui/windows/w_Reconstruction.hpp"
+#include "ui/windows/w_Statistics.hpp"
 #include "ui/windows/w_Terminal.hpp"
 #include "ui/windows/w_Video.hpp"
 #include "ui/windows/w_WheelControl.hpp"
-#include "ui/windows/w_Statistics.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -38,7 +38,7 @@ struct VisibilityFlags {
         bool showImPlotDemo     = false;
         bool showImGuiDemo      = false;
         bool showStatistics     = true;
-    };
+};
 
 class WindowManager {
     private:

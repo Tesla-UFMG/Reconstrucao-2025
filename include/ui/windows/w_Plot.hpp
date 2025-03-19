@@ -4,8 +4,8 @@
 // Project
 #include "DB.hpp"
 #include "ImGuiWrapper.hpp"
-#include "ui/windows/iWindow.hpp"
 #include "ui/menubar/m_Utils.hpp"
+#include "ui/windows/iWindow.hpp"
 
 // C++
 #include <algorithm>
@@ -14,7 +14,9 @@
 #include <string>
 #include <vector>
 
-#define RESIZE_BAR_SIZE 1.f
+#define MIN_GRAPH_SIZE  50.0
+#define MAX_GRAPH_SIZE  1600.0
+#define RESIZE_BAR_SIZE 3.f
 
 enum GraphType { GRAPH_LINE, GRAPH_BAR, GRAPH_SCATTER, GRAPH_FILLED_LINE };
 
@@ -23,6 +25,7 @@ struct GraphData {
         std::vector<std::string>         archives;
         std::vector<std::vector<double>> x;
         std::vector<std::vector<double>> y;
+        std::vector<double>              multiplier;
 
         GraphType type       = GRAPH_LINE;
         bool      showXAxis  = false;
@@ -46,9 +49,15 @@ namespace Window {
             void processColumnDragDrop(GraphData& graphData);
             void generateSimulatedData(int numPoints, size_t graphIndex, float* x, float* y);
 
+            void addGraph(std::vector<GraphData>& graphs);
+            void removeGraph(std::vector<GraphData>& graphs, size_t graphIndex);
+
+            void addColumnToGraph(GraphData& graphData, const std::string& archiveName, const std::string& columnName);
+            void removeColumnFromGraph(GraphData& graphData, int graphIndex);
+
             // Funções de renderização dos gráficos
-            void drawLegendPopup(GraphData& graphData, int graphIndex, int& graphToRemove);
-            void renderGraph(size_t graphIndex, int& graphToRemove);
+            void drawLegendPopup(GraphData& graphData, int graphIndex);
+            void renderGraph(size_t graphIndex);
             void renderResizeButton(size_t graphIndex);
     };
 

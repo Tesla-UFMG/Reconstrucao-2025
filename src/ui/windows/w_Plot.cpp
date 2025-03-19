@@ -10,19 +10,35 @@ Window::Plot::Plot(bool* isOpen) : IWindow(isOpen) {
     flags = ImGuiWindowFlags_MenuBar;
 }
 
+void Window::Plot::render() {
+    if (this->isOpen && *this->isOpen) {
+        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+        drawMenuBar();
+
+        if (ImPlot::BeginAlignedPlots("AlignedGroup")) {
+            for (size_t i = 0; i < graphs.size(); i++) {
+                renderGraph(i);
+                if (showResizeButton) {
+                    renderResizeButton(i);
+                }
+            }
+            ImPlot::EndAlignedPlots();
+        }
+
+        ImGui::End();
+    }
+}
+
 void Window::Plot::drawMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::MenuItem("Novo Gráfico")) {
-            graphs.emplace_back(GraphData());
-            ImPlot::BustItemCache();
-            LOG("INFO", "Gráfico " + std::to_string(graphs.size() - 1) + " criado.");
+            this->addGraph(graphs);
         }
 
         if (graphs.size() > 0 && ImGui::BeginMenu("Remover Gráfico")) {
             for (size_t i = 0; i < graphs.size(); i++) {
                 if (ImGui::MenuItem(("Gráfico " + std::to_string(i)).c_str())) {
-                    graphs.erase(graphs.begin() + i);
-                    LOG("INFO", "Gráfico " + std::to_string(i) + " removido.");
+                    this->removeGraph(graphs, i);
                 }
             }
             ImGui::EndMenu();
@@ -49,6 +65,23 @@ void Window::Plot::drawMenuBar() {
     }
 }
 
+void Window::Plot::addGraph(std::vector<GraphData>& graphs) {
+    graphs.emplace_back(GraphData());
+    ImPlot::BustItemCache();
+    LOG("INFO", "Gráfico " + std::to_string(graphs.size() - 1) + " criado.");
+}
+
+void Window::Plot::removeGraph(std::vector<GraphData>& graphs, size_t graphIndex) {
+    if (graphIndex >= graphs.size()) {
+        LOG("ERROR", "Não foi possível remover o gráfico, índice inválido.");
+        return;
+    }
+
+    graphs.erase(graphs.begin() + graphIndex);
+    ImPlot::BustItemCache();
+    LOG("INFO", "Gráfico " + std::to_string(graphIndex) + " removido.");
+}
+
 void Window::Plot::processColumnDragDrop(GraphData& graphData) {
     if (ImGui::BeginDragDropTarget()) {
         // Aceita o payload
@@ -58,95 +91,126 @@ void Window::Plot::processColumnDragDrop(GraphData& graphData) {
 
             // Pega o nome do arquivo e a coluna
             if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
-
-                // Verifica se o a coluna do arquivo ja foi adicionadda
-                for (size_t i = 0; i < graphData.archives.size(); ++i) {
-                    if (graphData.archives[i] == archiveName && graphData.columns[i] == columnName) {
-                        LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " +
-                                        archiveName + " já existe.");
-                        ImGui::EndDragDropTarget();
-                        return;
-                    }
-                }
-
-                // Adiciona os eixos  
-                std::vector<double> y = DB::getInstance().getCSVData(archiveName, columnName);
-                if (y.size() == 0) {
-                    LOG("ERROR", "Não foi possível adicioanr a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
-                    ImGui::EndDragDropTarget();
-                    return;
-                }
-                graphData.y.push_back(y);
-
-                std::vector<double> x(y.size());
-                for (size_t i = 0; i < y.size(); ++i) {
-                    x[i] = static_cast<double>(i);
-                }
-                graphData.x.push_back(x);
-
-                // Adiciona a coluna e o nome do arquivo
-                graphData.columns.push_back(columnName);
-                graphData.archives.push_back(archiveName);
-
-                
-
-                LOG("DEBUG",
-                    "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graphs.size() - 1) + ".");
+                this->addColumnToGraph(graphData, archiveName, columnName);
             }
         }
         ImGui::EndDragDropTarget();
     }
 }
 
-void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex, int& graphToRemove) {
+void Window::Plot::addColumnToGraph(GraphData& graphData, const std::string& archiveName,
+                                    const std::string& columnName) {
+    // Verifica se a coluna do arquivo já foi adicionada
+    for (size_t i = 0; i < graphData.archives.size(); ++i) {
+        if (graphData.archives[i] == archiveName && graphData.columns[i] == columnName) {
+            LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + archiveName +
+                            " já existe.");
+            return;
+        }
+    }
+
+    // Adiciona os eixos
+    std::vector<double> y = DB::getInstance().getCSVData(archiveName, columnName);
+    if (y.size() == 0) {
+        LOG("ERROR",
+            "Não foi possível adicionar a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
+        return;
+    }
+    graphData.y.push_back(y);
+
+    std::vector<double> x(y.size());
+    for (size_t i = 0; i < y.size(); ++i) {
+        x[i] = static_cast<double>(i);
+    }
+    graphData.x.push_back(x);
+
+    // Adiciona a coluna, o nome do arquivo e o multiplicador padrão (1.0)
+    graphData.columns.push_back(columnName);
+    graphData.archives.push_back(archiveName);
+    graphData.multiplier.push_back(1.0);
+
+    LOG("DEBUG", "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graphs.size() - 1) + ".");
+}
+
+void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex) {
     if (!graphData.columns.empty()) {
         const char* tipos[] = {"Linha", "Barra", "Scatter", "Preenchido"};
         if (ImPlot::BeginLegendPopup(graphData.columns[0].c_str())) {
 
             // Tipo do gráfico
+            ImGui::SeparatorText("Tipo de Gráfico");
             int currentType = static_cast<int>(graphData.type);
             if (ImGui::Combo("##Tipo", &currentType, tipos, IM_ARRAYSIZE(tipos))) {
                 graphData.type = static_cast<GraphType>(currentType);
                 LOG("DEBUG", "Gráfico " + std::to_string(graphIndex) + " alterado para " + tipos[currentType] + ".");
             }
 
-            // Remover gráfico
-            if (ImGui::Button("Remover Gráfico")) {
-                graphToRemove = graphIndex;
-            }
-
             // Configurações de exibição
-            ImGui::SeparatorText("Removevr Eixos");
+            ImGui::SeparatorText("Eixos");
             ImGui::Checkbox("Eixo X", &graphData.showXAxis);
             ImGui::SameLine();
             ImGui::Checkbox("Eixo Y", &graphData.showYAxis);
 
-            // Colunas
-            ImGui::SeparatorText("Remover Colunas");
-            for (size_t j = 0; j < graphData.columns.size(); j++) {
-                std::string btnLabel = "X##" + std::to_string(j);
-                if (ImGui::Button(btnLabel.c_str())) {
+            ImGui::SeparatorText("Colunas");
 
-                    // Remove com os respectivos indexes
-                    graphData.archives.erase(graphData.archives.begin() + j);
-                    graphData.columns.erase(graphData.columns.begin() + j);
-                    graphData.x.erase(graphData.x.begin() + j);
-                    graphData.y.erase(graphData.y.begin() + j);
+            // Inicia uma tabela com 3 colunas
+            if (ImGui::BeginTable("TabelaColunas", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+                // Cabeçalho das colunas (opcional)
+                ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableSetupColumn("Coluna", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Multiplicador", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableHeadersRow();
 
-                    LOG("DEBUG",
-                        "Coluna " + graphData.columns[j] + " removida do gráfico " + std::to_string(graphIndex) + ".");
+                for (size_t j = 0; j < graphData.columns.size(); j++) {
+                    ImGui::TableNextRow();
 
-                    break;
+                    // Coluna 1: Botão de remover
+                    ImGui::TableSetColumnIndex(0);
+                    std::string btnLabel = "X##" + std::to_string(j);
+                    if (ImGui::Button(btnLabel.c_str())) {
+                        this->removeColumnFromGraph(graphData, j);
+                        break;
+                    }
+
+                    // Coluna 2: Nome da coluna
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextUnformatted(graphData.columns[j].c_str());
+
+                    // Coluna 3: InputDouble do multiplicador
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::PushItemWidth(120.0f);
+                    ImGui::InputDouble(("##mult" + std::to_string(j)).c_str(), &graphData.multiplier[j], 0.001, 100.0,
+                                       "x%.3f");
+
+                    ImGui::PopItemWidth();
                 }
-                ImGui::SameLine();
-                ImGui::Text("%s", graphData.columns[j].c_str());
+                ImGui::EndTable();
             }
+
+            if (ImGui::Button("Remover Gráfico")) {
+                this->removeGraph(graphs, graphIndex);
+            }
+
             ImPlot::EndLegendPopup();
         }
     }
 }
 
-void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
+void Window::Plot::removeColumnFromGraph(GraphData& graphData, int graphIndex) {
+    if (graphIndex < 0 || graphIndex >= static_cast<int>(graphData.columns.size())) {
+        LOG("ERROR", "Não foi possível remover o gráfico, índice inválido.");
+        return;
+    }
+
+    graphData.archives.erase(graphData.archives.begin() + graphIndex);
+    graphData.columns.erase(graphData.columns.begin() + graphIndex);
+    graphData.x.erase(graphData.x.begin() + graphIndex);
+    graphData.y.erase(graphData.y.begin() + graphIndex);
+    graphData.multiplier.erase(graphData.multiplier.begin() + graphIndex);
+    LOG("DEBUG", "Coluna removida do gráfico " + std::to_string(graphIndex) + ".");
+}
+
+void Window::Plot::renderGraph(size_t graphIndex) {
     GraphData& graphData = graphs[graphIndex];
     ImGui::PushID(static_cast<int>(graphIndex));
 
@@ -168,7 +232,6 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
         }
 
         ImPlot::SetupAxes(nullptr, nullptr, xAxisFlags, yAxisFlags);
-
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
         // Plotagem de cada coluna conforme o tipo do gráfico
@@ -178,22 +241,31 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
             const std::vector<double>& y         = graphData.y[i];
             int                        numPoints = static_cast<int>(x.size());
 
+            // Aplica o multiplicador aos valores do eixo y
+            std::vector<double> scaledY(numPoints);
+            double              multiplier = graphData.multiplier[i];
+            for (int j = 0; j < numPoints; ++j) {
+                scaledY[j] = y[j] * multiplier;
+            }
+
             switch (graphData.type) {
                 case GRAPH_LINE:
-                    ImPlot::PlotLine(col.c_str(), x.data(), y.data(), numPoints);
+                    ImPlot::PlotLine(col.c_str(), x.data(), scaledY.data(), numPoints);
                     break;
                 case GRAPH_BAR:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotBars(col.c_str(), x.data(), y.data(), numPoints, 0.8f);
+                    ImPlot::PlotBars(col.c_str(), x.data(), scaledY.data(), numPoints, 0.8f);
+                    ImPlot::PopStyleVar();
                     break;
                 case GRAPH_SCATTER:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotScatter(col.c_str(), x.data(), y.data(), numPoints);
+                    ImPlot::PlotScatter(col.c_str(), x.data(), scaledY.data(), numPoints);
+                    ImPlot::PopStyleVar();
                     break;
                 case GRAPH_FILLED_LINE:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotShaded(col.c_str(), x.data(), y.data(), numPoints);
-                    ImPlot::PlotLine(col.c_str(), x.data(), y.data(), numPoints);
+                    ImPlot::PlotShaded(col.c_str(), x.data(), scaledY.data(), numPoints);
+                    ImPlot::PlotLine(col.c_str(), x.data(), scaledY.data(), numPoints);
                     ImPlot::PopStyleVar();
                     break;
                 default:
@@ -202,7 +274,7 @@ void Window::Plot::renderGraph(size_t graphIndex, int& graphToRemove) {
         }
 
         // Renderiza o popup de legenda para controle do gráfico
-        drawLegendPopup(graphData, static_cast<int>(graphIndex), graphToRemove);
+        drawLegendPopup(graphData, static_cast<int>(graphIndex));
         ImPlot::EndPlot();
     }
 
@@ -223,37 +295,9 @@ void Window::Plot::renderResizeButton(size_t graphIndex) {
     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
         float delta = ImGui::GetMouseDragDelta(0).y;
         // Atualiza a altura, garantindo limites mínimo e máximo.
-        graphData.plotHeight = std::max(50.0, std::min(graphData.plotHeight + delta, 1600.0));
+        graphData.plotHeight = std::max(MIN_GRAPH_SIZE, std::min(graphData.plotHeight + delta, MAX_GRAPH_SIZE));
         ImGui::ResetMouseDragDelta();
     }
 
     ImGui::PopID();
-}
-
-void Window::Plot::render() {
-    if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
-
-        drawMenuBar();
-
-        int graphToRemove = -1;
-
-        if (ImPlot::BeginAlignedPlots("AlignedGroup")) {
-            for (size_t i = 0; i < graphs.size(); i++) {
-                renderGraph(i, graphToRemove);
-
-                if (showResizeButton) {
-                    renderResizeButton(i);
-                }
-            }
-            ImPlot::EndAlignedPlots();
-        }
-
-        if (graphToRemove != -1) {
-            graphs.erase(graphs.begin() + graphToRemove);
-            LOG("INFO", "Gráfico " + std::to_string(graphToRemove) + " removido.");
-        }
-
-        ImGui::End();
-    }
 }
