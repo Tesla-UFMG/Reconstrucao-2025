@@ -172,4 +172,5 @@ void Window::render() {
     Window::ImGuiDemo(&Window::visibility.showImGuiDemo);
     Window::ImPlotDemo(&Window::visibility.showImPlotDemo);
     Window::WheelControl(&Window::visibility.showWheelControl);
+    Window::Pedal(&Window::visibility.showPedal);
 }

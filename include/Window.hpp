@@ -14,6 +14,7 @@
 #include "ui/PlotWindow.hpp"
 #include "ui/ReconstructionWindow.hpp"
 #include "ui/VideoWindow.hpp"
+#include "ui/pedal.hpp"
 
 
 // C++
@@ -34,6 +35,7 @@ namespace Window {
         bool showAbout          = false;
         bool showImPlotDemo     = false;
         bool showImGuiDemo      = false;
+        bool showPedal          = true;
     };
 
     extern VisibilityFlags visibility;
