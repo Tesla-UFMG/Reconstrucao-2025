@@ -13,6 +13,8 @@ void ImGuiWrapper::initSubsystem() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
+    ImPlot3D::CreateContext();
+
     ImGuiWrapper::io = &ImGui::GetIO();
     (void)ImGuiWrapper::io; // Documentação pede para fazer esse cast
     ImGuiWrapper::io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -46,6 +48,8 @@ void ImGuiWrapper::closeSubystem() {
 
     ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();
+
+    ImPlot3D::DestroyContext();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     ImGuiWrapper::isSubsystemInited = false;

@@ -18,6 +18,12 @@ namespace Window {
             virtual void render() override;
     };
 
+    class ImPlot3dDemo : public IWindow {
+        public:
+            explicit ImPlot3dDemo(bool* isOpen = nullptr);
+            virtual void render() override;
+    };
+
 } // namespace Window
 
 #endif

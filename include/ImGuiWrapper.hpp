@@ -18,6 +18,7 @@
 #include <imgui_impl_sdlrenderer2.h>
 #include <imgui_internal.h>
 #include <implot.h>
+#include <implot3d.h>
 #include <implot_internal.h>
 
 #define HI(a)  ImVec4(0.113f, 0.725f, 0.329f, a)

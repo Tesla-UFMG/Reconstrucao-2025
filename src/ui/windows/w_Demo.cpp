@@ -15,3 +15,11 @@ void Window::ImPlotDemo::render() {
         ImPlot::ShowDemoWindow(this->isOpen);
     }
 }
+
+Window::ImPlot3dDemo::ImPlot3dDemo(bool* isOpen) : IWindow(isOpen) {}
+
+void Window::ImPlot3dDemo::render() {
+    if (this->isOpen && *this->isOpen) {
+        ImPlot3D::ShowDemoWindow(this->isOpen);
+    }
+}

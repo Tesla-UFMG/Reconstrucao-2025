@@ -42,9 +42,10 @@ void Menu::Windows() {
         ImGui::Separator();
 
         if (ImGui::BeginMenu("Desenvolvedor")) {
-            Menu::showWindowVisibility("Log", &Window::visibility.showLog);
-            Menu::showWindowVisibility("ImGui Demo", &Window::visibility.showImGuiDemo);
-            Menu::showWindowVisibility("ImPlot Demo", &Window::visibility.showImPlotDemo);
+            MenuBar::changeWindowVisibility("Log", &vw.visibility.showLog);
+            MenuBar::changeWindowVisibility("ImGui Demo", &vw.visibility.showImGuiDemo);
+            MenuBar::changeWindowVisibility("ImPlot Demo", &vw.visibility.showImPlotDemo);
+            MenuBar::changeWindowVisibility("ImPlot3D Demo", &vw.visibility.showImPlot3dDemo);
             ImGui::EndMenu();
         }
 

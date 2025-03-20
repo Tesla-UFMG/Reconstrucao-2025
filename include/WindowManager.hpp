@@ -36,6 +36,7 @@ struct VisibilityFlags {
         bool showWheelControl   = true;
         bool showAbout          = false;
         bool showImPlotDemo     = false;
+        bool showImPlot3dDemo    = false;
         bool showImGuiDemo      = false;
         bool showStatistics     = true;
 };
