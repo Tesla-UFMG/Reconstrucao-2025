@@ -129,13 +129,21 @@ void Window::Plot::addColumnToGraph(GraphData& graphData, const std::string& arc
     graphData.archives.push_back(archiveName);
     graphData.multiplier.push_back(1.0);
 
+    ImPlot::BustItemCache();
     LOG("DEBUG", "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graphs.size() - 1) + ".");
 }
-
 void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex) {
     if (!graphData.columns.empty()) {
         const char* tipos[] = {"Linha", "Barra", "Scatter", "Preenchido"};
-        if (ImPlot::BeginLegendPopup(graphData.columns[0].c_str())) {
+
+        bool popupOpen = false;
+        for (const auto& col : graphData.columns) {
+            if (ImPlot::BeginLegendPopup(col.c_str())) {
+                popupOpen = true;
+                break;
+            }
+        }
+        if (popupOpen) {
 
             // Tipo do gráfico
             ImGui::SeparatorText("Tipo de Gráfico");
@@ -151,37 +159,43 @@ void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex) {
             ImGui::SameLine();
             ImGui::Checkbox("Eixo Y", &graphData.showYAxis);
 
-            ImGui::SeparatorText("Colunas");
+            // Seleção do eixo X (com opção "Nenhuma")
+            if (ImGui::BeginCombo("##EixoX", graphData.xColumn.empty() ? "Nenhuma" : graphData.xColumn.c_str())) {
+                if (ImGui::Selectable("Nenhuma", graphData.xColumn.empty())) {
+                    graphData.xColumn.clear();
+                }
+                for (const auto& column : graphData.columns) {
+                    if (ImGui::Selectable(column.c_str(), graphData.xColumn == column)) {
+                        graphData.xColumn = column;
+                        ImPlot::BustItemCache();
+                    }
+                }
+                ImGui::EndCombo();
+            }
 
-            // Inicia uma tabela com 3 colunas
+            ImGui::SeparatorText("Colunas");
             if (ImGui::BeginTable("TabelaColunas", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-                // Cabeçalho das colunas (opcional)
                 ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
                 ImGui::TableSetupColumn("Coluna", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("Multiplicador", ImGuiTableColumnFlags_WidthFixed);
                 ImGui::TableHeadersRow();
-
                 for (size_t j = 0; j < graphData.columns.size(); j++) {
+                    if (graphData.columns[j] == graphData.xColumn)
+                        continue;
                     ImGui::TableNextRow();
-
-                    // Coluna 1: Botão de remover
                     ImGui::TableSetColumnIndex(0);
                     std::string btnLabel = "X##" + std::to_string(j);
                     if (ImGui::Button(btnLabel.c_str())) {
                         this->removeColumnFromGraph(graphData, j);
                         break;
                     }
-
-                    // Coluna 2: Nome da coluna
                     ImGui::TableSetColumnIndex(1);
                     ImGui::TextUnformatted(graphData.columns[j].c_str());
 
-                    // Coluna 3: InputDouble do multiplicador
                     ImGui::TableSetColumnIndex(2);
                     ImGui::PushItemWidth(120.0f);
                     ImGui::InputDouble(("##mult" + std::to_string(j)).c_str(), &graphData.multiplier[j], 0.001, 100.0,
-                                       "x%.3f");
-
+                                       "%.15g x");
                     ImGui::PopItemWidth();
                 }
                 ImGui::EndTable();
@@ -207,6 +221,13 @@ void Window::Plot::removeColumnFromGraph(GraphData& graphData, int graphIndex) {
     graphData.x.erase(graphData.x.begin() + graphIndex);
     graphData.y.erase(graphData.y.begin() + graphIndex);
     graphData.multiplier.erase(graphData.multiplier.begin() + graphIndex);
+
+    if (graphData.xColumn == graphData.columns[graphIndex]) {
+        graphData.xColumn.clear();
+    }
+
+    ImPlot::BustItemCache();
+
     LOG("DEBUG", "Coluna removida do gráfico " + std::to_string(graphIndex) + ".");
 }
 
@@ -234,38 +255,60 @@ void Window::Plot::renderGraph(size_t graphIndex) {
         ImPlot::SetupAxes(nullptr, nullptr, xAxisFlags, yAxisFlags);
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
-        // Plotagem de cada coluna conforme o tipo do gráfico
-        for (size_t i = 0; i < graphData.columns.size(); i++) {
-            const std::string&         col       = graphData.columns[i];
-            const std::vector<double>& x         = graphData.x[i];
-            const std::vector<double>& y         = graphData.y[i];
-            int                        numPoints = static_cast<int>(x.size());
+        // Se uma coluna foi selecionada como eixo X, obtém seus dados.
+        std::vector<double> customX;
+        bool                useCustomX = false;
+        if (!graphData.xColumn.empty()) {
+            auto it = std::find(graphData.columns.begin(), graphData.columns.end(), graphData.xColumn);
+            if (it != graphData.columns.end()) {
+                size_t index = std::distance(graphData.columns.begin(), it);
+                if (index < graphData.y.size() && !graphData.y[index].empty()) {
+                    customX    = graphData.y[index];
+                    useCustomX = true;
+                }
+            }
+        }
 
-            // Aplica o multiplicador aos valores do eixo y
-            std::vector<double> scaledY(numPoints);
-            double              multiplier = graphData.multiplier[i];
+        // Plota cada série, exceto a coluna selecionada como eixo X.
+        for (size_t i = 0; i < graphData.columns.size(); i++) {
+            if (!graphData.xColumn.empty() && graphData.columns[i] == graphData.xColumn)
+                continue;
+
+            const std::string&         col       = graphData.columns[i];
+            const std::vector<double>& y         = graphData.y[i];
+            int                        numPoints = static_cast<int>(y.size());
+            std::vector<double>        scaledY(numPoints);
+            double                     multiplier = graphData.multiplier[i];
             for (int j = 0; j < numPoints; ++j) {
                 scaledY[j] = y[j] * multiplier;
             }
 
+            // Define qual vetor de X será usado.
+            const std::vector<double>* xData = nullptr;
+            if (useCustomX && customX.size() == y.size())
+                xData = &customX;
+            else
+                xData = &graphData.x[i];
+
+            // Plota a série usando o vetor de X selecionado.
             switch (graphData.type) {
                 case GRAPH_LINE:
-                    ImPlot::PlotLine(col.c_str(), x.data(), scaledY.data(), numPoints);
+                    ImPlot::PlotLine(col.c_str(), xData->data(), scaledY.data(), numPoints);
                     break;
                 case GRAPH_BAR:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotBars(col.c_str(), x.data(), scaledY.data(), numPoints, 0.8f);
+                    ImPlot::PlotBars(col.c_str(), xData->data(), scaledY.data(), numPoints, 0.8f);
                     ImPlot::PopStyleVar();
                     break;
                 case GRAPH_SCATTER:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotScatter(col.c_str(), x.data(), scaledY.data(), numPoints);
+                    ImPlot::PlotScatter(col.c_str(), xData->data(), scaledY.data(), numPoints);
                     ImPlot::PopStyleVar();
                     break;
                 case GRAPH_FILLED_LINE:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotShaded(col.c_str(), x.data(), scaledY.data(), numPoints);
-                    ImPlot::PlotLine(col.c_str(), x.data(), scaledY.data(), numPoints);
+                    ImPlot::PlotShaded(col.c_str(), xData->data(), scaledY.data(), numPoints);
+                    ImPlot::PlotLine(col.c_str(), xData->data(), scaledY.data(), numPoints);
                     ImPlot::PopStyleVar();
                     break;
                 default:
@@ -273,12 +316,10 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             }
         }
 
-        // Renderiza o popup de legenda para controle do gráfico
         drawLegendPopup(graphData, static_cast<int>(graphIndex));
         ImPlot::EndPlot();
     }
 
-    // Processa o payload de drag & drop para as colunas
     processColumnDragDrop(graphData);
     ImGui::PopID();
 }

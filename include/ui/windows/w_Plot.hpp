@@ -21,16 +21,18 @@
 enum GraphType { GRAPH_LINE, GRAPH_BAR, GRAPH_SCATTER, GRAPH_FILLED_LINE };
 
 struct GraphData {
-        std::vector<std::string>         columns;
-        std::vector<std::string>         archives;
+        std::vector<std::string> columns;
+        std::vector<std::string> archives;
+
         std::vector<std::vector<double>> x;
         std::vector<std::vector<double>> y;
         std::vector<double>              multiplier;
 
-        GraphType type       = GRAPH_LINE;
-        bool      showXAxis  = false;
-        bool      showYAxis  = true;
-        double    plotHeight = 190;
+        std::string xColumn;
+        GraphType   type       = GRAPH_LINE;
+        bool        showXAxis  = false;
+        bool        showYAxis  = true;
+        double      plotHeight = 190;
 };
 
 namespace Window {
