@@ -24,7 +24,7 @@ METRICS → Dados de desempenho (ex: tempo de resposta de uma função).
 #include <string>
 #include <vector>
 
-#define LOG_OUTPUT "log.txt"
+#define LOG_OUTPUT "cache/log.txt"
 
 #define LOG(level, message) Log::getInstance().log(level, message);
 
@@ -40,8 +40,8 @@ class Log {
         Log(Log&&)            = delete;
         Log& operator=(Log&&) = delete;
         ~Log();
+        static Log& getInstance(const std::filesystem::path& filepath = LOG_OUTPUT);
 
-        static Log&              getInstance(const std::filesystem::path& filepath = LOG_OUTPUT);
         void                     log(const std::string& level, const std::string& message);
         std::vector<std::string> getLog();
         void                     clearLog();

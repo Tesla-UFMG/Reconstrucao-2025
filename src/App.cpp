@@ -27,17 +27,18 @@ bool App::handleEvent() {
         SDLWrapper::handleEvent(SDLWrapper::events);
 
         if (SDLWrapper::events.type == SDL_KEYDOWN) {
-
             // Carrega ou salva os layouts -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
             int offset = 1073741881;
             if (SDLWrapper::events.key.keysym.sym > offset &&
                 SDLWrapper::events.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
                 std::string F_number = std::to_string(SDLWrapper::events.key.keysym.sym - offset);
                 if ((SDLWrapper::events.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver precionado...
-                    Window::saveWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
+                    WindowManager::getInstance().saveWindowVisibility("./cache/layouts/.visibility_" + F_number +
+                                                                      ".bin");
                     ImGuiWrapper::saveLayout("./cache/layouts/.layout_" + F_number + ".ini");
                 } else {
-                    Window::loadWindowVisibility("./cache/layouts/.visibility_" + F_number + ".bin");
+                    WindowManager::getInstance().loadWindowVisibility("./cache/layouts/.visibility_" + F_number +
+                                                                      ".bin");
                     ImGuiWrapper::loadLayout("./cache/layouts/.layout_" + F_number + ".ini");
                 }
             }
@@ -71,7 +72,10 @@ bool App::handleEvent() {
 }
 
 void App::loop() {
-    LOG("TRACE", "Entrou no loop principal.");
+    LOG("AUDIT", "Entrou no loop principal.");
+
+    WindowManager& wm = WindowManager::getInstance();
+
     while (true) {
         // Fecha o programa caso cliquem em fechar.
         if (App::handleEvent()) {
@@ -86,12 +90,12 @@ void App::loop() {
             ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
             ImGui::DockSpaceOverViewport(dockspace_id, ImGui::GetMainViewport(),
                                          ImGuiDockNodeFlags_PassthruCentralNode);
-            MenuBar::render();
 
-            if (DB::getInstance().getCurrentProject().empty()) {
-                Window::Initial();
+            // Se não tiver um projeto carregado
+            if (DB::getInstance().getProject().currentProject.empty()) {
+                wm.homePage();
             } else {
-                Window::render();
+                wm.mainPage();
             }
 
             ImGuiWrapper::render();

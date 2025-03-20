@@ -1,10 +1,11 @@
 WINDOWS := 1
+CARD_VIDEO_RENDEREING := 1
 
 PROJECT := app
 BUILD_FOLDER := build
 OBJ_FOLDER := obj
 
-SRC_FILES := $(wildcard src/**/*.cpp) $(wildcard src/*.cpp)
+SRC_FILES := $(wildcard src/**/**/*.cpp) $(wildcard src/**/*.cpp) $(wildcard src/*.cpp)
 LIB_CPP_FILES := $(wildcard lib/**/*.cpp)
 LIB_C_FILES := $(wildcard lib/**/*.c)
 
@@ -26,6 +27,11 @@ else
     LDFLAGS := 
     OUTPUT := $(BUILD_FOLDER)/$(PROJECT)
 endif
+
+ifeq ($(CARD_VIDEO_RENDEREING), 1)
+CXX_FLAGS += -DACCELERATED
+endif
+
 
 all: $(BUILD_FOLDER) $(OBJ_FOLDER) $(OUTPUT)
 

@@ -45,7 +45,13 @@ void SDLWrapper::createWindowAndRenderer(const std::string& windowTitle, int win
         if (!SDLWrapper::window)
             throw std::runtime_error(SDL_GetError());
 
-        int rendererFlags    = SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC;
+#ifdef ACCELERATED
+#define RENDERING_METHOD SDL_RENDERER_ACCELERATED
+#else
+#define RENDERING_METHOD SDL_RENDERER_SOFTWARE
+#endif
+
+        int rendererFlags    = RENDERING_METHOD | SDL_RENDERER_PRESENTVSYNC;
         SDLWrapper::renderer = SDL_CreateRenderer(SDLWrapper::window, -1, rendererFlags);
 
         if (!SDLWrapper::renderer) {
