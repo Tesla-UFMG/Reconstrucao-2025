@@ -75,6 +75,10 @@ void App::loop() {
     LOG("AUDIT", "Entrou no loop principal.");
 
     WindowManager& wm = WindowManager::getInstance();
+    
+    // Inicia como padrão o layout 1
+    wm.loadWindowVisibility("./cache/layouts/.visibility_1.bin");
+    ImGuiWrapper::loadLayout("./cache/layouts/.layout_1.ini");
 
     while (true) {
         // Fecha o programa caso cliquem em fechar.

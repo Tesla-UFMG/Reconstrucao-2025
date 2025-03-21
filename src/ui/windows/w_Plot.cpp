@@ -195,7 +195,7 @@ void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex) {
                     ImGui::TableSetColumnIndex(2);
                     ImGui::PushItemWidth(120.0f);
                     ImGui::InputDouble(("##mult" + std::to_string(j)).c_str(), &graphData.multiplier[j], 0.001, 100.0,
-                                       "%.15g x");
+                                       "%.15gx");
                     ImGui::PopItemWidth();
                 }
                 ImGui::EndTable();
