@@ -12,7 +12,7 @@ AssetManager::~AssetManager() {
     LOG("TRACE", "AssetManager encerrado.");
 }
 
-SDL_Texture* AssetManager::loadTexture(const std::string& filePath) {
+SDL_Texture* AssetManager::getTexture(const std::string& filePath) {
     if (textures.find(filePath) != textures.end()) {
         return textures[filePath];
     }
@@ -26,14 +26,6 @@ SDL_Texture* AssetManager::loadTexture(const std::string& filePath) {
     textures[filePath] = texture;
     LOG("INFO", "Textura carregada: " + filePath);
     return texture;
-}
-
-SDL_Texture* AssetManager::getTexture(const std::string& filePath) const {
-    auto it = textures.find(filePath);
-    if (it != textures.end()) {
-        return it->second;
-    }
-    return nullptr;
 }
 
 void AssetManager::clearTextures() {

@@ -77,7 +77,7 @@ void Window::WheelControl::render() {
         ImGui::Text("Ângulo Atual: %.1f°", anguloVolante);
 
         // Carrega a imagem do volante (idealmente, isso deveria ocorrer apenas uma vez)
-        SDL_Texture* volanteTexture = GET_TEXTURE(VOLANTE_PATH);
+        SDL_Texture* volanteTexture = AssetManager::getInstance().getTexture(VOLANTE_PATH);
 
         // Se a textura estiver disponível, desenha o volante rotacionado
         if (volanteTexture) {

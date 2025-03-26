@@ -1,17 +1,20 @@
-#include "menu/WindowsMenu.hpp"
+#include "ui/menubar/m_Windows.hpp"
 
-void Menu::Windows() {
+void MenuBar::Windows() {
+    WindowManager& vw = WindowManager::getInstance();
+
     if (ImGui::BeginMenu("Janelas")) {
         if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
             SDLWrapper::changeFullscreen();
         }
+        MenuBar::changeColorMap();
         ImGui::Separator();
 
         if (ImGui::BeginMenu("Salvar Layout")) {
             for (int i = 1; i <= 10; i++) {
                 std::string layoutName = "Layout " + std::to_string(i);
                 if (ImGui::MenuItem(layoutName.c_str(), ("CTRL + F" + std::to_string(i)).c_str())) {
-                    Window::saveWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
+                    vw.saveWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
                     ImGuiWrapper::saveLayout("./cache/layouts/.layout_" + std::to_string(i) + ".ini");
                 }
             }
@@ -22,7 +25,7 @@ void Menu::Windows() {
             for (int i = 1; i <= 10; i++) {
                 std::string layoutName = "Layout " + std::to_string(i);
                 if (ImGui::MenuItem(layoutName.c_str(), ("F" + std::to_string(i)).c_str())) {
-                    Window::loadWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
+                    vw.loadWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
                     ImGuiWrapper::loadLayout("./cache/layouts/.layout_" + std::to_string(i) + ".ini");
                 }
             }
@@ -31,13 +34,14 @@ void Menu::Windows() {
 
         ImGui::Separator();
 
-        Menu::showWindowVisibility("Playback", &Window::visibility.showPlayback);
-        Menu::showWindowVisibility("Selecionador de Dados", &Window::visibility.showDataPicker);
-        Menu::showWindowVisibility("Reconstrução de Pista", &Window::visibility.showReconstruction);
-        Menu::showWindowVisibility("Video", &Window::visibility.showVideo);
-        Menu::showWindowVisibility("Plot", &Window::visibility.showPlot);
-        Menu::showWindowVisibility("Volante", &Window::visibility.showWheelControl);
-        Menu::showWindowVisibility("Pedal", &Window::visibility.showPedal);
+        MenuBar::changeWindowVisibility("Playback", &vw.visibility.showPlayback);
+        MenuBar::changeWindowVisibility("Selecionador de Dados", &vw.visibility.showDataPicker);
+        MenuBar::changeWindowVisibility("Reconstrução de Pista", &vw.visibility.showReconstruction);
+        MenuBar::changeWindowVisibility("Video", &vw.visibility.showVideo);
+        MenuBar::changeWindowVisibility("Plot", &vw.visibility.showPlot);
+        MenuBar::changeWindowVisibility("Estatísticas", &vw.visibility.showStatistics);
+        MenuBar::changeWindowVisibility("Volante", &vw.visibility.showWheelControl);
+        MenuBar::changeWindowVisibility("Pedais", &vw.visibility.showPedal);
 
         ImGui::Separator();
 
@@ -45,7 +49,7 @@ void Menu::Windows() {
             MenuBar::changeWindowVisibility("Log", &vw.visibility.showLog);
             MenuBar::changeWindowVisibility("ImGui Demo", &vw.visibility.showImGuiDemo);
             MenuBar::changeWindowVisibility("ImPlot Demo", &vw.visibility.showImPlotDemo);
-            MenuBar::changeWindowVisibility("ImPlot3D Demo", &vw.visibility.showImPlot3dDemo);
+            MenuBar::changeWindowVisibility("ImPlot 3D Demo", &vw.visibility.showImPlot3dDemo);
             ImGui::EndMenu();
         }
 

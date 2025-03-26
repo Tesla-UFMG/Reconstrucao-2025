@@ -23,8 +23,7 @@ class AssetManager {
 
         static AssetManager& getInstance();
 
-        SDL_Texture* loadTexture(const std::string& filePath);
-        SDL_Texture* getTexture(const std::string& filePath) const;
+        SDL_Texture* getTexture(const std::string& filePath);
         void         clearTextures();
 };
 

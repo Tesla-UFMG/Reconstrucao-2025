@@ -10,6 +10,7 @@
 #include "ui/windows/w_DataPicker.hpp"
 #include "ui/windows/w_Demo.hpp"
 #include "ui/windows/w_HomePage.hpp"
+#include "ui/windows/w_Pedal.hpp"
 #include "ui/windows/w_Playback.hpp"
 #include "ui/windows/w_Plot.hpp"
 #include "ui/windows/w_Reconstruction.hpp"
@@ -27,18 +28,19 @@
 
 struct VisibilityFlags {
     public:
-        bool showPlayback       = true;
-        bool showDataPicker     = true;
-        bool showReconstruction = true;
-        bool showVideo          = true;
-        bool showPlot           = true;
-        bool showLog            = true;
-        bool showWheelControl   = true;
+        bool showPlayback       = false;
+        bool showDataPicker     = false;
+        bool showReconstruction = false;
+        bool showVideo          = false;
+        bool showPlot           = false;
+        bool showLog            = false;
+        bool showWheelControl   = false;
+        bool showPedal          = false;
         bool showAbout          = false;
         bool showImPlotDemo     = false;
-        bool showImPlot3dDemo    = false;
+        bool showImPlot3dDemo   = false;
         bool showImGuiDemo      = false;
-        bool showStatistics     = true;
+        bool showStatistics     = false;
 };
 
 class WindowManager {

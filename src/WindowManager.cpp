@@ -49,6 +49,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::Video>(&visibility.showVideo));
     windows.emplace_back(std::make_unique<Window::Plot>(&visibility.showPlot));
     windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
+    windows.emplace_back(std::make_unique<Window::Pedal>(&visibility.showPedal));
     windows.emplace_back(std::make_unique<Window::ImGuiDemo>(&visibility.showImGuiDemo));
     windows.emplace_back(std::make_unique<Window::ImPlotDemo>(&visibility.showImPlotDemo));
     windows.emplace_back(std::make_unique<Window::ImPlot3dDemo>(&visibility.showImPlot3dDemo));
