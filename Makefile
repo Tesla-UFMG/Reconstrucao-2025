@@ -14,7 +14,8 @@ OBJ_FILES += $(patsubst lib/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(LIB_CPP_FILES))
 OBJ_FILES += $(patsubst lib/%.c, $(OBJ_FOLDER)/lib/%.o, $(LIB_C_FILES))
 
 CXX_FLAGS := -Wall -Wextra -pedantic -std=c++17
-INCLUDES := -I./include -I./lib -I./lib/imgui -I./lib/SDL2 -I./lib/implot -I./lib/tinyDialogs -I./lib/rapidcsv -I./lib/implot3d
+INCLUDES := -I./include -I./lib -I./lib/imgui -I./lib/SDL2 -I./lib/implot -I./lib/tinyDialogs -I./lib/rapidcsv -I./lib/implot3d -I./src/ui/windows
+
 
 ifeq ($(WINDOWS), 1)
     CXX := x86_64-w64-mingw32-g++
