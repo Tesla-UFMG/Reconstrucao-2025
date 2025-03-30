@@ -4,8 +4,6 @@
 static float throttleValue = 0.0f;
 static float brakeValue    = 0.0f;
 
-// Fonte pequena para exibir as porcentagens
-static ImFont* smallFont = nullptr;
 
 Window::Pedal::Pedal(bool* isOpen) : IWindow(isOpen) {
     this->title             = "Pedal";
@@ -13,15 +11,6 @@ Window::Pedal::Pedal(bool* isOpen) : IWindow(isOpen) {
     this->redPedalTexture   = (ImTextureID)AssetManager::getInstance().getTexture("assets/pedalvermelho.png");
     this->greenPedalTexture = (ImTextureID)AssetManager::getInstance().getTexture("assets/pedalverde.png");
 
-    ImGuiIO& io = ImGui::GetIO();
-    if (!smallFont) {
-        // if (!io.Fonts->Locked) {
-        //     smallFont = io.Fonts->AddFontFromFileTTF("assets/YUMINL.TTF", 9.0f);
-        //     io.Fonts->Build();
-        // }
-        if (!smallFont)
-            smallFont = ImGui::GetFont();
-    }
 }
 
 void Window::Pedal::render() {
@@ -103,15 +92,10 @@ void Window::Pedal::render() {
         // Exibe os valores das barras (fixos abaixo das barras)
         ImGui::SetCursorScreenPos(ImVec2(brakeBarPos.x, brakeBarPos.y + barSize.y + 5));
 
-        // Usa a fonte pequena (já configurada anteriormente com smallFont)
-        ImGui::PushFont(smallFont); // Usa a fonte pequena
-
         ImGui::Text("%.0f%%", brakeValue * 100);
 
         ImGui::SetCursorScreenPos(ImVec2(accelBarPos.x, accelBarPos.y + barSize.y + 5));
         ImGui::Text("%.0f%%", throttleValue * 100);
-
-        ImGui::PopFont(); // Restaura a fonte original
 
         ImGui::End();
     }
