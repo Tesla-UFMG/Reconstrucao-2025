@@ -5,6 +5,128 @@
 #include <algorithm>
 #include <fstream>
 #include <cstring> 
+#include "ImGuiWrapper.hpp"  // Assuming wrapper includes ImGui
+
+// ... existing code above remains unchanged ...
+
+// --- Implementação das funções de drag & drop e manipulação de coordenadas ---
+
+void Window::Reconstruction::processColumnDragDrop(COORDData& coordData) {
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
+            // Safely construct string from payload data
+            std::string payloadStr((const char*)payload->Data, payload->DataSize);
+            std::stringstream ss(payloadStr);
+            std::string archiveName, columnName;
+            if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
+                try {
+                    // Obter dados da coluna via DB
+                    std::vector<double> data = DB::getInstance().getCSVData(archiveName, columnName);
+                    if (!data.empty()) {
+                        size_t idx = coordData.columns.size();
+                        coordData.archives.push_back(archiveName);
+                        coordData.columns.push_back(columnName);
+                        coordData.multiplier.push_back(1.0);
+                        // Primeiro arraste -> X, segundo -> Y
+                        if (idx == COORD_X) {
+                            coordData.x.push_back(data);
+                        } else if (idx == COORD_Y) {
+                            coordData.y.push_back(data);
+                        } else {
+                            LOG("WARN", "Reconstrução: índice de coordenada inesperado " + std::to_string(idx));
+                        }
+                        LOG("INFO", "Reconstrução: coluna '" + columnName + "' de '" + archiveName + "' adicionada como " + (idx == COORD_X ? "X" : "Y"));
+                    } else {
+                        LOG("ERROR", "Reconstrução: falha ao ler coluna '" + columnName + "' de '" + archiveName + "'.");
+                    }
+                } catch (const std::exception& e) {
+                    LOG("ERROR", std::string("Reconstrução: exceção ao processar payload: ") + e.what());
+                }
+            } else {
+                LOG("ERROR", "Reconstrução: payload mal formado: '" + payloadStr + "'");
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+}
+
+
+void Window::Reconstruction::generateSimulatedData(int numPoints, size_t coordIndex, float* x, float* y) {
+    // Gera dados de uma curva simples (círculo ou senóide) como fallback
+    (void)coordIndex; // Para ignorar o warning
+    
+    if (x == nullptr || y == nullptr) {
+        LOG("ERROR", "generateSimulatedData: Ponteiros x ou y são nulos.");
+        return;
+    }
+    float radius = 100.0f;
+    for (int i = 0; i < numPoints; ++i) {
+        float t = (float)i / (numPoints - 1) * 2.0f * M_PI;
+        x[i] = radius * std::cos(t);
+        y[i] = radius * std::sin(t) + Y_OFFSET;
+    }
+}
+
+void Window::Reconstruction::addCoord(std::vector<COORDData>& coord) {
+    COORDData newData;
+    newData.columns = { "latitude", "longitude" };
+    newData.archives.clear();
+    newData.x.push_back({});
+    newData.y.push_back({});
+    newData.multiplier.push_back(1.0);
+    coord.push_back(std::move(newData));
+}
+
+void Window::Reconstruction::removeCoord(std::vector<COORDData>& coord, size_t coordIndex) {
+    if (coordIndex < coord.size()) {
+        coord.erase(coord.begin() + coordIndex);
+    }
+}
+
+void Window::Reconstruction::renderGraph(size_t coordIndex) {
+    // Desenha gráfico de linha simples usando ImGui::PlotLines
+    if (coordIndex < this->coordDataList.size()) {
+        COORDData& d = this->coordDataList[coordIndex];
+        if (!d.x.empty() && !d.y.empty()) {
+            int count = (int)d.x[coordIndex].size();
+            // Converte para float
+            std::vector<float> plotX(count), plotY(count);
+            for (int i = 0; i < count; ++i) {
+                plotX[i] = (float)d.x[coordIndex][i] * (float)d.multiplier[coordIndex];
+                plotY[i] = (float)d.y[coordIndex][i] * (float)d.multiplier[coordIndex];
+            }
+            ImGui::Text("Coordenadas %zu", coordIndex);
+            ImGui::PlotLines("X", plotX.data(), count);
+            ImGui::PlotLines("Y", plotY.data(), count);
+        }
+    }
+}
+
+void Window::Reconstruction::renderResizeButton(size_t coordIndex) {
+    if (coordIndex < this->coordDataList.size()) {
+        COORDData& d = this->coordDataList[coordIndex];
+        float size = d.multiplier[coordIndex] * 100.0f;
+        ImGui::Text("Tamanho: %.1f", size);
+        if (ImGui::Button((std::string("Resize #") + std::to_string(coordIndex)).c_str())) {
+            d.multiplier[coordIndex] = std::clamp(d.multiplier[coordIndex] * 1.1, MIN_COORD_SIZE / size, MAX_COORD_SIZE / size);
+        }
+    }
+}
+
+void Window::Reconstruction::ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY) {
+    // Converte lat/lon em coordenadas planas (equiretangular projection)
+    size_t n = outX.size();
+    float originLat = outY.empty() ? 0.0f : outY[0];
+    float originLon = outX.empty() ? 0.0f : outX[0];
+    const float R = 6371000.0f; // raio da Terra em metros
+    for (size_t i = 0; i < n; ++i) {
+        float dLat = (outY[i] - originLat) * M_PI / 180.0f;
+        float dLon = (outX[i] - originLon) * M_PI / 180.0f;
+        outX[i] = R * dLon * std::cos(originLat * M_PI / 180.0f);
+        outY[i] = R * dLat;
+    }
+}
+
 
 // Estrutura que armazena as informações do marcador
 struct MarkerInfo {
@@ -211,6 +333,27 @@ Window::Reconstruction::Reconstruction(bool* isOpen) : IWindow(isOpen) {
 void Window::Reconstruction::render() {
     if (this->isOpen && *this->isOpen) {
         ImGui::Begin(this->title.c_str(), this->isOpen);
+
+        ImGui::InvisibleButton("DropArea", ImVec2(100, 100)); // cria uma área invisível 200x200px
+
+        ImGui::Separator();
+        ImGui::Text("Coordenadas carregadas:");
+        // buttons to add/remove coordinate sets
+        if (ImGui::Button("Adicionar Conjunto de Coordenadas")) addCoord(this->coordDataList);
+        ImGui::SameLine();
+        if (!this->coordDataList.empty() && ImGui::Button("Remover Último Conjunto")) removeCoord(this->coordDataList, this->coordDataList.size()-1);
+
+        // for each loaded coord set, allow drag-drop and show graph/resize
+        for (size_t i = 0; i < coordDataList.size(); ++i) {
+            ImGui::PushID((int)i);
+            ImGui::Text("Conjunto %zu", i);
+            processColumnDragDrop(coordDataList[i]);
+            renderGraph(i);
+            renderResizeButton(i);
+            ImGui::Separator();
+            ImGui::PopID();
+        }
+        ImGui::Separator();
 
         // --- Funcionalidade de minimização ---
         if (ImGui::IsWindowCollapsed()) {
