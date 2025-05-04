@@ -48,6 +48,7 @@ namespace Window {
 
             // Funções de renderização das coordenadas
             void ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY);
+            void BuildTrackFromLatLon(size_t latIndex, size_t lonIndex);
     };
 } // namespace Window
 

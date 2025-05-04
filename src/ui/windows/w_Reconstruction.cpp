@@ -6,84 +6,10 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <sstream>
 
-// ... existing code above remains unchanged ...
+static std::vector<TrackPoint> g_track;
 
-// --- Implementação das funções de drag & drop e manipulação de coordenadas ---
-
-void Window::Reconstruction::processColumnDragDrop() {
-
-    if (ImGui::BeginDragDropTarget()) {
-        // Aceita o payload
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-            std::stringstream ss(static_cast<const char*>(payload->Data));
-            std::string       archiveName, columnName;
-
-            // Pega o nome do arquivo e a coluna
-            if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
-                this->addColumnToMap(archiveName, columnName);
-            }
-        }
-        ImGui::EndDragDropTarget();
-    }
-}
-
-void Window::Reconstruction::addColumnToMap(const std::string& archiveName, const std::string& columnName) {
-    // Verifica se a coluna do arquivo já foi adicionada
-    for (COORDData& coordData : coordDataList) {
-        if (coordData.archive == archiveName && coordData.column == columnName) {
-            LOG("WARN", "Reconstrução: A coluna " + columnName + " do arquivo " + archiveName + " já existe.");
-            return;
-        }
-    }
-
-    // Adiciona os eixos
-    std::vector<double> data = DB::getInstance().getCSVData(archiveName, columnName);
-    if (data.size() == 0) {
-        LOG("ERROR",
-            "Não foi possível adicionar a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
-        return;
-    }
-
-    COORDData coordData;
-    coordData.data       = data;
-    coordData.column     = columnName;
-    coordData.archive    = archiveName;
-    coordData.multiplier = 1.0;
-    coordDataList.push_back(coordData);
-
-    LOG("DEBUG", "Coluna " + columnName + " adicionada à reconstrução.");
-}
-
-void Window::Reconstruction::generateSimulatedData(int numPoints, size_t coordIndex, float* x, float* y) {
-    // Gera dados de uma curva simples (círculo ou senóide) como fallback
-    (void)coordIndex; // Para ignorar o warning
-
-    if (x == nullptr || y == nullptr) {
-        LOG("ERROR", "generateSimulatedData: Ponteiros x ou y são nulos.");
-        return;
-    }
-    float radius = 100.0f;
-    for (int i = 0; i < numPoints; ++i) {
-        float t = (float)i / (numPoints - 1) * 2.0f * M_PI;
-        x[i]    = radius * std::cos(t);
-        y[i]    = radius * std::sin(t) + Y_OFFSET;
-    }
-}
-
-void Window::Reconstruction::ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY) {
-    // Converte lat/lon em coordenadas planas (equiretangular projection)
-    size_t      n         = outX.size();
-    float       originLat = outY.empty() ? 0.0f : outY[0];
-    float       originLon = outX.empty() ? 0.0f : outX[0];
-    const float R         = 6371000.0f; // raio da Terra em metros
-    for (size_t i = 0; i < n; ++i) {
-        float dLat = (outY[i] - originLat) * M_PI / 180.0f;
-        float dLon = (outX[i] - originLon) * M_PI / 180.0f;
-        outX[i]    = R * dLon * std::cos(originLat * M_PI / 180.0f);
-        outY[i]    = R * dLat;
-    }
-}
 
 // Estrutura que armazena as informações do marcador
 struct MarkerInfo {
@@ -98,15 +24,6 @@ struct MarkerInfo {
 struct TrackPoint {
         float x, y;
         float referenceSpeed;
-};
-
-// Pista retangular: definindo os vértices
-static std::vector<TrackPoint> g_track = {
-    {50.f,  50.f,  80.f},
-    {350.f, 50.f,  80.f},
-    {350.f, 250.f, 80.f},
-    {50.f,  250.f, 80.f},
-    {50.f,  50.f,  80.f}
 };
 
 // Variáveis de simulação do kart
@@ -170,6 +87,114 @@ struct CommentWindow {
         bool        reposition;
 };
 static std::vector<CommentWindow> g_commentWindows;
+
+void Window::Reconstruction::ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY) {
+    // Converte lat/lon em coordenadas planas (equiretangular projection)
+    size_t      n         = outX.size();
+    float       originLat = outY.empty() ? 0.0f : outY[0];
+    float       originLon = outX.empty() ? 0.0f : outX[0];
+    const float R         = 6371000.0f; // raio da Terra em metros
+    for (size_t i = 0; i < n; ++i) {
+        float dLat = (outY[i] - originLat) * M_PI / 180.0f;
+        float dLon = (outX[i] - originLon) * M_PI / 180.0f;
+        outX[i]    = R * dLon * std::cos(originLat * M_PI / 180.0f);
+        outY[i]    = R * dLat;
+    }
+}
+
+// Called after columns for latitude and longitude have been added
+void Window::Reconstruction::BuildTrackFromLatLon(size_t latIndex, size_t lonIndex) {
+    if (latIndex >= coordDataList.size() || lonIndex >= coordDataList.size()) return;
+
+    // Extract raw lat/lon
+    const auto& latData = coordDataList[latIndex].data;
+    const auto& lonData = coordDataList[lonIndex].data;
+    size_t n = std::min(latData.size(), lonData.size());
+    
+    // Convert to planar X/Y
+    std::vector<float> xs(n), ys(n);
+    for (size_t i = 0; i < n; ++i) {
+        xs[i] = static_cast<float>(lonData[i]);
+        ys[i] = static_cast<float>(latData[i]);
+    }
+    ConvertLatLonToXY(xs, ys);
+
+    // Rebuild g_track
+    g_track.clear();
+    g_track.reserve(n+1);
+    for (size_t i = 0; i < n; ++i) {
+        TrackPoint pt;
+        pt.x = xs[i];
+        pt.y = ys[i];
+        pt.referenceSpeed = DEFAULT_SPEED; // or compute per segment
+        g_track.push_back(pt);
+    }
+    // close loop if desired
+    if (n > 1) g_track.push_back(g_track.front());
+}
+
+// --- Implementação das funções de drag & drop e manipulação de coordenadas ---
+
+void Window::Reconstruction::processColumnDragDrop() {
+
+    if (ImGui::BeginDragDropTarget()) {
+        // Aceita o payload
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
+            std::stringstream ss(static_cast<const char*>(payload->Data));
+            std::string       archiveName, columnName;
+
+            // Pega o nome do arquivo e a coluna
+            if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
+                this->addColumnToMap(archiveName, columnName);
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+}
+
+void Window::Reconstruction::addColumnToMap(const std::string& archiveName, const std::string& columnName) {
+    // Verifica se a coluna do arquivo já foi adicionada
+    for (COORDData& coordData : coordDataList) {
+        if (coordData.archive == archiveName && coordData.column == columnName) {
+            LOG("WARN", "Reconstrução: A coluna " + columnName + " do arquivo " + archiveName + " já existe.");
+            return;
+        }
+    }
+
+    // Adiciona os eixos
+    std::vector<double> data = DB::getInstance().getCSVData(archiveName, columnName);
+    if (data.size() == 0) {
+        LOG("ERROR",
+            "Não foi possível adicionar a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
+        return;
+    }
+
+    COORDData coordData;
+    coordData.data       = data;
+    coordData.column     = columnName;
+    coordData.archive    = archiveName;
+    coordData.multiplier = 1.0;
+    coordDataList.push_back(coordData);
+
+    LOG("DEBUG", "Coluna " + columnName + " adicionada à reconstrução.");
+}
+
+void Window::Reconstruction::generateSimulatedData(int numPoints, size_t coordIndex, float* x, float* y) {
+    // Gera dados de uma curva simples (círculo ou senóide) como fallback
+    (void)coordIndex; // Para ignorar o warning
+
+    if (x == nullptr || y == nullptr) {
+        LOG("ERROR", "generateSimulatedData: Ponteiros x ou y são nulos.");
+        return;
+    }
+    float radius = 100.0f;
+    for (int i = 0; i < numPoints; ++i) {
+        float t = (float)i / (numPoints - 1) * 2.0f * M_PI;
+        x[i]    = radius * std::cos(t);
+        y[i]    = radius * std::sin(t) + Y_OFFSET;
+    }
+}
+
 
 //---------------------------------------------------------
 // Funções de salvamento e carregamento de corridas
@@ -397,6 +422,12 @@ void Window::Reconstruction::render() {
                 ImVec2 s_drawOrigin = drawOrigin;
                 float  s_scale      = scale;
 
+                // In render, after processing drag & drop, detect when two columns present and build track
+                if (coordDataList.size() >= 2) {
+                    // assume first is lon, second lat (or match by column names)
+                    BuildTrackFromLatLon(1, 0);
+                }
+
                 // Desenha a pista, marcadores e o kart
                 DrawTrackAndKartAt(drawOrigin, scale);
 
@@ -550,6 +581,7 @@ void Window::Reconstruction::render() {
                 }
             }
         }
+
         ImGui::End();
     }
 }
