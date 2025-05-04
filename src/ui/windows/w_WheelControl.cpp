@@ -2,22 +2,25 @@
 
 // Função auxiliar para desenhar a imagem rotacionada
 void DrawRotatedImage(ImTextureID texture, const ImVec2& pos, float size, float angleDeg) {
-    float halfSize = size * 0.5f;
-    ImVec2 center = ImVec2(pos.x + halfSize, pos.y + halfSize);
+    float  halfSize = size * 0.5f;
+    ImVec2 center   = ImVec2(pos.x + halfSize, pos.y + halfSize);
 
     float angleRad = angleDeg * (3.14159265f / 180.0f);
-    float cosA = cosf(angleRad);
-    float sinA = sinf(angleRad);
+    float cosA     = cosf(angleRad);
+    float sinA     = sinf(angleRad);
 
-    ImVec2 topLeft = ImVec2(-halfSize, -halfSize);
-    ImVec2 topRight = ImVec2(halfSize, -halfSize);
+    ImVec2 topLeft     = ImVec2(-halfSize, -halfSize);
+    ImVec2 topRight    = ImVec2(halfSize, -halfSize);
     ImVec2 bottomRight = ImVec2(halfSize, halfSize);
-    ImVec2 bottomLeft = ImVec2(-halfSize, halfSize);
+    ImVec2 bottomLeft  = ImVec2(-halfSize, halfSize);
 
     ImVec2 p1 = ImVec2(center.x + topLeft.x * cosA - topLeft.y * sinA, center.y + topLeft.x * sinA + topLeft.y * cosA);
-    ImVec2 p2 = ImVec2(center.x + topRight.x * cosA - topRight.y * sinA, center.y + topRight.x * sinA + topRight.y * cosA);
-    ImVec2 p3 = ImVec2(center.x + bottomRight.x * cosA - bottomRight.y * sinA, center.y + bottomRight.x * sinA + bottomRight.y * cosA);
-    ImVec2 p4 = ImVec2(center.x + bottomLeft.x * cosA - bottomLeft.y * sinA, center.y + bottomLeft.x * sinA + bottomLeft.y * cosA);
+    ImVec2 p2 =
+        ImVec2(center.x + topRight.x * cosA - topRight.y * sinA, center.y + topRight.x * sinA + topRight.y * cosA);
+    ImVec2 p3 = ImVec2(center.x + bottomRight.x * cosA - bottomRight.y * sinA,
+                       center.y + bottomRight.x * sinA + bottomRight.y * cosA);
+    ImVec2 p4 = ImVec2(center.x + bottomLeft.x * cosA - bottomLeft.y * sinA,
+                       center.y + bottomLeft.x * sinA + bottomLeft.y * cosA);
 
     ImVec2 uv0 = ImVec2(0.0f, 0.0f);
     ImVec2 uv1 = ImVec2(1.0f, 0.0f);
@@ -35,9 +38,9 @@ Window::WheelControl::WheelControl(bool* isOpen) : IWindow(isOpen) {
 void Window::WheelControl::render() {
     static float anguloVolante = 0.0f;
     static float sensibilidade = 1.0f;
-    static int anguloMaximo = 900;
-    static bool forceFeedback = true;
-    static bool showSettings = false;
+    static int   anguloMaximo  = 900;
+    static bool  forceFeedback = true;
+    static bool  showSettings  = false;
 
     if (this->isOpen && *this->isOpen) {
         ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
@@ -54,15 +57,17 @@ void Window::WheelControl::render() {
             anguloVolante += 5.0f * sensibilidade;
         }
 
-        if (anguloVolante > anguloMaximo / 2.0f) anguloVolante = anguloMaximo / 2.0f;
-        if (anguloVolante < -anguloMaximo / 2.0f) anguloVolante = -anguloMaximo / 2.0f;
+        if (anguloVolante > anguloMaximo / 2.0f)
+            anguloVolante = anguloMaximo / 2.0f;
+        if (anguloVolante < -anguloMaximo / 2.0f)
+            anguloVolante = -anguloMaximo / 2.0f;
 
         SDL_Texture* volanteTexture = AssetManager::getInstance().getTexture(VOLANTE_PATH);
         if (volanteTexture) {
-            ImVec2 avail = ImGui::GetContentRegionAvail();
-            float size = (avail.x < avail.y) ? avail.x : avail.y;
-            ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-            cursorPos.x += (avail.x - size) / 2.0f;
+            ImVec2 avail      = ImGui::GetContentRegionAvail();
+            float  size       = (avail.x < avail.y) ? avail.x : avail.y;
+            ImVec2 cursorPos  = ImGui::GetCursorScreenPos();
+            cursorPos.x      += (avail.x - size) / 2.0f;
 
             DrawRotatedImage((ImTextureID)volanteTexture, cursorPos, size, anguloVolante);
             ImGui::Dummy(ImVec2(avail.x, size));

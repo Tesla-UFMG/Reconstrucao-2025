@@ -4,13 +4,11 @@
 static float throttleValue = 0.0f;
 static float brakeValue    = 0.0f;
 
-
 Window::Pedal::Pedal(bool* isOpen) : IWindow(isOpen) {
     this->title             = "Pedal";
     this->flags             = ImGuiWindowFlags_NoScrollbar;
     this->redPedalTexture   = (ImTextureID)AssetManager::getInstance().getTexture("assets/pedalvermelho.png");
     this->greenPedalTexture = (ImTextureID)AssetManager::getInstance().getTexture("assets/pedalverde.png");
-
 }
 
 void Window::Pedal::render() {

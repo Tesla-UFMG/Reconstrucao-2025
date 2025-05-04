@@ -7,12 +7,12 @@ Window::Playback::Playback(bool* isOpen) : IWindow(isOpen) {
 
 void Window::Playback::render() {
     // Variáveis estáticas para manter o estado entre renderizações
-    static float counter = 0.0f;      
-    static int selectedButton = 0;     
-    static float jumpStep = 1.0f;         
-    const float MAX_TIME = 60.0f;          
-    
-    ImGuiIO& io = ImGui::GetIO();  // Para acessar o deltaTime
+    static float counter        = 0.0f;
+    static int   selectedButton = 0;
+    static float jumpStep       = 1.0f;
+    const float  MAX_TIME       = 60.0f;
+
+    ImGuiIO& io = ImGui::GetIO(); // Para acessar o deltaTime
 
     if (this->isOpen && *this->isOpen) {
         ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
@@ -21,7 +21,7 @@ void Window::Playback::render() {
         if (selectedButton == 1) {
             counter += io.DeltaTime;
             if (counter > MAX_TIME)
-                counter = MAX_TIME; 
+                counter = MAX_TIME;
         }
 
         ImGui::SliderFloat("Tempo da Corrida", &counter, 0.0f, MAX_TIME, "%.2f s");
