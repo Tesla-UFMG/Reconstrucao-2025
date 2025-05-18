@@ -25,6 +25,23 @@ struct COORDData {
         double              multiplier;
 };
 
+// Estrutura que armazena as informações do marcador
+struct MarkerInfo {
+    ImVec2 pos;
+    float  speed;
+    float  acceleration;
+    float  position;
+    int    lap;
+    int trackIndex;
+    float trackFrac;
+};
+
+// Define cada ponto da pista com posição (x,y) e velocidade de referência
+struct TrackPoint {
+    float x, y;
+    float referenceSpeed;
+};
+
 namespace Window {
     class Reconstruction : public IWindow {
         public:
@@ -33,8 +50,11 @@ namespace Window {
 
         private:
             ImU32 GetColorForSpeed(float speed);
-            void  DrawTrackAndKartAt(const ImVec2& origin, float scale);
-            void  UpdateKartSimulation(float deltaTime);
+            void  DrawTrackAndKartAt(const std::vector<ImVec2>& screenPts,
+                                                const ImVec2& origin,
+                                                float scal);
+            void  UpdateKartSimulation(float deltaTime,
+                                                  const std::vector<ImVec2>& screenPts);
 
             // --- Drag & Drop de CSV para reconstrução ---
             void processColumnDragDrop();
@@ -49,6 +69,7 @@ namespace Window {
             // Funções de renderização das coordenadas
             void ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY);
             void BuildTrackFromLatLon(size_t latIndex, size_t lonIndex);
+            void RenderTrackOverlay();
     };
 } // namespace Window
 

@@ -10,21 +10,14 @@
 
 static std::vector<TrackPoint> g_track;
 
+inline ImVec2 operator-(const ImVec2& lhs, const ImVec2& rhs) {
+    return ImVec2(lhs.x - rhs.x, lhs.y - rhs.y);
+}
 
-// Estrutura que armazena as informações do marcador
-struct MarkerInfo {
-        ImVec2 pos;
-        float  speed;
-        float  acceleration;
-        float  position;
-        int    lap;
-};
 
-// Define cada ponto da pista com posição (x,y) e velocidade de referência
-struct TrackPoint {
-        float x, y;
-        float referenceSpeed;
-};
+//variaveis para aba "coordenadas"
+static int g_latIndex = -1;
+static int g_lonIndex = -1;
 
 // Variáveis de simulação do kart
 static float g_kartSpeed    = 50.0f;
@@ -152,7 +145,9 @@ void Window::Reconstruction::processColumnDragDrop() {
     }
 }
 
-void Window::Reconstruction::addColumnToMap(const std::string& archiveName, const std::string& columnName) {
+// Modificação em addColumnToMap para registrar índices de latitude/longitude
+void Window::Reconstruction::addColumnToMap(const std::string& archiveName,
+                                            const std::string& columnName) {
     // Verifica se a coluna do arquivo já foi adicionada
     for (COORDData& coordData : coordDataList) {
         if (coordData.archive == archiveName && coordData.column == columnName) {
@@ -163,18 +158,31 @@ void Window::Reconstruction::addColumnToMap(const std::string& archiveName, cons
 
     // Adiciona os eixos
     std::vector<double> data = DB::getInstance().getCSVData(archiveName, columnName);
-    if (data.size() == 0) {
+    if (data.empty()) {
         LOG("ERROR",
             "Não foi possível adicionar a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
         return;
     }
 
+    // Cria e adiciona ao vetor
     COORDData coordData;
     coordData.data       = data;
     coordData.column     = columnName;
     coordData.archive    = archiveName;
     coordData.multiplier = 1.0;
     coordDataList.push_back(coordData);
+
+    // Identifica se é latitude ou longitude e armazena o índice
+    int newIndex = static_cast<int>(coordDataList.size()) - 1;
+    std::string lower = columnName;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    if (lower.find("lat") != std::string::npos) {
+        g_latIndex = newIndex;
+        LOG("DEBUG", "Latitude cadastrada em coordDataList[" + std::to_string(newIndex) + "]");
+    } else if (lower.find("lon") != std::string::npos || lower.find("lng") != std::string::npos) {
+        g_lonIndex = newIndex;
+        LOG("DEBUG", "Longitude cadastrada em coordDataList[" + std::to_string(newIndex) + "]");
+    }
 
     LOG("DEBUG", "Coluna " + columnName + " adicionada à reconstrução.");
 }
@@ -348,6 +356,8 @@ void Window::Reconstruction::render() {
         if (ImGui::Button("Gerenciar Corridas"))
             activeTab = 1;
         ImGui::SameLine();
+        if (ImGui::Button("Coordenadas"))
+            activeTab = 2;
         if (ImGui::Button(showTrackInfo ? "Ocultar Informações" : "Mostrar Informações"))
             showTrackInfo = !showTrackInfo;
         ImGui::SameLine();
@@ -389,180 +399,130 @@ void Window::Reconstruction::render() {
         }
         ImGui::Separator();
 
+        ImGui::BeginChild("DragAndDropArea");
         // Conteúdo dependendo da área ativa selecionada no menu
-        if (activeTab == 0) {
-            ImGui::BeginChild("DragAndDropArea");
-            {
-                // --- Área de Simulação ---
-                static Uint32 lastTime    = SDL_GetTicks();
-                Uint32        currentTime = SDL_GetTicks();
-                float         deltaTime   = (currentTime - lastTime) / 1000.0f;
-                lastTime                  = currentTime;
-                UpdateKartSimulation(deltaTime);
 
-                // Área para desenho da pista
-                ImVec2 region     = ImGui::GetContentRegionAvail();
-                ImVec2 drawOrigin = ImGui::GetCursorScreenPos();
+ if (activeTab == 0) {
+    // 1) Sliders para altura e zoom do gráfico
+    static float cartHeight = 300.0f;
+    static float cartZoom   = 1.0f;
+    ImGui::SliderFloat("Altura do Gráfico", &cartHeight, 100.0f, 800.0f, "%.0f px");
+    ImGui::SliderFloat("Zoom (escala)",     &cartZoom,   0.1f, 5.0f,   "%.2fx");
+    ImGui::Separator();
 
-                // Cálculos para centralização e escala da pista
-                float  trackWidth    = g_track[g_track.size() - 1].x - g_track[0].x;
-                float  trackHeight   = g_track[2].y - g_track[1].y;
-                float  scaleX        = region.x / trackWidth;
-                float  scaleY        = region.y / trackHeight;
-                float  scale         = std::min(scaleX, scaleY) * 0.8f;
-                float  trackCenterX  = (g_track[0].x + g_track[2].x) / 2;
-                float  trackCenterY  = (g_track[0].y + g_track[1].y) / 2;
-                float  windowCenterX = region.x / 2;
-                float  windowCenterY = region.y / 2;
-                ImVec2 offset  = ImVec2(windowCenterX - trackCenterX * scale, windowCenterY - trackCenterY * scale);
-                drawOrigin.x  += offset.x;
-                drawOrigin.y  += offset.y;
+    // 2) Pan offset
+    static ImVec2 panOffset = ImVec2(0, 0);
 
-                // Salva valores para reposicionamento das janelas de marcador e comentário
-                ImVec2 s_drawOrigin = drawOrigin;
-                float  s_scale      = scale;
+    // 3) Canvas dedicado
+    ImGui::BeginChild("Sim_Cartesiano", ImVec2(0, cartHeight), true);
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        ImVec2 origin    = ImGui::GetCursorScreenPos();
+        ImVec2 size      = ImGui::GetContentRegionAvail();
+        ImVec2 maxPt(origin.x + size.x, origin.y + size.y);
 
-                // In render, after processing drag & drop, detect when two columns present and build track
-                if (coordDataList.size() >= 2) {
-                    // assume first is lon, second lat (or match by column names)
-                    BuildTrackFromLatLon(1, 0);
-                }
+        // fundo + eixos
+        draw->AddRectFilled(origin, maxPt, IM_COL32(20,20,20,255));
+        ImVec2 mid((origin.x+maxPt.x)*0.5f, (origin.y+maxPt.y)*0.5f);
+        draw->AddLine({origin.x, mid.y}, {maxPt.x, mid.y}, IM_COL32(100,100,100,255));
+        draw->AddLine({mid.x, origin.y}, {mid.x, maxPt.y}, IM_COL32(100,100,100,255));
 
-                // Desenha a pista, marcadores e o kart
-                DrawTrackAndKartAt(drawOrigin, scale);
-
-                // Criação de triângulo para comentário (ao clicar com o botão direito)
-                if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                    ImVec2 mousePos = ImGui::GetMousePos();
-                    ImVec2 worldPos;
-                    worldPos.x = (mousePos.x - drawOrigin.x) / scale;
-                    worldPos.y = (mousePos.y - drawOrigin.y) / scale + Y_OFFSET;
-                    ImVec2 initialWindowPos =
-                        ImVec2(drawOrigin.x + worldPos.x * scale, drawOrigin.y + (worldPos.y - Y_OFFSET) * scale - 40);
-                    g_commentWindows.push_back({worldPos, initialWindowPos, "", true, false, true});
-                }
-
-                // Desenho dos Marker Windows
-                ImDrawList* overlayDrawList = ImGui::GetForegroundDrawList();
-                for (size_t i = 0; i < g_markerWindows.size(); i++) {
-                    MarkerWindow& mw         = g_markerWindows[i];
-                    std::string   windowName = "Marker Info (" + mw.type + ")##" + std::to_string(i);
-
-                    // Se estiver minimizada, podemos desenhar um indicador extra (ou nada) e não abrir a janela
-                    if (mw.minimized) {
-                        // Exemplo: desenha um pequeno ponto extra para indicar que há uma janela minimizada
-                        ImDrawList* overlayDrawList = ImGui::GetForegroundDrawList();
-                        ImVec2      markerScreenPos = ImVec2(s_drawOrigin.x + mw.marker.pos.x * s_scale,
-                                                             s_drawOrigin.y + (mw.marker.pos.y - Y_OFFSET) * s_scale);
-                        overlayDrawList->AddCircle(markerScreenPos, 6.0f, IM_COL32(255, 255, 255, 255));
-                        // Não chama ImGui::Begin, mantendo a janela "escondida"
-                        continue;
-                    }
-
-                    // Se não estiver minimizada, posiciona e desenha a janela
-                    if (mw.reposition) {
-                        ImGui::SetNextWindowPos(ImVec2(s_drawOrigin.x + mw.marker.pos.x * s_scale,
-                                                       s_drawOrigin.y + (mw.marker.pos.y - Y_OFFSET) * s_scale - 40),
-                                                ImGuiCond_Always);
-                        mw.reposition = false;
-                    } else {
-                        ImGui::SetNextWindowPos(ImVec2(s_drawOrigin.x + mw.marker.pos.x * s_scale,
-                                                       s_drawOrigin.y + (mw.marker.pos.y - Y_OFFSET) * s_scale - 40),
-                                                ImGuiCond_FirstUseEver);
-                    }
-
-                    // Usamos um booleano temporário para controlar o fechamento via "x"
-                    bool windowOpen = true;
-                    if (ImGui::Begin(windowName.c_str(), &windowOpen)) {
-                        ImGui::Text("Tipo: %s", mw.type.c_str());
-                        ImGui::Text("Velocidade: %.1f km/h", mw.marker.speed);
-                        ImGui::Text("Aceleração: %.1f km/h/s", mw.marker.acceleration);
-                        ImGui::Text("Posição: %.2f", mw.marker.position);
-                        ImGui::Text("Volta: %d", mw.marker.lap);
-                        // Botão para minimizar manualmente a janela
-                        if (ImGui::Button("Minimizar")) {
-                            mw.minimized = true;
-                        }
-                        ImVec2 winPos          = ImGui::GetWindowPos();
-                        ImVec2 winSize         = ImGui::GetWindowSize();
-                        ImVec2 arrowTarget     = ImVec2(winPos.x + winSize.x * 0.5f, winPos.y);
-                        ImVec2 markerScreenPos = ImVec2(s_drawOrigin.x + mw.marker.pos.x * s_scale,
-                                                        s_drawOrigin.y + (mw.marker.pos.y - Y_OFFSET) * s_scale);
-                        DrawArrow(ImGui::GetForegroundDrawList(), markerScreenPos, arrowTarget,
-                                  IM_COL32(255, 255, 255, 255));
-                    }
-                    ImGui::End();
-
-                    // Se o usuário fechou a janela via "x", em vez de remover, apenas minimiza
-                    if (!windowOpen) {
-                        mw.minimized = true;
-                    }
-                }
-
-                // Desenho dos Comment Windows
-                for (size_t i = 0; i < g_commentWindows.size();) {
-                    CommentWindow& cw = g_commentWindows[i];
-                    ImVec2         commentScreenPos =
-                        ImVec2(s_drawOrigin.x + cw.pos.x * s_scale, s_drawOrigin.y + (cw.pos.y - Y_OFFSET) * s_scale);
-                    float  markerSize    = 8.0f;
-                    ImU32  triangleColor = cw.minimized ? IM_COL32(255, 0, 0, 255) : IM_COL32(255, 255, 0, 255);
-                    ImVec2 v1            = ImVec2(commentScreenPos.x, commentScreenPos.y - markerSize);
-                    ImVec2 v2            = ImVec2(commentScreenPos.x - markerSize, commentScreenPos.y + markerSize);
-                    ImVec2 v3            = ImVec2(commentScreenPos.x + markerSize, commentScreenPos.y + markerSize);
-                    overlayDrawList->AddTriangleFilled(v1, v2, v3, triangleColor);
-
-                    ImVec2 triMin(commentScreenPos.x - markerSize, commentScreenPos.y - markerSize);
-                    ImVec2 triMax(commentScreenPos.x + markerSize, commentScreenPos.y + markerSize);
-                    if (ImGui::IsMouseHoveringRect(triMin, triMax) && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                        cw.minimized = !cw.minimized;
-                        if (!cw.minimized)
-                            cw.reposition = true;
-                    }
-
-                    if (!cw.minimized) {
-                        std::string windowName = "Comentário##" + std::to_string(i);
-                        if (cw.reposition) {
-                            ImGui::SetNextWindowPos(cw.windowPos, ImGuiCond_Always);
-                            cw.reposition = false;
-                        }
-
-                        if (ImGui::Begin(windowName.c_str(), &cw.open)) {
-                            ImGui::Text("Comentário:");
-                            char buf[256];
-                            std::strncpy(buf, cw.comment.c_str(), 255);
-                            buf[255] = '\0';
-                            if (ImGui::InputTextMultiline("##comentario", buf, 256, ImVec2(200, 100))) {
-                                cw.comment = std::string(buf);
-                            }
-                            ImVec2 winPos      = ImGui::GetWindowPos();
-                            ImVec2 winSize     = ImGui::GetWindowSize();
-                            ImVec2 arrowTarget = ImVec2(winPos.x + winSize.x * 0.5f, winPos.y);
-                            DrawArrow(overlayDrawList, commentScreenPos, arrowTarget, IM_COL32(255, 255, 0, 255));
-                        }
-                        cw.windowPos = ImGui::GetWindowPos();
-                        ImGui::End();
-                    }
-
-                    if (!cw.open) {
-                        g_commentWindows.erase(g_commentWindows.begin() + i);
-                    } else {
-                        i++;
-                    }
-                }
-
-                if (showTrackInfo) {
-                    ImGui::Separator();
-                    ImGui::Text("Informações da Pista:");
-                    ImGui::Text("Velocidade: %.1f km/h", g_kartSpeed);
-                    ImGui::Text("Posição: %.2f", g_kartPosition);
-                    ImGui::Text("Voltas: %d", g_lapCount);
-                    ImGui::Text("Aceleração: %.1f km/h/s", g_currentAcceleration);
-                    ImGui::Text("Auto Speed: %s", g_autoSpeed ? "ON" : "OFF");
-                }
-            }
-            ImGui::EndChild();
-            processColumnDragDrop();
+        // captura drag
+        ImGui::InvisibleButton("canvas_drag", size);
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            panOffset.x += ImGui::GetIO().MouseDelta.x;
+            panOffset.y += ImGui::GetIO().MouseDelta.y;
         }
+
+        // coleta de screenPts
+        std::vector<ImVec2> screenPts;
+        if (g_latIndex >= 0 && g_lonIndex >= 0) {
+            const auto& lat = coordDataList[g_latIndex].data;
+            const auto& lon = coordDataList[g_lonIndex].data;
+            size_t n = std::min(lat.size(), lon.size());
+            if (n) {
+                // bounds
+                double minX=lon[0], maxX=lon[0], minY=lat[0], maxY=lat[0];
+                for (size_t i=1;i<n;++i) {
+                    minX = std::min(minX, lon[i]); maxX = std::max(maxX, lon[i]);
+                    minY = std::min(minY, lat[i]); maxY = std::max(maxY, lat[i]);
+                }
+                double rX = maxX-minX, rY = maxY-minY;
+                ImVec2 inner(size.x*cartZoom, size.y*cartZoom);
+                for (size_t i=0;i<n;++i) {
+                    float nx = rX>0?(lon[i]-minX)/rX:0.5f;
+                    float ny = rY>0?(lat[i]-minY)/rY:0.5f;
+                    ImVec2 p = {
+                        origin.x + panOffset.x + nx*inner.x,
+                        origin.y + panOffset.y + (1.0f-ny)*inner.y
+                    };
+                    screenPts.push_back(p);
+                    draw->AddCircleFilled(p, 5.0f, IM_COL32(255,255,255,255));
+                }
+                // linha grossa
+                draw->AddPolyline(screenPts.data(), (int)screenPts.size(),
+                                IM_COL32(255,255,255,255), false, 10.0f);
+            }
+        }
+
+        // simulação do kart sobre screenPts
+        static Uint32 last = SDL_GetTicks();
+        Uint32 now = SDL_GetTicks();
+        float dt = (now-last)/1000.0f; last=now;
+        UpdateKartSimulation(dt, screenPts);
+        if (!screenPts.empty()) {
+            int idx = (int)floor(g_kartPosition) % screenPts.size();
+            int idx2 = (idx+1)%screenPts.size();
+            float f = g_kartPosition - floor(g_kartPosition);
+            ImVec2 kp = {
+                screenPts[idx].x + (screenPts[idx2].x-screenPts[idx].x)*f,
+                screenPts[idx].y + (screenPts[idx2].y-screenPts[idx].y)*f
+            };
+            draw->AddCircleFilled(kp, 8.0f, IM_COL32(255,255,0,255));
+        }
+        if (showTrackInfo) {
+            ImGui::SetNextWindowPos(ImVec2(origin.x + size.x - 10, origin.y + 10), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+            ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove;
+            ImGui::Begin("Info Pista", nullptr, flags);
+            ImGui::Text("Velocidade: %.1f km/h", g_kartSpeed);
+            ImGui::Text("Voltas: %d", g_lapCount);
+            ImGui::Text("Posição: %.1f", g_kartPosition);
+            ImGui::Text("Markers G: %zu", g_markedPositionsGreen.size());
+            ImGui::Text("Markers R: %zu", g_markedPositionsRed.size());
+            ImGui::End();
+        }
+
+        // ——— Desenhar marcadores nas posições reais (após linha branca) ———
+        if (!screenPts.empty() && g_track.size() >= 2) {
+            const auto& lat = coordDataList[g_latIndex].data;
+            const auto& lon = coordDataList[g_lonIndex].data;
+            size_t n = std::min(lat.size(), lon.size());
+            double minX = lon[0], maxX = lon[0], minY = lat[0], maxY = lat[0];
+            for (size_t i = 1; i < n; ++i) {
+                minX = std::min(minX, lon[i]); maxX = std::max(maxX, lon[i]);
+                minY = std::min(minY, lat[i]); maxY = std::max(maxY, lat[i]);
+            }
+            double rX = maxX - minX, rY = maxY - minY;
+            ImVec2 inner = ImVec2(size.x * cartZoom, size.y * cartZoom);
+
+            auto drawMarker = [&](const MarkerInfo& m, ImU32 col) {
+                float nx = rX > 0 ? (m.pos.x - minX) / rX : 0.5f;
+                float ny = rY > 0 ? (m.pos.y - minY) / rY : 0.5f;
+                ImVec2 p = {
+                    origin.x + panOffset.x + nx * inner.x,
+                    origin.y + panOffset.y + (1.0f - ny) * inner.y
+                };
+                draw->AddCircleFilled(p, 6.0f, col); // desenha no mesmo draw!
+            };
+
+            for (auto& m : g_markedPositionsGreen)
+                drawMarker(m, IM_COL32(0,255,0,255));
+            for (auto& m : g_markedPositionsRed)
+                drawMarker(m, IM_COL32(255,0,0,255));
+        }
+
+    ImGui::EndChild();
+}
+    
 
         else if (activeTab == 1) {
             // --- Área de Gerenciamento de Corridas ---
@@ -581,7 +541,36 @@ void Window::Reconstruction::render() {
                 }
             }
         }
+        else if (activeTab == 2) {
 
+        ImGui::Separator();
+        ImGui::Text("Coordenadas carregadas:");
+    if (g_latIndex < 0 || g_lonIndex < 0) {
+        ImGui::TextDisabled("Arraste colunas de latitude e longitude primeiro.");
+    } else {
+        const auto& latData = coordDataList[g_latIndex].data;
+        const auto& lonData = coordDataList[g_lonIndex].data;
+        size_t n = std::min(latData.size(), lonData.size());
+
+        if (ImGui::BeginTable("TabelaCoordenadas", 2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Latitude",  ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Longitude", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+            for (size_t i = 0; i < n; ++i) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%.6f", latData[i]);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%.6f", lonData[i]);
+            }
+            ImGui::EndTable();
+        }
+    }
+}
+
+        ImGui::EndChild();
+        processColumnDragDrop();
         ImGui::End();
     }
 }
@@ -601,68 +590,67 @@ ImU32 Window::Reconstruction::GetColorForSpeed(float speed) {
 //---------------------------------------------------------
 // Desenha a pista, marcadores e o kart
 //---------------------------------------------------------
-void Window::Reconstruction::DrawTrackAndKartAt(const ImVec2& origin, float scale) {
-    ImDrawList* draw_list  = ImGui::GetWindowDrawList();
-    ImU32       trackColor = GetColorForSpeed(g_kartSpeed);
-    for (size_t i = 0; i + 1 < g_track.size(); i++) {
-        ImVec2 p1(origin.x + g_track[i].x * scale, origin.y + (g_track[i].y - Y_OFFSET) * scale);
-        ImVec2 p2(origin.x + g_track[i + 1].x * scale, origin.y + (g_track[i + 1].y - Y_OFFSET) * scale);
-        draw_list->AddLine(p1, p2, trackColor, 4.0f);
+void Window::Reconstruction::DrawTrackAndKartAt(const std::vector<ImVec2>& screenPts,
+                                                const ImVec2& origin,
+                                                float scale)
+{
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImU32 trackColor = GetColorForSpeed(g_kartSpeed);
+
+    // 1) Desenha a linha do track
+    if (!screenPts.empty()) {
+        draw_list->AddPolyline(screenPts.data(),
+                               (int)screenPts.size(),
+                               trackColor,
+                               false,
+                               4.0f * scale);
     }
 
-    // Lambda para detectar clique sobre o retângulo do marcador
-    auto checkClick = [&](const MarkerInfo& marker, const std::string& type) {
-        ImVec2 rectCenter(origin.x + marker.pos.x * scale, origin.y + (marker.pos.y - Y_OFFSET) * scale);
-        float  halfSize = 5.0f;
-        ImVec2 rectMin(rectCenter.x - halfSize, rectCenter.y - halfSize);
-        ImVec2 rectMax(rectCenter.x + halfSize, rectCenter.y + halfSize);
-        if (ImGui::IsMouseHoveringRect(rectMin, rectMax) && ImGui::IsMouseClicked(0)) {
-            const float epsilon     = 0.001f;
-            bool        windowFound = false;
-            for (auto& mw : g_markerWindows) {
-                if (mw.type == type && std::abs(mw.marker.pos.x - marker.pos.x) < epsilon &&
-                    std::abs(mw.marker.pos.y - marker.pos.y) < epsilon) {
-                    // Se existir, alterna o estado minimizado
-                    mw.minimized = !mw.minimized;
-                    if (!mw.minimized)
-                        mw.reposition = true;
-                    windowFound = true;
-                    break;
-                }
-            }
-            if (!windowFound) {
-                // Cria a janela com estado minimizado = false (visível)
-                g_markerWindows.push_back({marker, type, true, false, false});
-            }
+    // 2) Desenha marcadores verdes/vermelhos
+    auto drawMarkers = [&](const std::vector<MarkerInfo>& markers, ImU32 col){
+        for (auto& m : markers) {
+            // encontra posição interpolada em screenPts
+            // aqui assumimos m.trackIndex e m.trackFrac definidos na simulação
+            int idx = m.trackIndex;
+            float f = m.trackFrac;
+            idx = std::clamp(idx, 0, (int)screenPts.size()-2);
+            ImVec2 p = {
+                screenPts[idx].x + (screenPts[idx+1].x - screenPts[idx].x)*f,
+                screenPts[idx].y + (screenPts[idx+1].y - screenPts[idx].y)*f
+            };
+            draw_list->AddRectFilled(
+                ImVec2(p.x-5, p.y-5),
+                ImVec2(p.x+5, p.y+5),
+                col
+            );
         }
-        ImU32 color = (type == "Verde") ? IM_COL32(0, 255, 0, 255) : IM_COL32(255, 0, 0, 255);
-        draw_list->AddRectFilled(rectMin, rectMax, color);
     };
+    drawMarkers(g_markedPositionsGreen, IM_COL32(0,255,0,255));
+    drawMarkers(g_markedPositionsRed,   IM_COL32(255,0,0,255));
 
-    // Desenha os marcadores e verifica clique
-    for (const auto& marker : g_markedPositionsGreen)
-        checkClick(marker, "Verde");
-    for (const auto& marker : g_markedPositionsRed)
-        checkClick(marker, "Vermelho");
-
-    // Desenha o kart (círculo amarelo)
-    int   idx  = static_cast<int>(g_kartPosition);
-    float frac = g_kartPosition - idx;
-    if (idx >= static_cast<int>(g_track.size()) - 1) {
-        idx  = static_cast<int>(g_track.size()) - 2;
-        frac = 1.0f;
+    // 3) Desenha o kart
+    if (!screenPts.empty()) {
+        int idx = (int)std::floor(g_kartPosition);
+        float frac = g_kartPosition - idx;
+        idx = std::clamp(idx, 0, (int)screenPts.size()-2);
+        ImVec2 kartP = {
+            screenPts[idx].x + (screenPts[idx+1].x - screenPts[idx].x) * frac,
+            screenPts[idx].y + (screenPts[idx+1].y - screenPts[idx].y) * frac
+        };
+        draw_list->AddCircleFilled(kartP, 8.0f * scale, IM_COL32(255,255,0,255));
     }
-    float  xPos = g_track[idx].x + (g_track[idx + 1].x - g_track[idx].x) * frac;
-    float  yPos = g_track[idx].y + (g_track[idx + 1].y - g_track[idx].y) * frac;
-    ImVec2 kartPos(origin.x + xPos * scale, origin.y + (yPos - Y_OFFSET) * scale);
-    draw_list->AddCircleFilled(kartPos, 8.0f, IM_COL32(255, 255, 0, 255));
 }
 
-void Window::Reconstruction::UpdateKartSimulation(float deltaTime) {
-    const Uint8* keystates    = SDL_GetKeyboardState(NULL);
-    bool         accelerating = keystates[SDL_SCANCODE_W];
-    bool         braking      = keystates[SDL_SCANCODE_S];
+// Atualização da função UpdateKartSimulation para usar pontos de pista em screenPts
+void Window::Reconstruction::UpdateKartSimulation(float deltaTime,
+                                                  const std::vector<ImVec2>& screenPts)
+{
+    // Captura estado do teclado (W/S) para aceleração e frenagem
+    const Uint8* keystates = SDL_GetKeyboardState(NULL);
+    bool accelerating = keystates[SDL_SCANCODE_W];
+    bool braking      = keystates[SDL_SCANCODE_S];
 
+    // --- CONTROLE DE VELOCIDADE ---
     if (accelerating)
         g_kartSpeed += ACCELERATION * deltaTime;
     if (braking)
@@ -680,53 +668,111 @@ void Window::Reconstruction::UpdateKartSimulation(float deltaTime) {
     }
     g_kartSpeed = std::max(0.0f, g_kartSpeed);
 
-    if (g_autoSpeed) {
-        int idx = static_cast<int>(g_kartPosition);
-        if (idx >= 0 && idx < static_cast<int>(g_track.size()))
-            g_kartSpeed = g_track[idx].referenceSpeed;
+    // --- PISTA INSUFICIENTE: AVANÇO LINEAR ---
+    if (screenPts.size() < 2) {
+        float mps = g_kartSpeed / 3.6f;
+        g_kartPosition += mps * deltaTime * 0.5f;
+        return;
     }
 
+    // --- CÁLCULO DE COMPRIMENTOS DE SEGMENTOS ---
+    std::vector<float> segLengths(screenPts.size() - 1);
+    for (size_t i = 0; i + 1 < screenPts.size(); ++i) {
+        float dx = screenPts[i + 1].x - screenPts[i].x;
+        float dy = screenPts[i + 1].y - screenPts[i].y;
+        segLengths[i] = sqrtf(dx * dx + dy * dy);
+    }
+
+    // --- MARCADORES ---
+    // Verde: ultrapassa 50 km/h
     static bool wasBelow50 = true;
     if (wasBelow50 && g_kartSpeed > 50.0f) {
-        int   idx  = static_cast<int>(g_kartPosition);
+        int idx = static_cast<int>(std::floor(g_kartPosition));
         float frac = g_kartPosition - idx;
-        if (idx >= static_cast<int>(g_track.size()) - 1) {
-            idx  = static_cast<int>(g_track.size()) - 2;
-            frac = 1.0f;
-        }
-        float xPos = g_track[idx].x + (g_track[idx + 1].x - g_track[idx].x) * frac;
-        float yPos = g_track[idx].y + (g_track[idx + 1].y - g_track[idx].y) * frac;
-        g_markedPositionsGreen.push_back(
-            {ImVec2(xPos, yPos), g_kartSpeed, g_currentAcceleration, g_kartPosition, g_lapCount});
+        idx = std::clamp(idx, 0, (int)screenPts.size() - 2);
+        ImVec2 p1 = screenPts[idx];
+        ImVec2 p2 = screenPts[idx + 1];
+        ImVec2 pos = ImVec2(
+            p1.x + (p2.x - p1.x) * frac,
+            p1.y + (p2.y - p1.y) * frac
+        );
+        g_markedPositionsGreen.push_back({ pos,
+                                           g_kartSpeed,
+                                           g_currentAcceleration,
+                                           g_kartPosition,
+                                           g_lapCount,
+                                           idx,
+                                           frac });
         wasBelow50 = false;
     }
     if (g_kartSpeed <= 50.0f)
         wasBelow50 = true;
 
+    // Vermelho: freia abaixo de 10 km/h
     static bool wasAbove10 = true;
     if (wasAbove10 && g_kartSpeed <= 10.0f && braking) {
-        int   idx  = static_cast<int>(g_kartPosition);
+        int idx = static_cast<int>(std::floor(g_kartPosition));
         float frac = g_kartPosition - idx;
-        if (idx >= static_cast<int>(g_track.size()) - 1) {
-            idx  = static_cast<int>(g_track.size()) - 2;
-            frac = 1.0f;
-        }
-        float xPos = g_track[idx].x + (g_track[idx + 1].x - g_track[idx].x) * frac;
-        float yPos = g_track[idx].y + (g_track[idx + 1].y - g_track[idx].y) * frac;
-        g_markedPositionsRed.push_back(
-            {ImVec2(xPos, yPos), g_kartSpeed, g_currentAcceleration, g_kartPosition, g_lapCount});
+        idx = std::clamp(idx, 0, (int)screenPts.size() - 2);
+        ImVec2 p1 = screenPts[idx];
+        ImVec2 p2 = screenPts[idx + 1];
+        ImVec2 pos = ImVec2(
+            p1.x + (p2.x - p1.x) * frac,
+            p1.y + (p2.y - p1.y) * frac
+        );
+        g_markedPositionsRed.push_back({ pos,
+                                         g_kartSpeed,
+                                         g_currentAcceleration,
+                                         g_kartPosition,
+                                         g_lapCount,
+                                         idx,
+                                         frac });
         wasAbove10 = false;
     }
     if (g_kartSpeed > 10.0f)
         wasAbove10 = true;
 
-    float mps       = g_kartSpeed / 3.6f;
-    g_kartPosition += mps * deltaTime * 0.5f;
-    if (g_kartPosition >= g_track.size() - 1) {
+    // --- ATUALIZAÇÃO DE POSIÇÃO ---
+    // Converte km/h para pixels/s
+    float speedPxPerS = (g_kartSpeed / 3.6f) * 1.0f;
+    float distToMove = speedPxPerS * deltaTime * 0.5f;
+
+    float remaining = distToMove;
+    int idx = static_cast<int>(std::floor(g_kartPosition));
+    float frac = g_kartPosition - idx;
+
+    // Consome resto do segmento atual
+    if (idx < (int)segLengths.size()) {
+        float segRemain = segLengths[idx] * (1.0f - frac);
+        if (remaining < segRemain) {
+            g_kartPosition += remaining / segLengths[idx];
+            remaining = 0;
+        } else {
+            remaining -= segRemain;
+            ++idx;
+            frac = 0.0f;
+        }
+    }
+    // Consome segmentos seguintes
+    while (remaining > 0 && idx < (int)segLengths.size()) {
+        if (remaining < segLengths[idx]) {
+            frac = remaining / segLengths[idx];
+            remaining = 0;
+        } else {
+            remaining -= segLengths[idx];
+            ++idx;
+            frac = 0.0f;
+        }
+    }
+    g_kartPosition = idx + frac;
+
+    // Reinicia volta
+    if (g_kartPosition >= screenPts.size() - 1) {
         g_kartPosition = 0.0f;
         g_lapCount++;
     }
 
+    // Atualiza aceleração
     static float prevSpeed = g_kartSpeed;
     if (deltaTime > 0.0f)
         g_currentAcceleration = (g_kartSpeed - prevSpeed) / deltaTime;
