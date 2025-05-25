@@ -27,6 +27,7 @@ struct COORDData {
 
 // Estrutura que armazena as informações do marcador
 struct MarkerInfo {
+    size_t idx;
     ImVec2 pos;
     float  speed;
     float  acceleration;
@@ -34,6 +35,12 @@ struct MarkerInfo {
     int    lap;
     int trackIndex;
     float trackFrac;
+};
+struct CommentInfo {
+    size_t idx;             // índice em screenPts
+    ImVec2 triOffset;       // deslocamento opcional (se quiser ajustar posição)
+    bool   visible;         // janela de comentário aberta?
+    char   text[256];       // conteúdo do comentário
 };
 
 // Define cada ponto da pista com posição (x,y) e velocidade de referência
