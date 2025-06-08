@@ -49,6 +49,28 @@ struct TrackPoint {
     float referenceSpeed;
 };
 
+struct RaceData {
+    bool isSaved = false;
+
+    char name[64] = "Corrida sem nome"; 
+
+    float cartHeight;
+    float cartZoom;
+    float speedMultiplier;
+    float HighSpeedThreshold;
+    float LowSpeedThreshold;
+
+    std::vector<MarkerInfo> markedPositionsGreen;
+    std::vector<MarkerInfo> markedPositionsRed;
+    std::vector<std::vector<size_t>> highSpeedSegments;
+    std::vector<std::vector<size_t>> lowSpeedSegments;
+    std::vector<CommentInfo> comments;
+
+    int latIndex;
+    int lonIndex;
+};
+
+
 namespace Window {
     class Reconstruction : public IWindow {
         public:

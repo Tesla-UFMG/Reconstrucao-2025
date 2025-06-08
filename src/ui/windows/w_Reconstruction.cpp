@@ -22,6 +22,16 @@ static inline float ImLength(const ImVec2& v) {
 static int g_latIndex = -1;
 static int g_lonIndex = -1;
 
+// array para corridas
+const int NUM_RACE_SLOTS = 10;
+RaceData g_savedRaces[NUM_RACE_SLOTS];
+
+float g_cartHeight        = 300.0f;
+float g_cartZoom          = 1.0f;
+float g_speedMultiplier   = 1.0f;
+float g_HighSpeedThreshold = 50.0f;
+float g_LowSpeedThreshold  = 10.0f;
+
 // Variáveis de simulação do kart
 static float g_kartSpeed    = 30.0f;
 static float g_kartPosition = 0.0f;
@@ -76,12 +86,10 @@ struct RaceState {
         int                     lapCount;
         float                   currentAcceleration;
 };
-// Armazena até 10 corridas e indica se o slot está preenchido
-static RaceState g_savedRaces[10];
-static bool      g_savedRaceExists[10] = {false, false, false, false, false, false, false, false, false, false};
 
 // Nome do arquivo onde as corridas serão salvas
 static const std::string SAVE_FILE = "corridas_salvas.txt";
+
 
 // Estrutura para as janelas de comentários
 struct CommentWindow {
@@ -241,6 +249,70 @@ static void DrawArrow(ImDrawList* draw_list, const ImVec2& p_from, const ImVec2&
     draw_list->AddTriangleFilled(p_to, left, right, col);
 }
 
+// Função para SALVAR o estado atual da simulação em um slot
+void SalvarCorrida(int slotIndex) {
+    if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS) return;
+
+    RaceData& race = g_savedRaces[slotIndex];
+
+    // Copia as configurações da simulação
+    race.cartHeight        = g_cartHeight;
+    race.cartZoom          = g_cartZoom;
+    race.speedMultiplier   = g_speedMultiplier;
+    race.HighSpeedThreshold = g_HighSpeedThreshold;
+    race.LowSpeedThreshold  = g_LowSpeedThreshold;
+
+    // Copia os dados resultantes da simulação
+    race.markedPositionsGreen = g_markedPositionsGreen;
+    race.markedPositionsRed   = g_markedPositionsRed;
+    race.highSpeedSegments    = g_highSpeedSegments;
+    race.lowSpeedSegments     = g_lowSpeedSegments;
+    race.comments             = g_comments;
+    
+    // Salva os índices dos dados de pista
+    race.latIndex = g_latIndex;
+    race.lonIndex = g_lonIndex;
+
+    // Marca o slot como salvo
+    race.isSaved = true;
+}
+
+// Função para CARREGAR o estado de um slot para a simulação ativa
+void CarregarCorrida(int slotIndex) {
+    if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS || !g_savedRaces[slotIndex].isSaved) return;
+
+    const RaceData& race = g_savedRaces[slotIndex];
+
+    // Restaura as configurações da simulação
+    g_cartHeight        = race.cartHeight;
+    g_cartZoom          = race.cartZoom;
+    g_speedMultiplier   = race.speedMultiplier;
+    g_HighSpeedThreshold = race.HighSpeedThreshold;
+    g_LowSpeedThreshold  = race.LowSpeedThreshold;
+
+    // Restaura os dados da simulação
+    g_markedPositionsGreen = race.markedPositionsGreen;
+    g_markedPositionsRed   = race.markedPositionsRed;
+    g_highSpeedSegments    = race.highSpeedSegments;
+    g_lowSpeedSegments     = race.lowSpeedSegments;
+    g_comments             = race.comments;
+
+    // Restaura os índices dos dados de pista
+    g_latIndex = race.latIndex;
+    g_lonIndex = race.lonIndex;
+
+    // Opcional: Resetar a posição do kart para o início
+    g_kartPosition = 0.0f;
+}
+
+// Função para LIMPAR um slot de corrida
+void LimparCorrida(int slotIndex) {
+    if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS) return;
+
+    // Reseta o slot para o estado inicial, criando um novo objeto RaceData vazio
+    g_savedRaces[slotIndex] = RaceData(); 
+}
+
 //---------------------------------------------------------
 // Implementação da janela de reconstrução
 //---------------------------------------------------------
@@ -289,6 +361,7 @@ void Window::Reconstruction::render() {
         // activeTab: 0 para Simulação; 1 para Gerenciar Corridas
         static bool showTrackInfo = false;
 
+        if (ImGui::CollapsingHeader("Janelas de Reconstrução")) {
         // Menu horizontal com os 4 botões
         if (ImGui::Button("Simulação"))
             activeTab = 0;
@@ -310,6 +383,7 @@ void Window::Reconstruction::render() {
             g_lowSpeedSegments.clear();
             
         }
+    }
 
         if (ImGui::BeginTable("TabelaColunas", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
             ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
@@ -345,6 +419,8 @@ void Window::Reconstruction::render() {
         ImGui::BeginChild("DragAndDropArea");
         // Conteúdo dependendo da área ativa selecionada no menu
 
+        
+
 // --- Aba Simulação ---
 if (activeTab == 0) {
     // 1) Calcula dt uma única vez por frame
@@ -352,20 +428,27 @@ if (activeTab == 0) {
     float  dt       = (now - simLastTime) * 0.001f;
     simLastTime     = now;
 
-    // 2) Sliders para altura, zoom e fator de velocidade
-    static float cartHeight      = 300.0f;
-    static float cartZoom        = 1.0f;
-    static float speedMultiplier = 1.0f;
-    ImGui::SliderFloat("Altura do Gráfico",      &cartHeight,      100.0f, 800.0f,  "%.0f px");
-    ImGui::SliderFloat("Zoom (escala)",          &cartZoom,        0.1f,   5.0f,    "%.2fx");
-    ImGui::SliderFloat("Fator Velocidade",       &speedMultiplier, 0.1f,   100.0f,  "%.1fx");
-    ImGui::Separator();
+    if (ImGui::CollapsingHeader("Configurações da Simulação")) {
+        ImGui::SliderFloat("Altura do Gráfico", &g_cartHeight,      100.0f, 800.0f,  "%.0f px");
+        ImGui::SliderFloat("Zoom (escala)",     &g_cartZoom,        0.1f,   5.0f,    "%.2fx");
+        ImGui::SliderFloat("Fator Velocidade",  &g_speedMultiplier, 0.1f,   100.0f,  "%.1fx");
+
+        ImGui::Separator();
+        ImGui::Text ("Ajuste de Traçado");
+        ImGui::SliderFloat("Traçado Verde", &g_HighSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
+        ImGui::SliderFloat("Traçado Vermelho", &g_LowSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
+    }
+            ImGui::Separator();
 
     // 3) Pan offset
     static ImVec2 panOffset = ImVec2(0, 0);
 
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+    ImVec2 childSize(avail.x, g_cartHeight);
+
     // 4) Canvas dedicado
-    ImGui::BeginChild("Sim_Cartesiano", ImVec2(0, cartHeight), true);
+       if (childSize.x > 0.0f && childSize.y > 0.0f) {
+    ImGui::BeginChild("Sim_Cartesiano", childSize, true);
         ImDrawList* draw = ImGui::GetWindowDrawList();
         ImVec2 origin    = ImGui::GetCursorScreenPos();
         ImVec2 size      = ImGui::GetContentRegionAvail();
@@ -399,7 +482,7 @@ if (activeTab == 0) {
                     minY = std::min(minY, lat[i]);
                     maxY = std::max(maxY, lat[i]);
                 }
-                ImVec2 inner(size.x * cartZoom, size.y * cartZoom);
+                ImVec2 inner(size.x * g_cartZoom, size.y * g_cartZoom);
                 screenPts.reserve(n);
                 for (size_t i = 0; i < n; ++i) {
                     float nx = (maxX > minX) ? (lon[i] - minX) / float(maxX - minX) : 0.5f;
@@ -444,14 +527,14 @@ if (activeTab == 0) {
             size_t idx = (size_t)(g_kartPosition + 0.5f);
             if (idx >= screenPts.size()) idx = screenPts.size() - 1;
             ImVec2 kartPosOnTrack = screenPts[idx];
-            if (prevSpeed < 50.0f && g_kartSpeed >= 50.0f) {
+            if (prevSpeed < g_HighSpeedThreshold && g_kartSpeed >= g_HighSpeedThreshold) {
                 g_markedPositionsGreen.push_back({idx, kartPosOnTrack,
                                                    g_kartSpeed,
                                                    currentAccel,
                                                    g_kartPosition,
                                                    g_lapCount });
             }
-            if (prevSpeed > 10.0f && g_kartSpeed <= 10.0f) {
+            if (prevSpeed > g_LowSpeedThreshold && g_kartSpeed <= g_LowSpeedThreshold) {
                 g_markedPositionsRed.push_back({ idx, kartPosOnTrack,
                                                  g_kartSpeed,
                                                  currentAccel,
@@ -464,13 +547,13 @@ if (activeTab == 0) {
         // 8) Move o kart e desenha o kart
         if (!screenPts.empty()) {
             float speed_mps = g_kartSpeed / 3.6f;
-            g_kartPosition += speed_mps * dt * speedMultiplier;
+            g_kartPosition += speed_mps * dt * g_speedMultiplier;
             size_t N    = screenPts.size();
             float  maxP = float(N) - 1e-3f;
             if (g_kartPosition > maxP)
                 g_kartPosition = fmodf(g_kartPosition, maxP);
 
-            DrawTrackAndKartAt(screenPts, origin, cartZoom);
+            DrawTrackAndKartAt(screenPts, origin, g_cartZoom);
         }
 
         // 8) Lógica de high-speed trace
@@ -478,7 +561,7 @@ if (activeTab == 0) {
         size_t idx = (size_t)(g_kartPosition + 0.5f);
         if (idx >= screenPts.size()) idx = screenPts.size() - 1;
         ImVec2 kartPos = screenPts[idx];
-        bool nowHigh = (g_kartSpeed > 50.0f);
+        bool nowHigh = (g_kartSpeed > g_HighSpeedThreshold);
         if (nowHigh) {
             g_currentHighSpeed.push_back(idx);
         }
@@ -492,7 +575,7 @@ if (activeTab == 0) {
         prevHighSpeed = nowHigh;
 
         // baixa velocidade
-        bool nowLow = (g_kartSpeed < 10.0f);
+        bool nowLow = (g_kartSpeed < g_LowSpeedThreshold);
         if (nowLow) {
             g_currentLowSpeed.push_back(idx);
         }
@@ -580,7 +663,7 @@ for (size_t i = 0; i < g_comments.size(); ++i) {
     if (cm.idx >= screenPts.size()) continue;
     ImVec2 pt   = screenPts[cm.idx];
     ImVec2 base = ImVec2(pt.x + cm.triOffset.x, pt.y + cm.triOffset.y);
-    float  s    = 8.0f * cartZoom;
+    float  s    = 8.0f * g_cartZoom;
     ImVec2 p1{ base.x,       base.y - s };
     ImVec2 p2{ base.x - s,   base.y + s };
     ImVec2 p3{ base.x + s,   base.y + s };
@@ -633,7 +716,7 @@ for (size_t i = 0; i < g_markedPositionsGreen.size(); ++i) {
     auto& m = g_markedPositionsGreen[i];
     if (m.idx >= screenPts.size()) continue;
     ImVec2 pos = screenPts[m.idx];
-    float  s   = 6.0f * cartZoom;            // tamanho escala com zoom
+    float  s   = 6.0f * g_cartZoom;            // tamanho escala com zoom
     ImVec2 a{ pos.x - s, pos.y - s };
     ImVec2 b{ pos.x + s, pos.y + s };
     draw->AddRectFilled(a, b, IM_COL32(0,255,0,255));
@@ -667,7 +750,7 @@ for (size_t i = 0; i < g_markedPositionsRed.size(); ++i) {
     auto& m = g_markedPositionsRed[i];
     if (m.idx >= screenPts.size()) continue;
     ImVec2 pos = screenPts[m.idx];
-    float  s   = 6.0f * cartZoom;
+    float  s   = 6.0f * g_cartZoom;
     ImVec2 a{ pos.x - s, pos.y - s };
     ImVec2 b{ pos.x + s, pos.y + s };
     draw->AddRectFilled(a, b, IM_COL32(255,0,0,255));
@@ -709,7 +792,7 @@ for (size_t i = 0; i < g_markedPositionsRed.size(); ++i) {
                          ImGuiWindowFlags_NoMove);
             ImGui::Text("Velocidade: %.1f km/h",    g_kartSpeed);
             ImGui::Text("Aceleração: %.1f km/h²",   currentAccel);
-            ImGui::Text("Multiplicador: %.1fx",     speedMultiplier);
+            ImGui::Text("Multiplicador: %.1fx",     g_speedMultiplier);
             ImGui::Text("Posição (índice): %.1f",   g_kartPosition);
             ImGui::Text("Markers G: %zu",           g_markedPositionsGreen.size());
             ImGui::Text("Markers R: %zu",           g_markedPositionsRed.size());
@@ -717,9 +800,63 @@ for (size_t i = 0; i < g_markedPositionsRed.size(); ++i) {
         }
 
     ImGui::EndChild();
+    }
+
 }
 
+// --- PASSO 4: CÓDIGO PARA A ABA "GERENCIAR CORRIDAS" ---
+else if (activeTab == 1) {
+    ImGui::Text("Gerencie até %d corridas salvas.", NUM_RACE_SLOTS);
+    ImGui::Text("Salve o estado atual da simulação ou carregue um estado anterior.");
+    ImGui::Separator();
 
+    // Cria uma seção para cada slot de corrida
+    for (int i = 0; i < NUM_RACE_SLOTS; ++i) {
+        // PushID é essencial para que o ImGui saiba diferenciar botões com o mesmo nome em um loop
+        ImGui::PushID(i);
+
+        // Usa um CollapsingHeader para manter a UI organizada
+        char headerName[32];
+        sprintf(headerName, "Slot de Corrida %d", i + 1);
+        if (ImGui::CollapsingHeader(headerName)) {
+            
+            // Campo para nomear a corrida
+            ImGui::InputText("Nome", g_savedRaces[i].name, sizeof(g_savedRaces[i].name));
+
+            // Exibe o status do slot
+            const char* status = g_savedRaces[i].isSaved ? "Salvo" : "Vazio";
+            ImGui::Text("Status: %s", status);
+
+            // Botão para Salvar
+            if (ImGui::Button("Salvar Estado Atual Neste Slot")) {
+                SalvarCorrida(i);
+            }
+
+            ImGui::SameLine(); // Coloca o próximo item na mesma linha
+
+            // Desabilita o botão de carregar se o slot estiver vazio
+            if (!g_savedRaces[i].isSaved) {
+                ImGui::BeginDisabled();
+            }
+            if (ImGui::Button("Carregar Este Slot")) {
+                CarregarCorrida(i);
+                ImGui::SetWindowFocus(NULL); // Opcional: Tira o foco da janela para evitar cliques duplos
+                activeTab = 0; // Opcional: Muda para a aba de simulação após carregar
+            }
+            if (!g_savedRaces[i].isSaved) {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::SameLine();
+
+            // Botão para Limpar
+            if (ImGui::Button("Limpar Slot")) {
+                LimparCorrida(i);
+            }
+        }
+        ImGui::PopID(); // Libera o ID
+    }
+}
 
         else if (activeTab == 2) {
 
