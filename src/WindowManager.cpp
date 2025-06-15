@@ -1,4 +1,5 @@
 #include "WindowManager.hpp"
+#include "Log.hpp"
 
 WindowManager& WindowManager::getInstance() {
     static WindowManager instance;
@@ -6,15 +7,20 @@ WindowManager& WindowManager::getInstance() {
 }
 
 WindowManager::WindowManager() {
-    this->setup();
     LOG("TRACE", "Window Manager iniciado com sucesso.");
 }
 
 WindowManager::~WindowManager() { LOG("TRACE", "Window Manager encerrado."); }
 
+void WindowManager::init(SDL_Renderer* renderer) {
+    this->m_renderer = renderer;
+    this->setup();
+}
+
 void WindowManager::saveWindowVisibility(const std::filesystem::path& filepath) {
     std::filesystem::path parentPath = filepath.parent_path();
-    if (!parentPath.empty() && std::filesystem::create_directories(parentPath)) {
+    if (!parentPath.empty() && !std::filesystem::exists(parentPath)) {
+        std::filesystem::create_directories(parentPath);
         LOG("INFO", "Criada pasta '" + parentPath.string() + "'.");
     }
 
@@ -46,7 +52,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::Playback>(&visibility.showPlayback));
     windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
     windows.emplace_back(std::make_unique<Window::Reconstruction>(&visibility.showReconstruction));
-    windows.emplace_back(std::make_unique<Window::Video>(&visibility.showVideo));
+    windows.emplace_back(std::make_unique<Window::Video>(m_renderer, &visibility.showVideo)); 
     windows.emplace_back(std::make_unique<Window::Plot>(&visibility.showPlot));
     windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
     windows.emplace_back(std::make_unique<Window::Pedal>(&visibility.showPedal));

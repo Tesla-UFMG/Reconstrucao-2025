@@ -14,19 +14,18 @@ OBJ_FILES += $(patsubst lib/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(LIB_CPP_FILES))
 OBJ_FILES += $(patsubst lib/%.c, $(OBJ_FOLDER)/lib/%.o, $(LIB_C_FILES))
 
 CXX_FLAGS := -Wall -Wextra -pedantic -std=c++17
-INCLUDES := -I./include -I./lib -I./lib/imgui -I./lib/SDL2 -I./lib/implot -I./lib/tinyDialogs -I./lib/rapidcsv -I./lib/implot3d -I./src/ui/windows
-
+INCLUDES := -I./include -I./lib -I./lib/imgui -I./lib/SDL2 -I./lib/implot -I./lib/tinyDialogs -I./lib/rapidcsv -I./lib/implot3d -I./src/ui/windows -I./lib/ffmpeg/include
 
 ifeq ($(WINDOWS), 1)
-    CXX := x86_64-w64-mingw32-g++
-    LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -mconsole -static-libgcc -static-libstdc++ -lcomdlg32 -lole32
-    LDFLAGS := -Llib/SDL2
-    OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
+	CXX := x86_64-w64-mingw32-g++
+	LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -Wl,--start-group -lavformat -lavcodec -lswscale -lavutil -Wl,--end-group -lbcrypt -mconsole -static-libgcc -static-libstdc++ -lcomdlg32 -lole32
+	LDFLAGS := -Llib/SDL2 -Llib/ffmpeg/lib
+	OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
 else
-    CXX := g++
-    LINKFLAGS := -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -static-libgcc -static-libstdc++
-    LDFLAGS := 
-    OUTPUT := $(BUILD_FOLDER)/$(PROJECT)
+	CXX := g++
+	LINKFLAGS := -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -Wl,--start-group -lavformat -lavcodec -lswscale -lavutil -Wl,--end-group -lz -lpthread -lm -static-libgcc -static-libstdc++
+	LDFLAGS := -Llib/ffmpeg/lib
+	OUTPUT := $(BUILD_FOLDER)/$(PROJECT)
 endif
 
 ifeq ($(CARD_VIDEO_RENDEREING), 1)
@@ -38,27 +37,23 @@ all: $(BUILD_FOLDER) $(OBJ_FOLDER) $(OUTPUT)
 
 $(OUTPUT): $(OBJ_FILES)
 	@echo "Compilando o executável" $@
-	@$(CXX) $(INCLUDES) $(OBJ_FILES) -o $(OUTPUT) $(LDFLAGS) $(LINKFLAGS)
+	@$(CXX) $(OBJ_FILES) $(LDFLAGS) $(LINKFLAGS) -o $(OUTPUT)
 
-# Regra para compilar arquivos .cpp do src/
 $(OBJ_FOLDER)/%.o: src/%.cpp $(wildcard include/*.hpp)
 	@mkdir -p $(dir $@)
 	@echo $@
 	@$(CXX) $(CXX_FLAGS) $(INCLUDES) -c $< -o $@
 
-# Regra para compilar arquivos .cpp dentro de lib/
 $(OBJ_FOLDER)/lib/%.o: lib/%.cpp
 	@mkdir -p $(dir $@)
 	@echo $@
 	@$(CXX) $(CXX_FLAGS) $(INCLUDES) -c $< -o $@
 
-# Regra para compilar arquivos .c dentro de lib/
 $(OBJ_FOLDER)/lib/%.o: lib/%.c
 	@mkdir -p $(dir $@)
 	@echo $@
 	@$(CXX) -x c $(INCLUDES) -c $< -o $@
 
-# Criar pastas de compilação e copiar DLLs se for Windows
 ifeq ($(WINDOWS), 1)
 $(BUILD_FOLDER):
 	@mkdir -p $@
@@ -90,4 +85,3 @@ copy:
 
 format:
 	@find src include -type f \( -name "*.cpp" -o -name "*.hpp" \) -exec clang-format -i {} +
-

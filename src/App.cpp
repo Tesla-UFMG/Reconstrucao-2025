@@ -1,3 +1,7 @@
+extern "C" {
+#include <libavformat/avformat.h>
+#include <libavutil/log.h>
+}
 #include "App.hpp"
 
 App::App() {}
@@ -6,14 +10,21 @@ App::~App() {}
 
 void App::init(const std::string& windowTitle, int windowWidth, int windowHeight) {
     this->windowTitle = windowTitle;
+
+    avformat_network_init();
+    av_log_set_level(AV_LOG_DEBUG);
+
     SDLWrapper::initSubsystem();
     SDLWrapper::createWindowAndRenderer(this->windowTitle, windowWidth, windowHeight);
+    WindowManager::getInstance().init(SDLWrapper::renderer);
     ImGuiWrapper::initSubsystem();
 }
 
 void App::close() {
     ImGuiWrapper::closeSubystem();
     SDLWrapper::closeSubystem();
+
+    avformat_network_deinit();
 }
 
 bool App::handleEvent() {

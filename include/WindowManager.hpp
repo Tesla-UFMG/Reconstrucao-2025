@@ -25,6 +25,10 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <memory>
+
+struct SDL_Renderer;
 
 struct VisibilityFlags {
     public:
@@ -44,25 +48,28 @@ struct VisibilityFlags {
 };
 
 class WindowManager {
-    private:
-        explicit WindowManager();
-        void                                  setup();
-        std::vector<std::unique_ptr<IWindow>> windows;
-        std::unique_ptr<IWindow>              home;
+private:
+    explicit WindowManager();
+    void                                  setup();
+    std::vector<std::unique_ptr<IWindow>> windows;
+    std::unique_ptr<IWindow>              home;
+    SDL_Renderer* m_renderer = nullptr; 
 
-    public:
-        WindowManager(WindowManager&&)            = delete;
-        WindowManager& operator=(WindowManager&&) = delete;
-        ~WindowManager();
-        static WindowManager& getInstance();
+public:
+    WindowManager(WindowManager&&)            = delete;
+    WindowManager& operator=(WindowManager&&) = delete;
+    ~WindowManager();
+    static WindowManager& getInstance();
 
-        VisibilityFlags visibility;
-        void            saveWindowVisibility(const std::filesystem::path& filepath);
-        void            loadWindowVisibility(const std::filesystem::path& filepath);
+    void init(SDL_Renderer* renderer); 
 
-        void menuBar();
-        void homePage();
-        void mainPage();
+    VisibilityFlags visibility;
+    void            saveWindowVisibility(const std::filesystem::path& filepath);
+    void            loadWindowVisibility(const std::filesystem::path& filepath);
+
+    void menuBar();
+    void homePage();
+    void mainPage();
 };
 
 #endif // WINDOW_HPP
