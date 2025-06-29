@@ -1,56 +1,70 @@
 #include "ui/windows/w_Playback.hpp"
+#include "ui/windows/w_Video.hpp"
 
-Window::Playback::Playback(bool* isOpen) : IWindow(isOpen) {
+Window::Playback::Playback(bool* isOpen, Video* video_window) 
+    : IWindow(isOpen), m_videoWindow(video_window) {
     this->title = "Playback";
     this->flags = ImGuiWindowFlags_NoScrollbar;
+    this->m_sliderTime = 0.0f;
 }
 
 void Window::Playback::render() {
-    // Variáveis estáticas para manter o estado entre renderizações
-    static float counter        = 0.0f;
-    static int   selectedButton = 0;
-    static float jumpStep       = 1.0f;
-    const float  MAX_TIME       = 60.0f;
+    if (!this->isOpen || !*this->isOpen) {
+        return;
+    }
 
-    ImGuiIO& io = ImGui::GetIO(); // Para acessar o deltaTime
+    ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
-    if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+    if (m_videoWindow && m_videoWindow->isLoaded()) {
+        
+        static float jumpStep = 1.0f;
+        const float maxTime  = static_cast<float>(m_videoWindow->getDuration());
+        bool isPlaying       = m_videoWindow->isPlaying();
 
-        // Se estiver no modo "Iniciar", incrementa o contador com o deltaTime
-        if (selectedButton == 1) {
-            counter += io.DeltaTime;
-            if (counter > MAX_TIME)
-                counter = MAX_TIME;
+        if (!ImGui::IsItemActive()) {
+            m_sliderTime = static_cast<float>(m_videoWindow->getCurrentTime());
         }
 
-        ImGui::SliderFloat("Tempo da Corrida", &counter, 0.0f, MAX_TIME, "%.2f s");
+        ImGui::SliderFloat("##Tempo", &m_sliderTime, 0.0f, maxTime, "%.2f s");
+
+        if (ImGui::IsItemActive()) {
+            m_videoWindow->seek(m_sliderTime);
+        }
 
         if (ImGui::ArrowButton("##left", ImGuiDir_Left)) {
-            counter -= jumpStep;
-            if (counter < 0.0f)
-                counter = 0.0f;
+            m_videoWindow->seek(m_videoWindow->getCurrentTime() - jumpStep);
         }
         ImGui::SameLine();
 
-        // Botões de controle: "Parar" e "Iniciar"
-        ImGui::RadioButton("Parar", &selectedButton, 0);
-        ImGui::SameLine();
-        ImGui::RadioButton("Iniciar", &selectedButton, 1);
+        if (isPlaying) {
+            if (ImGui::Button("Pausar")) {
+                m_videoWindow->pause();
+            }
+        } else {
+            if (ImGui::Button("Iniciar")) {
+                m_videoWindow->play();
+            }
+        }
         ImGui::SameLine();
 
-        // Botão de avançar: aumenta o contador em 'jumpStep' segundos
         if (ImGui::ArrowButton("##right", ImGuiDir_Right)) {
-            counter += jumpStep;
-            if (counter > MAX_TIME)
-                counter = MAX_TIME;
+
+            printf("PLAYBACK: Botão >> clicado. Tempo Atual = %.3f, Passo = %.3f, Buscando por = %.3f\n", 
+           m_videoWindow->getCurrentTime(), 
+           jumpStep, 
+           m_videoWindow->getCurrentTime() + jumpStep);
+
+            m_videoWindow->seek(m_videoWindow->getCurrentTime() + jumpStep);
         }
         ImGui::SameLine();
-        ImGui::Text("%.2f s", counter);
+        
+        ImGui::Text("%.2f s / %.2f s", m_videoWindow->getCurrentTime(), m_videoWindow->getDuration());
 
-        // Slider para ajustar o intervalo de avanço/retrocesso (jumpStep)
         ImGui::SliderFloat("Intervalo (s)", &jumpStep, 0.1f, 5.0f, "%.1f s");
 
-        ImGui::End();
+    } else {
+        ImGui::Text("Carregue um vídeo na janela 'Vídeo' para habilitar os controles.");
     }
+
+    ImGui::End();
 }
