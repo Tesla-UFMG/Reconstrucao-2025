@@ -30,7 +30,7 @@ char* DB::openFileDialog(const std::string& title, const char* filter) {
 }
 
 void DB::createProjectDialog() {
-    char* filepath = saveFileDialog("Criar Projeto", this->projectData.currentProject, "*.tesla");
+    char* filepath = saveFileDialog("Criar Projeto", this->projectData.currentProjectName, "*.tesla");
     if (filepath) {
         this->projectData.clear();
         DB::saveProject(filepath);
@@ -38,7 +38,7 @@ void DB::createProjectDialog() {
 }
 
 void DB::saveProjectDialog() {
-    char* filepath = saveFileDialog("Salvar Projeto", this->projectData.currentProject, "*.tesla");
+    char* filepath = saveFileDialog("Salvar Projeto", this->projectData.currentProjectName, "*.tesla");
     if (filepath) {
         DB::saveProject(filepath);
     }
@@ -63,37 +63,34 @@ void DB::loadCSVDialog() {
 
 void DB::saveProject(const std::filesystem::path& filepath) {
     if (this->projectData.serialize(filepath)) {
-        this->projectData.currentProject = filepath.filename().string();
-        SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProject);
+        this->projectData.currentProjectName = filepath.filename().string();
+        SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProjectName);
         LOG("INFO", "Projeto salvo com sucesso.");
     }
 }
 
 void DB::loadProject(const std::filesystem::path& filepath) {
     if (this->projectData.deserialize(filepath)) {
-        this->projectData.currentProject = filepath.filename().string();
-        SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProject);
+        this->projectData.currentProjectName = filepath.filename().string();
+        SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProjectName);
         LOG("INFO", "Projeto carregado com sucesso.");
     }
 }
 
 void DB::deleteCSV(const std::filesystem::path& filepath) { this->projectData.removeCSV(filepath); }
 
-ProjectData DB::getProject() const { return this->projectData; }
+const ProjectData& DB::getProject() const { return this->projectData; }
 
-std::vector<std::filesystem::path> DB::getCsvPaths() const { return this->projectData.csvPaths; }
+std::vector<double> DB::getCSVData(const std::string& filepath, const std::string& columnName) const {
 
-std::vector<std::vector<std::string>> DB::getCsvColumns() const { return this->projectData.csvColumns; }
+    for (const CSVFile& csvFile : this->projectData.csvFiles) {
+        const std::string& filepath_ = csvFile.getPath().filename().string();
+        std::cout << filepath << std::endl;
+        std::cout << filepath_ << std::endl;
 
-std::vector<double> DB::getCSVData(const std::string& filename, const std::string& columnName) const {
-
-    for (size_t i = 0; i < this->projectData.csvData.size(); i++) {
-        std::string csvName = this->projectData.csvPaths[i].filename().string();
-
-        if (csvName == filename) {
-            rapidcsv::Document csv = this->projectData.csvData[i];
+        if (filepath_ == filepath) {
             try {
-                return csv.GetColumn<double>(columnName);
+                return csvFile.getDocument()->GetColumn<double>(columnName);
             } catch (const std::exception& e) {
                 LOG("ERROR", "Coluna não encontrada. Erro: " + std::string(e.what()));
                 return {};

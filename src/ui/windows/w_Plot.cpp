@@ -87,33 +87,31 @@ void Window::Plot::processColumnDragDrop(GraphData& graphData) {
         // Aceita o payload
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
             std::stringstream ss(static_cast<const char*>(payload->Data));
-            std::string       archiveName, columnName;
+            std::string       filename, columnName;
 
             // Pega o nome do arquivo e a coluna
-            if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
-                this->addColumnToGraph(graphData, archiveName, columnName);
+            if (std::getline(ss, filename, ':') && std::getline(ss, columnName, ':')) {
+                this->addColumnToGraph(graphData, filename, columnName);
             }
         }
         ImGui::EndDragDropTarget();
     }
 }
 
-void Window::Plot::addColumnToGraph(GraphData& graphData, const std::string& archiveName,
-                                    const std::string& columnName) {
+void Window::Plot::addColumnToGraph(GraphData& graphData, const std::string& filename, const std::string& columnName) {
     // Verifica se a coluna do arquivo já foi adicionada
     for (size_t i = 0; i < graphData.archives.size(); ++i) {
-        if (graphData.archives[i] == archiveName && graphData.columns[i] == columnName) {
-            LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + archiveName +
+        if (graphData.archives[i] == filename && graphData.columns[i] == columnName) {
+            LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + filename +
                             " já existe.");
             return;
         }
     }
 
     // Adiciona os eixos
-    std::vector<double> y = DB::getInstance().getCSVData(archiveName, columnName);
+    std::vector<double> y = DB::getInstance().getCSVData(filename, columnName);
     if (y.size() == 0) {
-        LOG("ERROR",
-            "Não foi possível adicionar a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
+        LOG("ERROR", "Não foi possível adicionar a coluna " + columnName + " do arquivo " + filename + " ao gráfico.");
         return;
     }
     graphData.y.push_back(y);
@@ -126,7 +124,7 @@ void Window::Plot::addColumnToGraph(GraphData& graphData, const std::string& arc
 
     // Adiciona a coluna, o nome do arquivo e o multiplicador padrão (1.0)
     graphData.columns.push_back(columnName);
-    graphData.archives.push_back(archiveName);
+    graphData.archives.push_back(filename);
     graphData.multiplier.push_back(1.0);
 
     ImPlot::BustItemCache();

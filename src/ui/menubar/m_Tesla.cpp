@@ -11,7 +11,7 @@ void MenuBar::Tesla() {
             DB::getInstance().loadProjectDialog();
         }
 
-        if (DB::getInstance().getProject().currentProject.empty() == false) {
+        if (DB::getInstance().getProject().currentProjectName.empty() == false) {
             if (ImGui::MenuItem("Salvar", "CTRL + S")) {
                 DB::getInstance().saveProjectDialog();
             }

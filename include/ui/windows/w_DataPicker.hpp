@@ -18,17 +18,14 @@
 namespace Window {
     class DataPicker : public IWindow {
         private:
-            std::vector<std::filesystem::path>    paths;
-            std::vector<std::vector<std::string>> columns;
-
             void refreshData();
-            void sendArchivePayload(const std::string& filename);
-            void sendColumnPayload(const std::string& filename, const std::string& columnName);
+            void sendArchivePayload(const std::string& filepath);
+            void sendColumnPayload(const std::string& filepath, const std::string& columnName);
 
             void renderMenuBar();
-            void renderArchiveContextPopup(const std::filesystem::path& archivePath);
-            void renderArchiveNode(const std::filesystem::path& archivePath, size_t i);
-            void renderColumnItem(const std::string& filename, const std::string& colName);
+            void renderArchiveContextPopup(const GenericFile& file);
+            void renderArchiveNode(const GenericFile& file, int index);
+            void renderColumnItem(const std::string& filepath, const std::string& colName);
 
         public:
             explicit DataPicker(bool* isOpen = nullptr);

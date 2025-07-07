@@ -3,7 +3,7 @@
 void MenuBar::render() {
     if (ImGui::BeginMainMenuBar()) {
         MenuBar::Tesla();
-        if (DB::getInstance().getProject().currentProject.empty() == false) {
+        if (DB::getInstance().getProject().currentProjectName.empty() == false) {
             MenuBar::Windows();
         }
 

@@ -4,6 +4,7 @@
 // C++
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 
 // Project
@@ -38,10 +39,8 @@ class DB {
         void loadCSVDialog();
         void deleteCSV(const std::filesystem::path& filepath);
 
-        ProjectData                           getProject() const;
-        std::vector<std::filesystem::path>    getCsvPaths() const;
-        std::vector<std::vector<std::string>> getCsvColumns() const;
-        std::vector<double> getCSVData(const std::string& filename, const std::string& columnName) const;
+        const ProjectData&  getProject() const;
+        std::vector<double> getCSVData(const std::string& filepath, const std::string& columnName) const;
 };
 
 #endif

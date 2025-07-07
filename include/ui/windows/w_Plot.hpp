@@ -54,7 +54,7 @@ namespace Window {
             void addGraph(std::vector<GraphData>& graphs);
             void removeGraph(std::vector<GraphData>& graphs, size_t graphIndex);
 
-            void addColumnToGraph(GraphData& graphData, const std::string& archiveName, const std::string& columnName);
+            void addColumnToGraph(GraphData& graphData, const std::string& filename, const std::string& columnName);
             void removeColumnFromGraph(GraphData& graphData, int graphIndex);
 
             // Funções de renderização dos gráficos

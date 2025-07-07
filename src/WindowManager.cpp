@@ -6,9 +6,7 @@ WindowManager& WindowManager::getInstance() {
     return instance;
 }
 
-WindowManager::WindowManager() {
-    LOG("TRACE", "Window Manager iniciado com sucesso.");
-}
+WindowManager::WindowManager() { LOG("TRACE", "Window Manager iniciado com sucesso."); }
 
 WindowManager::~WindowManager() { LOG("TRACE", "Window Manager encerrado."); }
 
@@ -46,8 +44,8 @@ void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) 
 }
 
 void WindowManager::setup() {
-    auto video_window = std::make_unique<Window::Video>(m_renderer, &visibility.showVideo);
-    Window::Video* video_ptr = video_window.get();
+    auto           video_window = std::make_unique<Window::Video>(m_renderer, &visibility.showVideo);
+    Window::Video* video_ptr    = video_window.get();
 
     home = std::make_unique<Window::HomePage>();
 
@@ -55,7 +53,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::Playback>(&visibility.showPlayback, video_ptr));
     windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
     windows.emplace_back(std::make_unique<Window::Reconstruction>(&visibility.showReconstruction));
-    windows.emplace_back(std::move(video_window)); 
+    windows.emplace_back(std::move(video_window));
     windows.emplace_back(std::make_unique<Window::Plot>(&visibility.showPlot));
     windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
     windows.emplace_back(std::make_unique<Window::Pedal>(&visibility.showPedal));

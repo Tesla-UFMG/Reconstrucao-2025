@@ -27,49 +27,48 @@ struct COORDData {
 
 // Estrutura que armazena as informações do marcador
 struct MarkerInfo {
-    size_t idx;
-    ImVec2 pos;
-    float  speed;
-    float  acceleration;
-    float  position;
-    int    lap;
-    int trackIndex;
-    float trackFrac;
+        size_t idx;
+        ImVec2 pos;
+        float  speed;
+        float  acceleration;
+        float  position;
+        int    lap;
+        int    trackIndex;
+        float  trackFrac;
 };
 struct CommentInfo {
-    size_t idx;             // índice em screenPts
-    ImVec2 triOffset;       // deslocamento opcional (se quiser ajustar posição)
-    bool   visible;         // janela de comentário aberta?
-    char   text[256];       // conteúdo do comentário
+        size_t idx;       // índice em screenPts
+        ImVec2 triOffset; // deslocamento opcional (se quiser ajustar posição)
+        bool   visible;   // janela de comentário aberta?
+        char   text[256]; // conteúdo do comentário
 };
 
 // Define cada ponto da pista com posição (x,y) e velocidade de referência
 struct TrackPoint {
-    float x, y;
-    float referenceSpeed;
+        float x, y;
+        float referenceSpeed;
 };
 
 struct RaceData {
-    bool isSaved = false;
+        bool isSaved = false;
 
-    char name[64] = "Corrida sem nome"; 
+        char name[64] = "Corrida sem nome";
 
-    float cartHeight;
-    float cartZoom;
-    float speedMultiplier;
-    float HighSpeedThreshold;
-    float LowSpeedThreshold;
+        float cartHeight;
+        float cartZoom;
+        float speedMultiplier;
+        float HighSpeedThreshold;
+        float LowSpeedThreshold;
 
-    std::vector<MarkerInfo> markedPositionsGreen;
-    std::vector<MarkerInfo> markedPositionsRed;
-    std::vector<std::vector<size_t>> highSpeedSegments;
-    std::vector<std::vector<size_t>> lowSpeedSegments;
-    std::vector<CommentInfo> comments;
+        std::vector<MarkerInfo>          markedPositionsGreen;
+        std::vector<MarkerInfo>          markedPositionsRed;
+        std::vector<std::vector<size_t>> highSpeedSegments;
+        std::vector<std::vector<size_t>> lowSpeedSegments;
+        std::vector<CommentInfo>         comments;
 
-    int latIndex;
-    int lonIndex;
+        int latIndex;
+        int lonIndex;
 };
-
 
 namespace Window {
     class Reconstruction : public IWindow {
@@ -79,15 +78,12 @@ namespace Window {
 
         private:
             ImU32 GetColorForSpeed(float speed);
-            void  DrawTrackAndKartAt(const std::vector<ImVec2>& screenPts,
-                                                const ImVec2& origin,
-                                                float scal);
-            void  UpdateKartSimulation(float deltaTime,
-                                                  const std::vector<ImVec2>& screenPts);
+            void  DrawTrackAndKartAt(const std::vector<ImVec2>& screenPts, const ImVec2& origin, float scal);
+            void  UpdateKartSimulation(float deltaTime, const std::vector<ImVec2>& screenPts);
 
             // --- Drag & Drop de CSV para reconstrução ---
             void processColumnDragDrop();
-            void addColumnToMap(const std::string& archiveName, const std::string& columnName);
+            void addColumnToMap(const std::string& filename, const std::string& columnName);
             void removeColumnFromMap(size_t index);
 
             void generateSimulatedData(int numPoints, size_t coordIndex, float* x, float* y);

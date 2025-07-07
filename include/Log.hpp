@@ -28,6 +28,8 @@ METRICS → Dados de desempenho (ex: tempo de resposta de uma função).
 
 #define LOG(level, message) Log::getInstance().log(level, message);
 
+#define PRINT_TO_THE_TERMINAL true
+
 class Log {
     private:
         explicit Log(const std::filesystem::path& filepath);
