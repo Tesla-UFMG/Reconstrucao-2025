@@ -13,11 +13,12 @@
 #include "ui/windows/w_Pedal.hpp"
 #include "ui/windows/w_Playback.hpp"
 #include "ui/windows/w_Plot.hpp"
-#include "ui/windows/w_Reconstruction.hpp"
 #include "ui/windows/w_Statistics.hpp"
 #include "ui/windows/w_Terminal.hpp"
 #include "ui/windows/w_Video.hpp"
 #include "ui/windows/w_WheelControl.hpp"
+#include "ui/windows/w_Reconstruction.hpp"
+#include "ui/windows/IPlayable.hpp" 
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -47,6 +48,10 @@ struct VisibilityFlags {
         bool showStatistics     = false;
 };
 
+namespace Window {
+    class Reconstruction;
+}
+
 class WindowManager {
 private:
     explicit WindowManager();
@@ -54,6 +59,11 @@ private:
     std::vector<std::unique_ptr<IWindow>> windows;
     std::unique_ptr<IWindow>              home;
     SDL_Renderer* m_renderer = nullptr; 
+
+        // Estes ponteiros servem apenas para facilitar a comunicação entre janelas.
+    Window::Video* m_videoWindow = nullptr;
+    Window::Reconstruction* m_reconstructionWindow = nullptr;
+    Window::Playback* m_playbackWindow = nullptr;
 
 public:
     WindowManager(WindowManager&&)            = delete;

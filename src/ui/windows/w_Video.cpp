@@ -247,3 +247,11 @@ void Window::Video::cleanup() {
     m_frameDelay = 0.0;
     m_lastFrameTime = 0;
 }
+
+float Window::Video::getStepSize() const {
+    return m_stepSize;
+}
+
+void Window::Video::setStepSize(float size) {
+    m_stepSize = size;
+}

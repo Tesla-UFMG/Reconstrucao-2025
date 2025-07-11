@@ -3,6 +3,7 @@
 
 #include <string>
 #include "ui/windows/iWindow.hpp"
+#include "ui/windows/IPlayable.hpp" 
 
 struct AVFormatContext;
 struct AVCodecContext;
@@ -13,7 +14,7 @@ struct SDL_Texture;
 struct SDL_Renderer;
 
 namespace Window {
-    class Video : public IWindow {
+    class Video : public IWindow, public IPlayable {
     public:
         explicit Video(SDL_Renderer* renderer, bool* isOpen = nullptr);
         ~Video();
@@ -21,18 +22,23 @@ namespace Window {
         void render() override;
         bool loadVideo(const std::string& filepath);
 
-        void play();
-        void pause();
-        void seek(double time_in_seconds);
+        void play() override;
+        void pause() override;
+        void seek(double time_in_seconds) override;
+        bool isPlaying() const override;
+        bool isLoaded() const override;
+        double getCurrentTime() const override;
+        double getDuration() const override;
+        const char* getTitle() const override { return this->title.c_str(); }
+        float getStepSize() const override;
+        void setStepSize(float size) override; 
 
-        bool isPlaying() const;
-        bool isLoaded() const;
-        double getCurrentTime() const;
-        double getDuration() const;
+
 
     private:
         void cleanup();
         bool decodeFrame();
+        float m_stepSize = 1.0f;
 
         SDL_Renderer* m_renderer = nullptr;
         SDL_Texture* m_texture  = nullptr;

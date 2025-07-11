@@ -1,6 +1,21 @@
 #include "WindowManager.hpp"
 #include "Log.hpp"
 
+#include "ui/windows/iWindow.hpp"
+#include "ui/windows/w_About.hpp"
+#include "ui/windows/w_DataPicker.hpp"
+#include "ui/windows/w_Demo.hpp"
+#include "ui/windows/w_HomePage.hpp"
+#include "ui/windows/w_Pedal.hpp"
+#include "ui/windows/w_Playback.hpp"
+#include "ui/windows/w_Plot.hpp"
+#include "ui/windows/w_Statistics.hpp"
+#include "ui/windows/w_Terminal.hpp"
+#include "ui/windows/w_Video.hpp"
+#include "ui/windows/w_WheelControl.hpp"
+#include "ui/windows/w_Reconstruction.hpp"
+#include "ui/windows/IPlayable.hpp" 
+
 WindowManager& WindowManager::getInstance() {
     static WindowManager instance;
     return instance;
@@ -46,16 +61,28 @@ void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) 
 }
 
 void WindowManager::setup() {
-    auto video_window = std::make_unique<Window::Video>(m_renderer, &visibility.showVideo);
-    Window::Video* video_ptr = video_window.get();
+    auto temp_video_ptr = std::make_unique<Window::Video>(m_renderer, &visibility.showVideo);
+
+    m_videoWindow = temp_video_ptr.get();
+
+    auto temp_reconstruction_ptr = std::make_unique<Window::Reconstruction>(&visibility.showReconstruction);
+
+    m_reconstructionWindow = temp_reconstruction_ptr.get();
+
+    std::vector<IPlayable*> playables;
+    playables.push_back(m_videoWindow);
+    playables.push_back(m_reconstructionWindow);
+
+    auto temp_playback_ptr = std::make_unique<Window::Playback>(&visibility.showPlayback, playables);
+    m_playbackWindow = temp_playback_ptr.get();
+
+    windows.emplace_back(std::move(temp_video_ptr));
+    windows.emplace_back(std::move(temp_reconstruction_ptr));
+    windows.emplace_back(std::move(temp_playback_ptr));
 
     home = std::make_unique<Window::HomePage>();
-
     windows.emplace_back(std::make_unique<Window::About>(&visibility.showAbout));
-    windows.emplace_back(std::make_unique<Window::Playback>(&visibility.showPlayback, video_ptr));
     windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
-    windows.emplace_back(std::make_unique<Window::Reconstruction>(&visibility.showReconstruction));
-    windows.emplace_back(std::move(video_window)); 
     windows.emplace_back(std::make_unique<Window::Plot>(&visibility.showPlot));
     windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
     windows.emplace_back(std::make_unique<Window::Pedal>(&visibility.showPedal));
