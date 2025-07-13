@@ -2,6 +2,7 @@
 #include "ui/windows/w_Playback.hpp"
 #include "Log.hpp"
 #include <cstring>
+#include <string> // Necessário para std::to_string
 
 Window::Playback::Playback(bool* isOpen, const std::vector<IPlayable*>& playables)
     : IWindow(isOpen), m_playables(playables) {
@@ -47,10 +48,6 @@ void Window::Playback::RenderGroupCreationUI() {
     ImGui::Text("Selecione os itens para agrupar:");
     for (size_t i = 0; i < m_playables.size(); ++i) {
         if (m_playables[i] && m_playables[i]->isLoaded()) {
-            
-            // --- CORREÇÃO DO CONFLITO DE ID ---
-            // Criamos um rótulo único para o checkbox adicionando "##group_checkbox"
-            // Isso o diferencia de outros widgets que usam o mesmo título.
             std::string checkbox_label = std::string(m_playables[i]->getTitle()) + "##group_checkbox";
             
             bool selection = m_groupCreationSelection[i];
@@ -91,25 +88,21 @@ void Window::Playback::RenderGroupControls() {
 
     ImGui::Text("Controles Sincronizados");
 
-    // Usamos um iterador para poder remover itens do mapa de forma segura enquanto iteramos
     for (auto it = m_playbackGroups.begin(); it != m_playbackGroups.end(); ) {
         const std::string& name = it->first;
         const std::set<IPlayable*>& group = it->second;
 
         if (group.empty()) {
-            ++it; // Pula para o próximo item
+            ++it;
             continue;
         }
 
         ImGui::PushID(name.c_str());
         
-        // --- BOTÃO DE REMOÇÃO ADICIONADO ---
         if (ImGui::Button("X")) {
-            // Se o botão 'X' for clicado, marca o iterador para ser apagado e quebra o loop interno
-            // para evitar acessar dados que serão deletados.
             it = m_playbackGroups.erase(it);
             ImGui::PopID();
-            continue; // Continua para a próxima iteração do loop for
+            continue;
         }
         ImGui::SameLine();
 
@@ -138,11 +131,11 @@ void Window::Playback::RenderGroupControls() {
         ImGui::Text(name.c_str());
 
         ImGui::PopID();
-        ++it; // Avança o iterador para o próximo grupo
+        ++it;
     }
 }
 
-// --- CONTROLES INDIVIDUAIS REATIVADOS ---
+// --- CONTROLES INDIVIDUAIS COM DEBUG ADICIONADO ---
 void Window::Playback::RenderIndividualControls() {
     bool anyLoaded = false;
     for (IPlayable* playable : m_playables) {
@@ -150,7 +143,6 @@ void Window::Playback::RenderIndividualControls() {
             anyLoaded = true;
             if (ImGui::CollapsingHeader(playable->getTitle())) {
                 
-                // Todo o nosso código de controle individual está de volta aqui.
                 ImGui::PushID(playable);
 
                 float step_size = playable->getStepSize();
@@ -162,13 +154,16 @@ void Window::Playback::RenderIndividualControls() {
                 ImGui::PopItemWidth();
                 ImGui::SameLine();
 
-                float currentTime = static_cast<float>(playable->getCurrentTime());
-                const float duration = static_cast<float>(playable->getDuration());
+                // Usar double para consistência com a interface IPlayable
+                double currentTime = playable->getCurrentTime();
+                const double duration = playable->getDuration();
                 bool isPlaying = playable->isPlaying();
 
                 if (ImGui::ArrowButton("##left", ImGuiDir_Left)) {
-                    // A lógica das setas pode ser revisitada aqui quando você quiser
-                    playable->seek(currentTime - step_size);
+                    // --- DEBUG ---
+                    double newPosition = currentTime - step_size;
+                    LOG("DEBUG", "[Playback] Seta Esquerda: tempo_atual=" + std::to_string(currentTime) + ", passo=" + std::to_string(step_size) + ", nova_posicao=" + std::to_string(newPosition));
+                    playable->seek(newPosition);
                 }
                 ImGui::SameLine();
 
@@ -180,13 +175,18 @@ void Window::Playback::RenderIndividualControls() {
                 ImGui::SameLine();
 
                 if (ImGui::ArrowButton("##right", ImGuiDir_Right)) {
-                    playable->seek(currentTime + step_size);
+                    // --- DEBUG ---
+                    double newPosition = currentTime + step_size;
+                    LOG("DEBUG", "[Playback] Seta Direita: tempo_atual=" + std::to_string(currentTime) + ", passo=" + std::to_string(step_size) + ", nova_posicao=" + std::to_string(newPosition));
+                    playable->seek(newPosition);
                 }
                 ImGui::SameLine();
                 
                 ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 120);
-                if (ImGui::SliderFloat("##Tempo", &currentTime, 0.0f, duration, "%.2f")) {
-                    playable->seek(currentTime);
+                // O slider precisa de um float, então fazemos a conversão aqui
+                float sliderCurrentTime = static_cast<float>(currentTime);
+                if (ImGui::SliderFloat("##Tempo", &sliderCurrentTime, 0.0f, static_cast<float>(duration), "%.2f")) {
+                    playable->seek(sliderCurrentTime);
                 }
                 ImGui::PopItemWidth();
                 ImGui::SameLine();

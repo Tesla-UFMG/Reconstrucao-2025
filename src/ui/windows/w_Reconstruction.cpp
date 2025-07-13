@@ -247,7 +247,12 @@ void Window::Reconstruction::addColumnToMap(const std::string& archiveName,
     }
 
     LOG("DEBUG", "Coluna " + columnName + " adicionada à reconstrução.");
-    
+        // Após adicionar uma nova coluna, verificamos se já temos o suficiente para montar a pista.
+    if (m_latIndex != -1 && m_lonIndex != -1) {
+        LOG("INFO", "Detectados dados de latitude e longitude. Construindo a pista (m_track)...");
+        this->BuildTrackFromLatLon(); // Chamada crucial da função!
+        LOG("INFO", "Pista construída. Total de pontos em m_track: " + std::to_string(m_track.size()));
+    }
 }
 
 void Window::Reconstruction::generateSimulatedData(int numPoints, size_t coordIndex, float* x, float* y) {
@@ -367,9 +372,29 @@ void Window::Reconstruction::removeColumnFromMap(size_t index) {
         return;
     }
 
+    // Verifica se a coluna a ser removida é a de latitude ou longitude
+    bool wasLatitude = (static_cast<int>(index) == m_latIndex);
+    bool wasLongitude = (static_cast<int>(index) == m_lonIndex);
+
     std::string columnName = m_coordDataList[index].column;
     m_coordDataList.erase(m_coordDataList.begin() + index);
-    LOG("DEBUG", "Coluna '" + columnName + "' removida da gráfico.");
+    LOG("DEBUG", "Coluna '" + columnName + "' removida da reconstrução.");
+
+    // Se removemos uma das colunas essenciais, precisamos invalidar os índices e limpar a pista.
+    if (wasLatitude || wasLongitude) {
+        if (wasLatitude) m_latIndex = -1;
+        if (wasLongitude) m_lonIndex = -1;
+        
+        m_track.clear(); // Limpa os dados da pista
+        m_kartPosition = 0.0f; // Reseta a posição do kart
+        LOG("INFO", "Pista (m_track) limpa pois um componente essencial (lat/lon) foi removido.");
+    }
+
+    // --- IMPORTANTE: Reajustar os índices restantes ---
+    // Se removemos um item, os índices dos itens posteriores mudaram.
+    // A maneira mais segura é revalidar os índices.
+    if (m_latIndex > static_cast<int>(index)) m_latIndex--;
+    if (m_lonIndex > static_cast<int>(index)) m_lonIndex--;
 }
 
 void Window::Reconstruction::render() {
