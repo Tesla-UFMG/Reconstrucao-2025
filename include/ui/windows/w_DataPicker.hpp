@@ -8,6 +8,7 @@
 #include "ui/windows/iWindow.hpp"
 
 // C++
+#include <cstring>
 #include <filesystem>
 #include <string>
 
@@ -19,13 +20,17 @@ namespace Window {
     class DataPicker : public IWindow {
         private:
             void refreshData();
-            void sendArchivePayload(const std::string& filepath);
-            void sendColumnPayload(const std::string& filepath, const std::string& columnName);
 
+            // Payloads
+            void sendArchivePayload(const std::string& fileType, const std::string& fileName);
+            void sendColumnPayload(const std::string& fileType, const std::string& fileName,
+                                   const std::string& columnName);
+
+            // Renders
             void renderMenuBar();
             void renderArchiveContextPopup(const GenericFile& file);
-            void renderArchiveNode(const GenericFile& file, int index);
-            void renderColumnItem(const std::string& filepath, const std::string& colName);
+            void renderArchiveNode(const GenericFile& file);
+            void renderColumnItem(const std::string& fileType, const std::string& fileName, const std::string& colName);
 
         public:
             explicit DataPicker(bool* isOpen = nullptr);

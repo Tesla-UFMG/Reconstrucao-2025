@@ -31,16 +31,20 @@ class DB {
         ProjectData projectData;
 
     public:
-        static DB& getInstance();
-        void       createProjectDialog();
-        void       saveProjectDialog();
-        void       loadProjectDialog();
+        static DB&  getInstance();
+        void        createProjectDialog();
+        void        saveProjectDialog();
+        void        loadProjectDialog();
+        static void errorDialog(const std::string& message);
+        void        loadCSVDialog();
+        void        deleteCSV(const std::filesystem::path& filepath);
 
-        void loadCSVDialog();
-        void deleteCSV(const std::filesystem::path& filepath);
+        const ProjectData& getProject() const;
+        ProjectData&       getProject();
 
-        const ProjectData&  getProject() const;
         std::vector<double> getCSVData(const std::string& filepath, const std::string& columnName) const;
+        std::vector<double> getTelemetryData(const std::string& packetId, const std::string& columnName) const;
+        bool                processTelemetryPacket(const std::string& packetId, const std::vector<double>& data);
 };
 
 #endif

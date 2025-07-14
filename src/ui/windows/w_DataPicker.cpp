@@ -17,19 +17,29 @@ void Window::DataPicker::renderMenuBar() {
     }
 }
 
-void Window::DataPicker::sendArchivePayload(const std::string& filepath) {
+void Window::DataPicker::sendArchivePayload(const std::string& fileType, const std::string& fileName) {
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-        std::string payload = filepath;
-        ImGui::SetDragDropPayload("FILE_NAME", payload.c_str(), payload.size() + 1);
-        ImGui::Text("Arquivo: %s", filepath.c_str());
+
+        ArchivePayload payload{};
+        std::strncpy(payload.fileType, fileType.c_str(), sizeof(payload.fileType));
+        std::strncpy(payload.fileName, fileName.c_str(), sizeof(payload.fileName));
+
+        ImGui::SetDragDropPayload("ARCHIVE_NAME", &payload, sizeof(ArchivePayload));
+        ImGui::Text("%s", fileName.c_str());
         ImGui::EndDragDropSource();
     }
 }
 
-void Window::DataPicker::sendColumnPayload(const std::string& filepath, const std::string& columnName) {
+void Window::DataPicker::sendColumnPayload(const std::string& fileType, const std::string& fileName,
+                                           const std::string& columnName) {
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-        std::string payload = filepath + ":" + columnName;
-        ImGui::SetDragDropPayload("COLUMN_NAME", payload.c_str(), payload.size() + 1);
+
+        ColumnPayload payload{};
+        std::strncpy(payload.fileType, fileType.c_str(), sizeof(payload.fileType));
+        std::strncpy(payload.fileName, fileName.c_str(), sizeof(payload.fileName));
+        std::strncpy(payload.columnName, columnName.c_str(), sizeof(payload.columnName));
+
+        ImGui::SetDragDropPayload("COLUMN_NAME", &payload, sizeof(ColumnPayload));
         ImGui::Text("%s", columnName.c_str());
         ImGui::EndDragDropSource();
     }
@@ -49,32 +59,54 @@ void Window::DataPicker::renderArchiveContextPopup(const GenericFile& file) {
             // Se for do tipo Video File....
             if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
             }
+
+            if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
+                DB::getInstance().getProject().removePacket(telemetryFile->getPacketId());
+            }
         }
         ImGui::EndPopup();
     }
 }
 
-void Window::DataPicker::renderArchiveNode(const GenericFile& file, int index) {
-    const std::string& filename = file.getPath().filename().string();
-    const std::string& filepath = file.getPath().string();
+void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
+    const std::string& fileType = file.getFileType();
+    const std::string& fileName = file.getName();
 
-    // Se for do tipo CSV File...
     if (auto csvFile = dynamic_cast<const CSVFile*>(&file)) {
-        if (ImGui::TreeNode((filename + "##" + std::to_string(index)).c_str())) {
-            this->sendArchivePayload(filename); // Inicia o payload de drag & drop para o arquivo
-            // Renderiza cada coluna do arquivo
-            const std::vector<std::string>& cols = csvFile->getDocument()->GetColumnNames();
-            for (const std::string& colName : cols) {
-                this->renderColumnItem(filename, colName);
+        const std::string& filepath = file.getPath().string();
+        if (ImGui::TreeNode(fileName.c_str())) {
+            this->sendArchivePayload(fileType, fileName);
+            for (const std::string& colName : csvFile->getColumnNames()) {
+                this->renderColumnItem(fileType, fileName, colName);
             }
             ImGui::TreePop();
         }
     }
+
+    else if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
+        const std::string& packetId = telemetryFile->getPacketId();
+        char               buf[packetId.size() + fileName.size() + 4];
+        std::snprintf(buf, sizeof(buf), "[%s] %s", packetId.c_str(), fileName.c_str());
+
+        ImGui::PushStyleColor(ImGuiCol_Text, HI(1));
+        if (ImGui::TreeNode(buf)) {
+            this->sendArchivePayload(fileType, packetId);
+            for (const std::string& colName : telemetryFile->getColumnNames()) {
+                this->renderColumnItem(fileType, packetId, colName);
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopStyleColor();
+    }
+
+    else if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
+    }
 }
 
-void Window::DataPicker::renderColumnItem(const std::string& filepath, const std::string& colName) {
+void Window::DataPicker::renderColumnItem(const std::string& fileType, const std::string& fileName,
+                                          const std::string& colName) {
     ImGui::Selectable(colName.c_str());
-    this->sendColumnPayload(filepath, colName);
+    this->sendColumnPayload(fileType, fileName, colName);
 }
 
 void Window::DataPicker::render() {
@@ -83,11 +115,16 @@ void Window::DataPicker::render() {
         this->renderMenuBar();
         ImGui::BeginChild("##dataPicker", ImGui::GetContentRegionAvail(), true, ImGuiWindowFlags_HorizontalScrollbar);
 
-        // Renderiza cada arquivo e seu respectivo menu de contexto
+        const std::vector<TelemetryFile>& telemetryFiles = DB::getInstance().getProject().getTelemetryPackets();
+        for (auto& telemetryFile : telemetryFiles) {
+            this->renderArchiveNode(telemetryFile);
+            this->renderArchiveContextPopup(telemetryFile);
+        }
+
         const std::vector<CSVFile>& csvFiles = DB::getInstance().getProject().csvFiles;
-        for (size_t i = 0; i < csvFiles.size(); i++) {
-            this->renderArchiveNode(csvFiles[i], i);
-            this->renderArchiveContextPopup(csvFiles[i]);
+        for (auto& csvFile : csvFiles) {
+            this->renderArchiveNode(csvFile);
+            this->renderArchiveContextPopup(csvFile);
         }
 
         ImGui::EndChild();

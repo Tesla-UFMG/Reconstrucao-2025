@@ -15,6 +15,7 @@
 #include "ui/windows/w_Plot.hpp"
 #include "ui/windows/w_Reconstruction.hpp"
 #include "ui/windows/w_Statistics.hpp"
+#include "ui/windows/w_Telemetry.hpp"
 #include "ui/windows/w_Terminal.hpp"
 #include "ui/windows/w_Video.hpp"
 #include "ui/windows/w_WheelControl.hpp"
@@ -45,6 +46,7 @@ struct VisibilityFlags {
         bool showImPlot3dDemo   = false;
         bool showImGuiDemo      = false;
         bool showStatistics     = false;
+        bool showTelemetry      = false;
 };
 
 class WindowManager {

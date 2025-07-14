@@ -62,6 +62,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::ImPlot3dDemo>(&visibility.showImPlot3dDemo));
     windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
     windows.emplace_back(std::make_unique<Window::Statistics>(&visibility.showStatistics));
+    windows.emplace_back(std::make_unique<Window::Telemetry>(&visibility.showTelemetry));
 }
 
 void WindowManager::homePage() {

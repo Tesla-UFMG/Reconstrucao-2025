@@ -6,7 +6,6 @@ void ProjectData::clear() {
 }
 
 void ProjectData::loadCSV(const std::filesystem::path& filepath) {
-    // Verifica se o arquivo já foi aberto
     for (CSVFile& csvFile : this->csvFiles) {
         if (csvFile.getPath() == filepath) {
             LOG("WARN", "Arquivo já carregado: " + filepath.string());
@@ -14,7 +13,6 @@ void ProjectData::loadCSV(const std::filesystem::path& filepath) {
         }
     }
 
-    // Cria o documento a partir do arquivo CSV
     try {
         std::ifstream file(filepath);
         auto          doc = std::make_unique<rapidcsv::Document>(file, rapidcsv::LabelParams(0, 0));
@@ -34,9 +32,43 @@ void ProjectData::removeCSV(const std::filesystem::path& filepath) {
             return;
         }
     }
-
     LOG("ERROR", "Arquivo não encontrado para remoção: " + filepath.string());
 }
+
+bool ProjectData::loadPacket(const std::string& packetName, const std::string& packetId,
+                             const std::vector<std::string>& columnNames) {
+    for (const TelemetryFile& telemetryFile : telemetryFiles) {
+        if (telemetryFile.getPacketId() == packetId) {
+            LOG("WARN", "Pacote já carregado: " + telemetryFile.getName());
+            return false;
+        }
+    }
+
+    telemetryFiles.emplace_back(packetName, packetId, columnNames);
+    LOG("INFO", "Pacote carregado: " + packetName);
+    return true;
+}
+
+void ProjectData::removePacket(const std::string& packetId) {
+    for (size_t i = 0; i < telemetryFiles.size(); ++i) {
+        if (telemetryFiles[i].getPacketId() == packetId) {
+            telemetryFiles.erase(telemetryFiles.begin() + i);
+            LOG("INFO", "Pacote removido: " + packetId);
+            return;
+        }
+    }
+    LOG("ERROR", "Pacote não encontrado para remoção: " + packetId);
+}
+
+const std::vector<TelemetryFile>& ProjectData::getTelemetryPackets() { return this->telemetryFiles; }
+
+bool ProjectData::getTelemetryStatus() { return this->telemetryStatus; }
+
+void ProjectData::setTelemetryStatus(bool status) { this->telemetryStatus = status; }
+
+bool ProjectData::getProcessingStatus() { return this->processingStatus; }
+
+void ProjectData::setProcessingStatus(bool status) { this->processingStatus = status; }
 
 bool ProjectData::serialize(const std::filesystem::path& filepath) const {
     std::ofstream file(filepath, std::ios::binary);

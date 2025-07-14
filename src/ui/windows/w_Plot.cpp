@@ -83,35 +83,42 @@ void Window::Plot::removeGraph(std::vector<GraphData>& graphs, size_t graphIndex
 }
 
 void Window::Plot::processColumnDragDrop(GraphData& graphData) {
-    if (ImGui::BeginDragDropTarget()) {
-        // Aceita o payload
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-            std::stringstream ss(static_cast<const char*>(payload->Data));
-            std::string       filename, columnName;
 
-            // Pega o nome do arquivo e a coluna
-            if (std::getline(ss, filename, ':') && std::getline(ss, columnName, ':')) {
-                this->addColumnToGraph(graphData, filename, columnName);
-            }
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
+            const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
+
+            this->addColumnToGraph(graphData, columnPayload);
         }
         ImGui::EndDragDropTarget();
     }
 }
 
-void Window::Plot::addColumnToGraph(GraphData& graphData, const std::string& filename, const std::string& columnName) {
-    // Verifica se a coluna do arquivo já foi adicionada
+void Window::Plot::addColumnToGraph(GraphData& graphData, const ColumnPayload* payload) {
+    std::string fileType   = payload->fileType;
+    std::string fileName   = payload->fileName;
+    std::string columnName = payload->columnName;
+
     for (size_t i = 0; i < graphData.archives.size(); ++i) {
-        if (graphData.archives[i] == filename && graphData.columns[i] == columnName) {
-            LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + filename +
+        if (graphData.archives[i] == fileName && graphData.columns[i] == columnName) {
+            LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + fileName +
                             " já existe.");
             return;
         }
     }
 
     // Adiciona os eixos
-    std::vector<double> y = DB::getInstance().getCSVData(filename, columnName);
+    std::vector<double> y;
+    if (fileType == "CSV") {
+        y = DB::getInstance().getCSVData(fileName, columnName);
+
+    } else if (fileType == "Telemetry") {
+        y = DB::getInstance().getTelemetryData(fileName, columnName);
+    }
+
     if (y.size() == 0) {
-        LOG("ERROR", "Não foi possível adicionar a coluna " + columnName + " do arquivo " + filename + " ao gráfico.");
+        LOG("ERROR", "Não foi possível adicionar a coluna " + columnName + " do arquivo " + fileName +
+                         " ao gráfico. A coluna não possui dados.");
         return;
     }
     graphData.y.push_back(y);
@@ -124,7 +131,7 @@ void Window::Plot::addColumnToGraph(GraphData& graphData, const std::string& fil
 
     // Adiciona a coluna, o nome do arquivo e o multiplicador padrão (1.0)
     graphData.columns.push_back(columnName);
-    graphData.archives.push_back(filename);
+    graphData.archives.push_back(fileName);
     graphData.multiplier.push_back(1.0);
 
     ImPlot::BustItemCache();

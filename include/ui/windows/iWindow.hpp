@@ -2,6 +2,7 @@
 #define IWINDOW_HPP
 
 // Project
+#include "DataFiles.hpp"
 #include "ImGuiWrapper.hpp"
 
 // C++
