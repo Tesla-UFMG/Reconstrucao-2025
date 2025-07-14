@@ -46,10 +46,12 @@ class ProjectData {
         void loadCSV(const std::filesystem::path& filepath);   // Carrega os dados de um arquivo CSV
         void removeCSV(const std::filesystem::path& filepath); // Remove dados
 
-        const std::vector<TelemetryFile>& getTelemetryPackets();
-        bool                              loadPacket(const std::string& packetName, const std::string& packetId,
-                                                     const std::vector<std::string>& columnNames);
-        void                              removePacket(const std::string& packetId);
+        const std::vector<CSVFile>&       getCSVFiles();
+        const std::vector<TelemetryFile>& getTelemetryFiles();
+
+        bool loadPacket(const std::string& packetName, const std::string& packetId,
+                        const std::vector<std::string>& columnNames);
+        void removePacket(const std::string& packetId);
 
         void clear(); // Limpa os dados armazenados
 

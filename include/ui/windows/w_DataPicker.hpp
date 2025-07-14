@@ -28,7 +28,7 @@ namespace Window {
 
             // Renders
             void renderMenuBar();
-            void renderArchiveContextPopup(const GenericFile& file);
+            void renderArchiveContextPopup(const GenericFile& file, int i);
             void renderArchiveNode(const GenericFile& file);
             void renderColumnItem(const std::string& fileType, const std::string& fileName, const std::string& colName);
 

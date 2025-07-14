@@ -21,18 +21,49 @@
 enum GraphType { GRAPH_LINE, GRAPH_BAR, GRAPH_SCATTER, GRAPH_FILLED_LINE };
 
 struct GraphData {
-        std::vector<std::string> columns;
-        std::vector<std::string> archives;
+        std::vector<std::string> columns;   // Nome das colunas
+        std::vector<std::string> fileNames; // Nome dos arquivos que vieram os dados
 
-        std::vector<std::vector<double>> x;
-        std::vector<std::vector<double>> y;
-        std::vector<double>              multiplier;
+        std::vector<std::vector<double>>        x;          // Valores de X
+        std::vector<const std::vector<double>*> y;          // Valores de Y
+        std::vector<double>                     multiplier; // Multiplicador para os valores de Y
 
         std::string xColumn;
-        GraphType   type       = GRAPH_LINE;
-        bool        showXAxis  = false;
-        bool        showYAxis  = true;
-        double      plotHeight = 190;
+        GraphType   type       = GRAPH_LINE; // Tipo do gráfico
+        bool        showXAxis  = false;      // Mostrar eixo X
+        bool        showYAxis  = true;       // Mostrar eixo Y
+        double      plotHeight = 190;        // Tamanho do gráfico
+};
+
+struct GraphData_ {
+        std::string         columnName; // Nome da coluna
+        std::string         fileName;   // Nome do arquivo que contém a coluna
+        double              multiplier; // Multiplicador para os valores de Y
+        std::vector<double> x;          // Valores de X
+        std::vector<double> y;          // Valores de Y
+
+        void buildXVector() {
+            if (y.size() == x.size() || y.empty()) {
+                return;
+            }
+
+            x.resize(y.size());
+            for (size_t i = 0; i < y.size(); ++i) {
+                x[i] = static_cast<double>(i);
+            }
+        }
+};
+
+struct GraphConfig {
+        GraphType type       = GRAPH_LINE; // Tipo do gráfico
+        bool      showXAxis  = false;      // Mostrar eixo X
+        bool      showYAxis  = true;       // Mostrar eixo Y
+        double    plotHeight = 190;        // Tamanho do gráfico
+};
+
+struct Graph {
+        GraphConfig             config; // Configurações do gráfico
+        std::vector<GraphData_> data;   // Dados do gráfico
 };
 
 namespace Window {

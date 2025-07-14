@@ -15,6 +15,22 @@ CSVFile::CSVFile(std::filesystem::path filepath, std::unique_ptr<rapidcsv::Docum
 rapidcsv::Document*      CSVFile::getDocument() const { return this->doc.get(); }
 std::vector<std::string> CSVFile::getColumnNames() const { return this->doc->GetColumnNames(); }
 
+const std::vector<double>& CSVFile::getColumnData(const std::string& columnName) const {
+    static const std::vector<double> emptyVec{};
+    auto                             it = columnCache.find(columnName);
+    if (it != columnCache.end()) {
+        return it->second;
+    }
+
+    try {
+        std::vector<double> data   = this->doc->GetColumn<double>(columnName);
+        auto                result = columnCache.emplace(columnName, std::move(data));
+        return result.first->second;
+    } catch (const std::exception& e) {
+        return emptyVec;
+    }
+}
+
 // TELEMETRY
 TelemetryFile::TelemetryFile(const std::string& packetName, const std::string& packetId,
                              const std::vector<std::string>& columnNames)
@@ -41,3 +57,14 @@ bool TelemetryFile::insertData(const std::vector<double>& newData) {
 const std::string&                      TelemetryFile::getPacketId() const { return this->packetId; }
 const std::vector<std::string>&         TelemetryFile::getColumnNames() const { return this->columnNames; }
 const std::vector<std::vector<double>>& TelemetryFile::getData() const { return this->data; }
+
+const std::vector<double>& TelemetryFile::getColumnData(const std::string& columnName) const {
+    static const std::vector<double> emptyVec{};
+    const std::vector<std::string>&  cols = this->getColumnNames();
+    for (size_t i = 0; i < cols.size(); ++i) {
+        if (cols[i] == columnName) {
+            return this->data[i];
+        }
+    }
+    return emptyVec;
+}

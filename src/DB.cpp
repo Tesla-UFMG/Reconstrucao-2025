@@ -69,6 +69,10 @@ void DB::loadCSVDialog() {
 
 void DB::errorDialog(const std::string& message) { tinyfd_messageBox("Erro", message.c_str(), "ok", "error", 1); }
 
+bool DB::ConfirmationDialog(const std::string& message) {
+    return tinyfd_messageBox("Confirmação", message.c_str(), "yesno", "question", 1) == 1;
+}
+
 void DB::saveProject(const std::filesystem::path& filepath) {
     if (this->projectData.serialize(filepath)) {
         this->projectData.currentProjectName = filepath.filename().string();
@@ -85,50 +89,39 @@ void DB::loadProject(const std::filesystem::path& filepath) {
     }
 }
 
-std::vector<double> DB::getCSVData(const std::string& filepath, const std::string& columnName) const {
+const std::vector<double>& DB::getCSVData(const std::string& filepath, const std::string& columnName) const {
+    static const std::vector<double> emptyVec{};
 
     for (const CSVFile& csvFile : this->projectData.csvFiles) {
-        const std::string& filepath_ = csvFile.getPath().filename().string();
-        // std::cout << filepath << std::endl;
-        // std::cout << filepath_ << std::endl;
+        if (csvFile.getName() != filepath)
+            continue;
 
-        if (filepath_ == filepath) {
-            try {
-                return csvFile.getDocument()->GetColumn<double>(columnName);
-            } catch (const std::exception& e) {
-                LOG("ERROR", "Coluna não encontrada. Erro: " + std::string(e.what()));
-                return {};
-            }
+        const std::vector<double>& data = csvFile.getColumnData(columnName);
+        if (!data.empty()) {
+            return data;
         }
     }
-    std::string msg = "Coluna '" + columnName + "' não encontrada no arquivo: " + filepath;
-    LOG("ERROR", msg);
-    return {};
+    LOG("ERROR",
+        "Não foi possível encontrar os dados da coluna '" + columnName + "' no arquivo CSV '" + filepath + "'.");
+    return emptyVec;
 }
 
-std::vector<double> DB::getTelemetryData(const std::string& packetId, const std::string& columnName) const {
+const std::vector<double>& DB::getTelemetryData(const std::string& packetId, const std::string& columnName) const {
+    static const std::vector<double> emptyVec{};
 
-    for (const auto& telemetryFile : this->projectData.telemetryFiles) {
-        const std::string& packetId_ = telemetryFile.getPacketId();
+    for (const TelemetryFile& telemetryFile : this->projectData.telemetryFiles) {
+        if (telemetryFile.getPacketId() != packetId)
+            continue;
 
-        if (packetId_ == packetId) {
-            try {
-                const auto data = telemetryFile.getData();
-                const auto cols = telemetryFile.getColumnNames();
-                for (size_t i = 0; i < cols.size(); ++i) {
-                    if (cols[i] == columnName) {
-                        return data[i];
-                    }
-                }
-            } catch (const std::exception& e) {
-                LOG("ERROR", "Coluna não encontrada. Erro: " + std::string(e.what()));
-                return {};
-            }
+        const std::vector<double>& data = telemetryFile.getColumnData(columnName);
+        if (!data.empty()) {
+            return data;
         }
     }
-    std::string msg = "Coluna '" + columnName + "' não encontrada no arquivo: " + packetId;
-    LOG("ERROR", msg);
-    return {};
+
+    LOG("ERROR", "Não foi possível encontrar os dados da coluna '" + columnName + "' no pacote de telemetria '" +
+                     packetId + "'.");
+    return emptyVec;
 }
 
 bool DB::processTelemetryPacket(const std::string& packetId, const std::vector<double>& data) {

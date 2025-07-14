@@ -60,7 +60,9 @@ void ProjectData::removePacket(const std::string& packetId) {
     LOG("ERROR", "Pacote não encontrado para remoção: " + packetId);
 }
 
-const std::vector<TelemetryFile>& ProjectData::getTelemetryPackets() { return this->telemetryFiles; }
+const std::vector<CSVFile>& ProjectData::getCSVFiles() { return this->csvFiles; }
+
+const std::vector<TelemetryFile>& ProjectData::getTelemetryFiles() { return this->telemetryFiles; }
 
 bool ProjectData::getTelemetryStatus() { return this->telemetryStatus; }
 

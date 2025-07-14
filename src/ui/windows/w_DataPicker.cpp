@@ -45,23 +45,24 @@ void Window::DataPicker::sendColumnPayload(const std::string& fileType, const st
     }
 }
 
-void Window::DataPicker::renderArchiveContextPopup(const GenericFile& file) {
+void Window::DataPicker::renderArchiveContextPopup(const GenericFile& file, int i) {
     const std::string& filename = file.getPath().filename().string();
 
-    if (ImGui::BeginPopupContextItem((filename + "_popup").c_str())) {
+    if (ImGui::BeginPopupContextItem((filename + "_popup##" + std::to_string(i)).c_str())) {
         if (ImGui::MenuItem("Fechar")) {
+            if (DB::ConfirmationDialog("Você tem certeza que deseja fechar este arquivo?")) {
+                // Se for do tipo CSV File....
+                if (auto csvFile = dynamic_cast<const CSVFile*>(&file)) {
+                    DB::getInstance().deleteCSV(csvFile->getPath());
+                }
 
-            // Se for do tipo CSV File....
-            if (auto csvFile = dynamic_cast<const CSVFile*>(&file)) {
-                DB::getInstance().deleteCSV(csvFile->getPath());
-            }
+                // Se for do tipo Video File....
+                else if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
+                }
 
-            // Se for do tipo Video File....
-            if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
-            }
-
-            if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
-                DB::getInstance().getProject().removePacket(telemetryFile->getPacketId());
+                else if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
+                    DB::getInstance().getProject().removePacket(telemetryFile->getPacketId());
+                }
             }
         }
         ImGui::EndPopup();
@@ -115,16 +116,19 @@ void Window::DataPicker::render() {
         this->renderMenuBar();
         ImGui::BeginChild("##dataPicker", ImGui::GetContentRegionAvail(), true, ImGuiWindowFlags_HorizontalScrollbar);
 
-        const std::vector<TelemetryFile>& telemetryFiles = DB::getInstance().getProject().getTelemetryPackets();
+        const std::vector<TelemetryFile>& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
+        int                               i              = 0;
         for (auto& telemetryFile : telemetryFiles) {
             this->renderArchiveNode(telemetryFile);
-            this->renderArchiveContextPopup(telemetryFile);
+            this->renderArchiveContextPopup(telemetryFile, i);
+            i++;
         }
 
-        const std::vector<CSVFile>& csvFiles = DB::getInstance().getProject().csvFiles;
+        const std::vector<CSVFile>& csvFiles = DB::getInstance().getProject().getCSVFiles();
         for (auto& csvFile : csvFiles) {
             this->renderArchiveNode(csvFile);
-            this->renderArchiveContextPopup(csvFile);
+            this->renderArchiveContextPopup(csvFile, i);
+            i++;
         }
 
         ImGui::EndChild();

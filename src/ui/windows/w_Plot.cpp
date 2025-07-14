@@ -87,8 +87,10 @@ void Window::Plot::processColumnDragDrop(GraphData& graphData) {
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-
             this->addColumnToGraph(graphData, columnPayload);
+        } else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
+            const ArchivePayload* archivePayload = reinterpret_cast<const ArchivePayload*>(payload->Data);
+            //  this->addColumnToGraph(graphData, columnPayload);
         }
         ImGui::EndDragDropTarget();
     }
@@ -99,8 +101,9 @@ void Window::Plot::addColumnToGraph(GraphData& graphData, const ColumnPayload* p
     std::string fileName   = payload->fileName;
     std::string columnName = payload->columnName;
 
-    for (size_t i = 0; i < graphData.archives.size(); ++i) {
-        if (graphData.archives[i] == fileName && graphData.columns[i] == columnName) {
+    // Verifica se o arquivo já está no gráfico
+    for (size_t i = 0; i < graphData.fileNames.size(); ++i) {
+        if (graphData.fileNames[i] == fileName && graphData.columns[i] == columnName) {
             LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + fileName +
                             " já existe.");
             return;
@@ -108,30 +111,24 @@ void Window::Plot::addColumnToGraph(GraphData& graphData, const ColumnPayload* p
     }
 
     // Adiciona os eixos
-    std::vector<double> y;
+    const std::vector<double>* y = nullptr;
     if (fileType == "CSV") {
-        y = DB::getInstance().getCSVData(fileName, columnName);
-
+        y = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        y = DB::getInstance().getTelemetryData(fileName, columnName);
+        y = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (y.size() == 0) {
-        LOG("ERROR", "Não foi possível adicionar a coluna " + columnName + " do arquivo " + fileName +
-                         " ao gráfico. A coluna não possui dados.");
-        return;
-    }
     graphData.y.push_back(y);
 
-    std::vector<double> x(y.size());
-    for (size_t i = 0; i < y.size(); ++i) {
+    std::vector<double> x(y->size());
+    for (size_t i = 0; i < y->size(); ++i) {
         x[i] = static_cast<double>(i);
     }
     graphData.x.push_back(x);
 
     // Adiciona a coluna, o nome do arquivo e o multiplicador padrão (1.0)
     graphData.columns.push_back(columnName);
-    graphData.archives.push_back(fileName);
+    graphData.fileNames.push_back(fileName);
     graphData.multiplier.push_back(1.0);
 
     ImPlot::BustItemCache();
@@ -221,7 +218,7 @@ void Window::Plot::removeColumnFromGraph(GraphData& graphData, int graphIndex) {
         return;
     }
 
-    graphData.archives.erase(graphData.archives.begin() + graphIndex);
+    graphData.fileNames.erase(graphData.fileNames.begin() + graphIndex);
     graphData.columns.erase(graphData.columns.begin() + graphIndex);
     graphData.x.erase(graphData.x.begin() + graphIndex);
     graphData.y.erase(graphData.y.begin() + graphIndex);
@@ -267,8 +264,8 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             auto it = std::find(graphData.columns.begin(), graphData.columns.end(), graphData.xColumn);
             if (it != graphData.columns.end()) {
                 size_t index = std::distance(graphData.columns.begin(), it);
-                if (index < graphData.y.size() && !graphData.y[index].empty()) {
-                    customX    = graphData.y[index];
+                if (index < graphData.y.size() && !graphData.y[index]->empty()) {
+                    customX    = *graphData.y[index];
                     useCustomX = true;
                 }
             }
@@ -280,7 +277,7 @@ void Window::Plot::renderGraph(size_t graphIndex) {
                 continue;
 
             const std::string&         col       = graphData.columns[i];
-            const std::vector<double>& y         = graphData.y[i];
+            const std::vector<double>& y         = *graphData.y[i];
             int                        numPoints = static_cast<int>(y.size());
             std::vector<double>        scaledY(numPoints);
             double                     multiplier = graphData.multiplier[i];
@@ -290,10 +287,18 @@ void Window::Plot::renderGraph(size_t graphIndex) {
 
             // Define qual vetor de X será usado.
             const std::vector<double>* xData = nullptr;
-            if (useCustomX && customX.size() == y.size())
+            if (useCustomX && customX.size() == y.size()) {
                 xData = &customX;
-            else
+            } else {
+                if (graphData.x[i].size() != y.size()) {
+                    graphData.x[i].resize(y.size());
+                    for (size_t j = 0; j < y.size(); ++j) {
+                        graphData.x[i][j] = static_cast<double>(j);
+                    }
+                }
+
                 xData = &graphData.x[i];
+            }
 
             // Plota a série usando o vetor de X selecionado.
             switch (graphData.type) {

@@ -46,6 +46,8 @@ namespace Window {
             std::queue<std::string> messageQueue;
             std::atomic<bool>       keepReading{false};
 
+            void clearAndResizeInputBuffers();
+
             void getAvailablePorts();
             void closeDevice();
             void readMessages();

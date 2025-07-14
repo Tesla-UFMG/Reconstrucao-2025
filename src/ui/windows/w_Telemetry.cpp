@@ -19,13 +19,23 @@ Window::Telemetry::Telemetry(bool* isOpen) : IWindow(isOpen) {
     this->saveToFile        = false;
 
     // Packet configuration
-    this->packetName.resize(128);
-    this->packetId.resize(16);
+    this->clearAndResizeInputBuffers();
+    this->processingStatus = false;
+}
+
+void Window::Telemetry::clearAndResizeInputBuffers() {
+    this->packetName.clear();
+    this->packetName.resize(FILE_NAME_SIZE);
+
+    this->packetId.clear();
+    this->packetId.resize(COLUMN_NAME_SIZE);
+
+    this->packetColumnNames.clear();
     this->packetColumnNames.resize(8);
     for (int i = 0; i < 8; ++i) {
-        this->packetColumnNames[i].resize(128);
+        this->packetColumnNames[i].clear();
+        this->packetColumnNames[i].resize(COLUMN_NAME_SIZE);
     }
-    this->processingStatus = false;
 }
 
 Window::Telemetry::~Telemetry() { this->closeDevice(); }
@@ -217,17 +227,19 @@ void Window::Telemetry::renderPacketConfigMenu() {
             return;
         }
 
-        this->packetName = stripNulls(this->packetName);
-        this->packetId   = stripNulls(this->packetId);
-        for (auto& colBuf : packetColumnNames) {
-            colBuf = stripNulls(colBuf);
+        std::string              packetName_ = stripNulls(this->packetName);
+        std::string              packetId_   = stripNulls(this->packetId);
+        std::vector<std::string> packetColumnNames_(this->packetColumnNames.size());
+        for (size_t i = 0; i < this->packetColumnNames.size(); ++i) {
+            packetColumnNames_[i] = stripNulls(this->packetColumnNames[i]);
         }
 
         // Tenta salvar
-        if (DB::getInstance().getProject().loadPacket(this->packetName, this->packetId, this->packetColumnNames)) {
-            LOG("INFO", "Pacote salvo: " + this->packetName);
+        if (DB::getInstance().getProject().loadPacket(packetName_, packetId_, packetColumnNames_)) {
+            this->clearAndResizeInputBuffers();
+            LOG("INFO", "Pacote salvo: " + packetName_);
         } else {
-            std::string msg = "Pacote com o ID já existe. ID: " + this->packetId;
+            std::string msg = "Pacote com o ID já existe. ID: " + packetId_;
             DB::errorDialog(msg);
             LOG("ERROR", msg);
         }
@@ -236,41 +248,50 @@ void Window::Telemetry::renderPacketConfigMenu() {
 
     ImGui::BeginGroup();
     ImGui::SeparatorText("Pacotes Salvos:");
+
     ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
-                            ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoHostExtendY;
-    if (ImGui::BeginTable("##TelemetryTable", 3, flags)) {
+                            ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoHostExtendY | ImGuiTableFlags_Resizable |
+                            ImGuiTableFlags_HighlightHoveredColumn;
+    if (ImGui::BeginTable("##TelemetryTable", 11, flags)) {
         // Define cabeçalhos
         ImGui::TableSetupColumn("Nome do Pacote", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-        ImGui::TableSetupColumn("Ações", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthStretch);
+        for (int i = 0; i < 8; ++i) {
+            ImGui::TableSetupColumn(("Col. " + std::to_string(i + 1)).c_str(), ImGuiTableColumnFlags_WidthStretch);
+        }
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
-        const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryPackets();
+        const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
         for (const auto& telemetryFile : telemetryFiles) {
             ImGui::TableNextRow();
 
-            // Coluna 0: Nome + tooltip
+            // Coluna 0: Nome
             ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted(telemetryFile.getName().c_str());
-            if (ImGui::IsItemHovered()) {
-                std::string cols;
-                for (const auto& c : telemetryFile.getColumnNames()) {
-                    if (!cols.empty())
-                        cols += ", ";
-                    cols += c;
-                }
-                ImGui::SetTooltip("%s", cols.c_str());
-            }
 
             // Coluna 1: ID
             ImGui::TableSetColumnIndex(1);
             ImGui::TextUnformatted(telemetryFile.getPacketId().c_str());
 
-            // Coluna 2: Botão Remover
-            ImGui::TableSetColumnIndex(2);
+            // Coluna 2: Colunas
+            for (int i = 0; i < 8; ++i) {
+                ImGui::TableSetColumnIndex(i + 2);
+                if ((size_t)i < telemetryFile.getColumnNames().size()) {
+                    ImGui::TextUnformatted(telemetryFile.getColumnNames()[i].c_str());
+                } else {
+                    ImGui::TextUnformatted("");
+                }
+            }
+
+            // Coluna 3: Botão Remover
+            ImGui::TableSetColumnIndex(10);
             ImGui::PushID(telemetryFile.getPacketId().c_str());
             if (ImGui::Button("Remover")) {
-                DB::getInstance().getProject().removePacket(telemetryFile.getPacketId());
+                if (DB::ConfirmationDialog("Tem certeza que deseja remover o pacote " + telemetryFile.getName() +
+                                           "?")) {
+                    DB::getInstance().getProject().removePacket(telemetryFile.getPacketId());
+                }
             }
             ImGui::PopID();
         }

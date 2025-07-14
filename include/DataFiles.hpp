@@ -5,10 +5,15 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // Third party
 #include "rapidcsv.h"
+
+#define FILE_TYPE_SIZE   16
+#define FILE_NAME_SIZE   516
+#define COLUMN_NAME_SIZE 32
 
 class GenericFile {
     protected:
@@ -26,12 +31,14 @@ class GenericFile {
 
 class CSVFile : public GenericFile {
     private:
-        std::unique_ptr<rapidcsv::Document> doc;
+        std::unique_ptr<rapidcsv::Document>                          doc;
+        mutable std::unordered_map<std::string, std::vector<double>> columnCache;
 
     public:
         CSVFile(std::filesystem::path p, std::unique_ptr<rapidcsv::Document> d);
-        rapidcsv::Document*      getDocument() const;
-        std::vector<std::string> getColumnNames() const;
+        rapidcsv::Document*        getDocument() const;
+        std::vector<std::string>   getColumnNames() const;
+        const std::vector<double>& getColumnData(const std::string& columnName) const;
 };
 
 class VideoFile : public GenericFile {};
@@ -48,18 +55,19 @@ class TelemetryFile : public GenericFile {
         const std::string&                      getPacketId() const;
         const std::vector<std::string>&         getColumnNames() const;
         const std::vector<std::vector<double>>& getData() const;
+        const std::vector<double>&              getColumnData(const std::string& columnName) const;
         bool                                    insertData(const std::vector<double>& newData);
 };
 
 struct ArchivePayload {
-        char fileType[16];
-        char fileName[256];
+        char fileType[FILE_TYPE_SIZE];
+        char fileName[FILE_NAME_SIZE];
 };
 
 struct ColumnPayload {
-        char fileType[16];
-        char fileName[256];
-        char columnName[256];
+        char fileType[FILE_TYPE_SIZE];
+        char fileName[FILE_NAME_SIZE];
+        char columnName[COLUMN_NAME_SIZE];
 };
 
 #endif
