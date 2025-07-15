@@ -4,7 +4,7 @@ char* Dialogs::showSaveFileDialog(const std::string& title, const std::string& d
     const char* filters[] = {filter, nullptr};
     char*       filepath  = tinyfd_saveFileDialog(title.c_str(), ("./" + defaultName).c_str(), 1, filters, filter);
     if (!filepath) {
-        LOG("ERROR", "Não foi encontrado o local de salvamento do projeto.");
+        LOG("ERROR", "Não foi selecionado nenhum local de salvamento.");
         return nullptr;
     }
     return filepath;
@@ -14,7 +14,7 @@ char* Dialogs::showOpenFileDialog(const std::string& title, const char* filter) 
     const char* filters[] = {filter, nullptr};
     char*       filepath  = tinyfd_openFileDialog(title.c_str(), "./", 1, filters, filter, 0);
     if (!filepath) {
-        LOG("ERROR", "Arquivo não encontrado.");
+        LOG("ERROR", "Não foi selecionado nenhum arquivo.");
         return nullptr;
     }
     return filepath;

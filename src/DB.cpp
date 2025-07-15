@@ -50,7 +50,7 @@ void DB::saveProject(const std::filesystem::path& filepath) {
     if (this->projectData.serialize(filepath)) {
         this->projectData.currentProjectName = filepath.filename().string();
         SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProjectName);
-        LOG("INFO", "Projeto salvo com sucesso.");
+        LOG("INFO", "Projeto salvo: " + this->projectData.currentProjectName);
     }
 }
 

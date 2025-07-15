@@ -93,6 +93,34 @@ bool ProjectData::serialize(const std::filesystem::path& filepath) const {
         file.write(reinterpret_cast<const char*>(&pathStrSize), sizeof(pathStrSize));
         file.write(pathStr.data(), pathStrSize);
     }
+
+    // Serializa os pacotes de telemetria
+    size_t numTelemetryFiles = this->telemetryFiles.size();
+    file.write(reinterpret_cast<const char*>(&numTelemetryFiles), sizeof(numTelemetryFiles));
+    for (const auto& telemetryFile : this->telemetryFiles) {
+        // Nome do pacote
+        const std::string& packetName     = telemetryFile.getName();
+        size_t             packetNameSize = packetName.size();
+        file.write(reinterpret_cast<const char*>(&packetNameSize), sizeof(packetNameSize));
+        file.write(packetName.data(), packetNameSize);
+
+        // Id do pacote
+        const std::string& packetId     = telemetryFile.getPacketId();
+        size_t             packetIdSize = packetId.size();
+        file.write(reinterpret_cast<const char*>(&packetIdSize), sizeof(packetIdSize));
+        file.write(packetId.data(), packetIdSize);
+
+        // Nomes das colunas
+        const std::vector<std::string>& columnNames     = telemetryFile.getColumnNames();
+        size_t                          columnNamesSize = columnNames.size();
+        file.write(reinterpret_cast<const char*>(&columnNamesSize), sizeof(columnNamesSize));
+        for (const auto& columnName : columnNames) {
+            size_t columnNameSize = columnName.size();
+            file.write(reinterpret_cast<const char*>(&columnNameSize), sizeof(columnNameSize));
+            file.write(columnName.data(), columnNameSize);
+        }
+    }
+
     return true;
 }
 
@@ -120,6 +148,36 @@ bool ProjectData::deserialize(const std::filesystem::path& filepath) {
         std::string pathStr(pathStrSize, '\0');
         file.read(&pathStr[0], pathStrSize);
         this->loadCSV(pathStr);
+    }
+
+    // Desserializa os pacotes de telemetria
+    size_t numTelemetryFiles = 0;
+    file.read(reinterpret_cast<char*>(&numTelemetryFiles), sizeof(numTelemetryFiles));
+    for (size_t i = 0; i < numTelemetryFiles; ++i) {
+        // Nome do pacote
+        size_t packetNameSize = 0;
+        file.read(reinterpret_cast<char*>(&packetNameSize), sizeof(packetNameSize));
+        std::string packetName(packetNameSize, '\0');
+        file.read(&packetName[0], packetNameSize);
+
+        // Id do pacote
+        size_t packetIdSize = 0;
+        file.read(reinterpret_cast<char*>(&packetIdSize), sizeof(packetIdSize));
+        std::string packetId(packetIdSize, '\0');
+        file.read(&packetId[0], packetIdSize);
+
+        // Nome das colunas
+        size_t columnNamesSize = 0;
+        file.read(reinterpret_cast<char*>(&columnNamesSize), sizeof(columnNamesSize));
+        std::vector<std::string> columnNames(columnNamesSize);
+        for (size_t j = 0; j < columnNamesSize; ++j) {
+            size_t columnNameSize = 0;
+            file.read(reinterpret_cast<char*>(&columnNameSize), sizeof(columnNameSize));
+            columnNames[j].resize(columnNameSize);
+            file.read(&columnNames[j][0], columnNameSize);
+        }
+
+        this->loadPacket(packetName, packetId, columnNames);
     }
     return true;
 }
