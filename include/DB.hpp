@@ -8,12 +8,10 @@
 #include <string>
 
 // Project
+#include "Dialogs.hpp"
 #include "Log.hpp"
 #include "ProjectData.hpp"
 #include "SDLWrapper.hpp"
-
-// Third Party
-#include "tinyfiledialogs.h"
 
 class DB {
     private:
@@ -33,11 +31,9 @@ class DB {
     public:
         static DB& getInstance();
 
-        void        createProjectDialog();
-        void        saveProjectDialog();
-        void        loadProjectDialog();
-        static void errorDialog(const std::string& message);
-        static bool ConfirmationDialog(const std::string& message);
+        void createProjectDialog();
+        void saveProjectDialog();
+        void loadProjectDialog();
 
         void loadCSVDialog();
         void deleteCSV(const std::filesystem::path& filepath);

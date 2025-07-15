@@ -3,6 +3,7 @@
 
 // Project
 #include "DataFiles.hpp"
+#include "Dialogs.hpp"
 #include "ImGuiWrapper.hpp"
 
 // C++

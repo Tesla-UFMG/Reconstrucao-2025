@@ -50,7 +50,7 @@ void Window::DataPicker::renderArchiveContextPopup(const GenericFile& file, int 
 
     if (ImGui::BeginPopupContextItem((filename + "_popup##" + std::to_string(i)).c_str())) {
         if (ImGui::MenuItem("Fechar")) {
-            if (DB::ConfirmationDialog("Você tem certeza que deseja fechar este arquivo?")) {
+            if (Dialogs::showConfirmationDialog("Você tem certeza que deseja fechar este arquivo?")) {
                 // Se for do tipo CSV File....
                 if (auto csvFile = dynamic_cast<const CSVFile*>(&file)) {
                     DB::getInstance().deleteCSV(csvFile->getPath());

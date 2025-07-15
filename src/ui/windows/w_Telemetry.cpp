@@ -49,7 +49,7 @@ void Window::Telemetry::openDevice(const char* port, int baud) {
         this->readerThread = std::thread(&Telemetry::readMessages, this);
     } else {
         std::string errorMsg = "Falha ao abrir porta: " + std::string(port);
-        DB::errorDialog(errorMsg);
+        Dialogs::showErrorDialog(errorMsg);
         LOG("ERROR", errorMsg);
     }
 
@@ -195,14 +195,14 @@ void Window::Telemetry::renderPacketConfigMenu() {
     if (ImGui::Button("Salvar Configuração")) {
         // Verifica o nome do pacote
         if (std::string(this->packetName.data()).empty()) {
-            DB::errorDialog("O nome do pacote não pode ser vazio.");
+            Dialogs::showErrorDialog("O nome do pacote não pode ser vazio.");
             ImGui::EndGroup();
             return;
         }
 
         // Verifica o id do pacote
         if (std::string(this->packetId.data()).empty()) {
-            DB::errorDialog("O ID do pacote não pode ser vazio.");
+            Dialogs::showErrorDialog("O ID do pacote não pode ser vazio.");
             ImGui::EndGroup();
             return;
         }
@@ -210,7 +210,7 @@ void Window::Telemetry::renderPacketConfigMenu() {
         // Verifica se o nome das colunas estão vazios
         for (const auto& colName : this->packetColumnNames) {
             if (std::string(colName.data()).empty()) {
-                DB::errorDialog("Os nomes das colunas não podem ser vazios.");
+                Dialogs::showErrorDialog("Os nomes das colunas não podem ser vazios.");
                 ImGui::EndGroup();
                 return;
             }
@@ -222,7 +222,7 @@ void Window::Telemetry::renderPacketConfigMenu() {
             uniq.insert(colBuf.data());
         }
         if (uniq.size() != packetColumnNames.size()) {
-            DB::errorDialog("Os nomes das colunas não podem se repetir.");
+            Dialogs::showErrorDialog("Os nomes das colunas não podem se repetir.");
             ImGui::EndGroup();
             return;
         }
@@ -240,7 +240,7 @@ void Window::Telemetry::renderPacketConfigMenu() {
             LOG("INFO", "Pacote salvo: " + packetName_);
         } else {
             std::string msg = "Pacote com o ID já existe. ID: " + packetId_;
-            DB::errorDialog(msg);
+            Dialogs::showErrorDialog(msg);
             LOG("ERROR", msg);
         }
     }
@@ -288,8 +288,8 @@ void Window::Telemetry::renderPacketConfigMenu() {
             ImGui::TableSetColumnIndex(10);
             ImGui::PushID(telemetryFile.getPacketId().c_str());
             if (ImGui::Button("Remover")) {
-                if (DB::ConfirmationDialog("Tem certeza que deseja remover o pacote " + telemetryFile.getName() +
-                                           "?")) {
+                if (Dialogs::showConfirmationDialog("Tem certeza que deseja remover o pacote " +
+                                                    telemetryFile.getName() + "?")) {
                     DB::getInstance().getProject().removePacket(telemetryFile.getPacketId());
                 }
             }
