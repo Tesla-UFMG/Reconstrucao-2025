@@ -2,6 +2,7 @@
 
 bool                  ImGuiWrapper::isSubsystemInited = false;
 ImGuiIO*              ImGuiWrapper::io                = nullptr;
+ImGuiWrapper_Theme    ImGuiWrapper::currentTheme      = DARK;
 std::filesystem::path ImGuiWrapper::layoutQueue;
 
 void ImGuiWrapper::initSubsystem() {
@@ -20,7 +21,7 @@ void ImGuiWrapper::initSubsystem() {
     ImGuiWrapper::io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGuiWrapper::io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImGuiWrapper::configStyle();
+    ImGuiWrapper::loadStyleTheme();
 
     ImGui_ImplSDL2_InitForSDLRenderer(SDLWrapper::window, SDLWrapper::renderer);
     ImGui_ImplSDLRenderer2_Init(SDLWrapper::renderer);
@@ -104,7 +105,113 @@ void ImGuiWrapper::loadLayout(const std::filesystem::path& filepath) { ImGuiWrap
 
 void ImGuiWrapper::handleEvent(SDL_Event& event) { ImGui_ImplSDL2_ProcessEvent(&event); }
 
-void ImGuiWrapper::configStyle() {
+void ImGuiWrapper::StyleLightTheme() {
+    // IMPLOT STYLE
+    ImPlotContext& gp = *GImPlot;
+    gp.Style.Colormap = ImPlotColormap_Paired;
+
+    // IMGUI STYLE
+    ImGuiStyle& style  = ImGui::GetStyle();
+    ImVec4*     colors = style.Colors;
+
+    // Text
+    colors[ImGuiCol_Text]           = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled]   = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+    colors[ImGuiCol_TextSelectedBg] = HI(0.35f);
+
+    // BG
+    colors[ImGuiCol_WindowBg] = ImVec4(0.94f, 0.94f, 0.94f, 1.00f);
+    colors[ImGuiCol_ChildBg]  = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_PopupBg]  = ImVec4(1.00f, 1.00f, 1.00f, 0.98f);
+
+    // Border
+    // colors[ImGuiCol_Border]       = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+    colors[ImGuiCol_Border]       = ImVec4(0.00f, 0.00f, 0.00f, 0.30f);
+    colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+
+    // Frames
+    colors[ImGuiCol_FrameBg]        = HI(0.35f);
+    colors[ImGuiCol_FrameBgHovered] = HI(0.4f);
+    colors[ImGuiCol_FrameBgActive]  = HI(0.67f);
+
+    // Title
+    colors[ImGuiCol_TitleBg]          = ImVec4(0.96f, 0.96f, 0.96f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]    = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.00f, 1.00f, 1.00f, 0.51f);
+    colors[ImGuiCol_MenuBarBg]        = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+
+    // Scroll bar
+    colors[ImGuiCol_ScrollbarBg]          = ImVec4(0.98f, 0.98f, 0.98f, 0.53f);
+    colors[ImGuiCol_ScrollbarGrab]        = ImVec4(0.69f, 0.69f, 0.69f, 0.80f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.49f, 0.49f, 0.49f, 0.80f);
+    colors[ImGuiCol_ScrollbarGrabActive]  = ImVec4(0.49f, 0.49f, 0.49f, 1.00f);
+
+    colors[ImGuiCol_CheckMark] = HI(1.0f);
+
+    // Slider
+    colors[ImGuiCol_SliderGrab]       = HI(0.8f);
+    colors[ImGuiCol_SliderGrabActive] = HI(1.0f);
+
+    // Button
+    colors[ImGuiCol_Button]        = HI(0.4f);
+    colors[ImGuiCol_ButtonHovered] = HI(0.8f);
+    colors[ImGuiCol_ButtonActive]  = HI(1.0f);
+
+    // Header
+    colors[ImGuiCol_Header]        = HI(0.31f);
+    colors[ImGuiCol_HeaderHovered] = HI(0.8f);
+    colors[ImGuiCol_HeaderActive]  = HI(1.0f);
+
+    colors[ImGuiCol_TextLink] = colors[ImGuiCol_HeaderActive];
+
+    // Separator
+    colors[ImGuiCol_Separator]        = colors[ImGuiCol_Border];
+    colors[ImGuiCol_SeparatorHovered] = HI(0.67f);
+    colors[ImGuiCol_SeparatorActive]  = HI(0.95f);
+
+    // Resize
+    colors[ImGuiCol_ResizeGrip]        = HI(0.2f);
+    colors[ImGuiCol_ResizeGripHovered] = HI(0.67f);
+    colors[ImGuiCol_ResizeGripActive]  = HI(0.95f);
+
+    // Tabs
+    colors[ImGuiCol_TabHovered]          = colors[ImGuiCol_HeaderHovered];
+    colors[ImGuiCol_Tab]                 = ImLerp(colors[ImGuiCol_Header], colors[ImGuiCol_TitleBgActive], 0.80f);
+    colors[ImGuiCol_TabSelected]         = ImLerp(colors[ImGuiCol_HeaderActive], colors[ImGuiCol_TitleBgActive], 0.60f);
+    colors[ImGuiCol_TabSelectedOverline] = colors[ImGuiCol_HeaderActive];
+    colors[ImGuiCol_TabDimmed]           = ImLerp(colors[ImGuiCol_Tab], colors[ImGuiCol_TitleBg], 0.80f);
+    colors[ImGuiCol_TabDimmedSelected]   = ImLerp(colors[ImGuiCol_TabSelected], colors[ImGuiCol_TitleBg], 0.40f);
+    colors[ImGuiCol_TabDimmedSelectedOverline] = ImVec4(0.50f, 0.50f, 0.50f, 0.00f);
+
+    // Docking
+    colors[ImGuiCol_DockingPreview] = colors[ImGuiCol_HeaderActive];
+    colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+
+    // Plot
+    colors[ImGuiCol_PlotLines]            = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]     = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]        = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
+
+    // Table
+    colors[ImGuiCol_TableHeaderBg] = ImVec4(0.7843f, 0.7843f, 0.7843f, 1.0f);
+    ;
+    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.57f, 0.57f, 0.64f, 1.00f);
+    colors[ImGuiCol_TableBorderLight]  = ImVec4(0.68f, 0.68f, 0.74f, 1.00f);
+    colors[ImGuiCol_TableRowBg]        = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_TableRowBgAlt]     = ImVec4(0.30f, 0.30f, 0.30f, 0.09f);
+
+    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.31f, 0.31f, 0.35f, 1.00f);
+
+    // Misc
+    colors[ImGuiCol_DragDropTarget]        = MED(1.0f);
+    colors[ImGuiCol_NavCursor]             = HI(1.0f);
+    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.70f, 0.70f, 0.70f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.20f, 0.20f, 0.20f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+}
+
+void ImGuiWrapper::StyleDarkTheme() {
     // IMPLOT STYLE
     ImPlotContext& gp = *GImPlot;
     gp.Style.Colormap = ImPlotColormap_Paired;
@@ -205,4 +312,58 @@ void ImGuiWrapper::configStyle() {
     colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
     colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
     colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+}
+
+void ImGuiWrapper::changeStyleTheme(const ImGuiWrapper_Theme& theme) {
+    switch (theme) {
+        case DARK:
+            LOG("DEBUG", "Trocado o estilo para o estilo escuro.")
+            ImGuiWrapper::StyleDarkTheme();
+            break;
+
+        case LIGHT:
+            LOG("DEBUG", "Trocado o estilo para o estilo claro.")
+            ImGuiWrapper::StyleLightTheme();
+            break;
+
+        default:
+            LOG("DEBUG", "Trocado o estilo para o estilo escuro.")
+            ImGuiWrapper::StyleDarkTheme();
+            break;
+    }
+    ImGuiWrapper::currentTheme = theme;
+    ImGuiWrapper::saveStyleTheme(theme);
+}
+
+void ImGuiWrapper::saveStyleTheme(const ImGuiWrapper_Theme& theme) {
+    std::filesystem::path filepath = std::string(LAYOUT_OUTPUT) + ".theme.bin";
+
+    std::filesystem::path parentPath = filepath.parent_path();
+    if (!parentPath.empty() && std::filesystem::create_directories(parentPath)) {
+        LOG("INFO", "Criada pasta '" + parentPath.string() + "'.");
+    }
+
+    std::ofstream file(filepath, std::ios::binary);
+    if (!file) {
+        LOG("WARN", "Não foi possível salvar o estilo '" + filepath.string() + "'.");
+        return;
+    }
+
+    file.write(reinterpret_cast<const char*>(&theme), sizeof(theme));
+    LOG("INFO", "Estilo '" + filepath.string() + "' salvo com sucesso.");
+}
+
+void ImGuiWrapper::loadStyleTheme() {
+    ImGuiWrapper_Theme    theme    = DARK;
+    std::filesystem::path filepath = std::string(LAYOUT_OUTPUT) + ".theme.bin";
+    std::ifstream         file(filepath, std::ios::binary);
+    if (!file) {
+        ImGuiWrapper::changeStyleTheme(theme);
+        LOG("WARN", "Não foi possível carregar o estilo '" + filepath.string() + "'.");
+        return;
+    }
+
+    file.read(reinterpret_cast<char*>(&theme), sizeof(theme));
+    LOG("INFO", "Estilo '" + filepath.string() + "' carregado com sucesso.");
+    ImGuiWrapper::changeStyleTheme(theme);
 }

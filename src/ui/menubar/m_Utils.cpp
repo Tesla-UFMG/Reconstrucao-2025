@@ -55,7 +55,7 @@ void MenuBar::renderProgramName() {
     ImGui::Text("%s", programName.c_str());
 }
 
-void MenuBar::changeColorMap() {
+void MenuBar::changePlotColormap() {
     if (ImGui::BeginMenu("Mudar Cores")) {
         ImPlotContext&  gp       = *GImPlot;
         ImPlotColormap& colormap = gp.Style.Colormap;
@@ -67,6 +67,21 @@ void MenuBar::changeColorMap() {
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
         ImPlot::ShowColormapSelector("##");
+
+        ImGui::EndMenu();
+    }
+}
+
+void MenuBar::changeAppStyleTheme() {
+    if (ImGui::BeginMenu("Mudar Tema")) {
+
+        if (ImGui::MenuItem("Escuro")) {
+            ImGuiWrapper::changeStyleTheme(DARK);
+        }
+
+        if (ImGui::MenuItem("Claro")) {
+            ImGuiWrapper::changeStyleTheme(LIGHT);
+        }
 
         ImGui::EndMenu();
     }

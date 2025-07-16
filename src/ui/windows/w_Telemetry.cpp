@@ -139,15 +139,13 @@ void Window::Telemetry::renderConfigMenu() {
     ImGui::Text("Status:");
     ImGui::SameLine();
     std::string status = this->device.isDeviceOpen() ? "Conectado" : "Desconectado";
-    ImGui::TextColored(this->device.isDeviceOpen() ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                       status.c_str());
+    ImGui::TextColored(this->device.isDeviceOpen() ? HI(1) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), status.c_str());
 
     ImGui::SameLine();
     ImGui::Text("Processamento:");
     std::string processing = this->processingStatus ? "Ok" : "Erro";
     ImGui::SameLine();
-    ImGui::TextColored(this->processingStatus ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                       processing.c_str());
+    ImGui::TextColored(this->processingStatus ? HI(1) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), processing.c_str());
 
     // Botões
     if (ImGui::Button("Conectar") && !this->serialPort.empty()) {

@@ -5,6 +5,7 @@
 #include <filesystem>
 
 // Project
+#include "DB.hpp"
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
 #include "WindowManager.hpp"
@@ -13,7 +14,8 @@ namespace MenuBar {
     void changeWindowVisibility(const std::filesystem::path& windowName, bool* isOpen);
     void renderStatus();
     void renderProgramName();
-    void changeColorMap();
+    void changePlotColormap();
+    void changeAppStyleTheme();
 } // namespace MenuBar
 
 #endif

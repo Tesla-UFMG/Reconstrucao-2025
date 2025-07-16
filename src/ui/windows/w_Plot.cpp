@@ -53,7 +53,7 @@ void Window::Plot::drawMenuBar() {
             }
 
             ImGui::Separator();
-            MenuBar::changeColorMap();
+            MenuBar::changePlotColormap();
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();

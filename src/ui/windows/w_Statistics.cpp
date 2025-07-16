@@ -136,7 +136,7 @@ void Window::Statistics::renderMenuBar() {
         if (ImGui::BeginMenu("Opções")) {
             ImGui::MenuItem("Mostrar Gráficos", nullptr, &showGraphs);
             if (ImGui::BeginMenu("Cores do Gráfico")) {
-                MenuBar::changeColorMap();
+                MenuBar::changePlotColormap();
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();

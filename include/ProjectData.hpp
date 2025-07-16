@@ -15,6 +15,7 @@ Para salvar informações globais do projeto. Por exemplo, csv's
 
 // Project
 #include "DataFiles.hpp"
+#include "ImGuiWrapper.hpp"
 #include "Log.hpp"
 
 // Third party

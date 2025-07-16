@@ -1,8 +1,10 @@
 #include "ProjectData.hpp"
 
 void ProjectData::clear() {
-    currentProjectName.clear();
-    csvFiles.clear();
+    this->currentProjectName.clear();
+    this->csvFiles.clear();
+    this->videoFiles.clear();
+    this->telemetryFiles.clear();
 }
 
 void ProjectData::loadCSV(const std::filesystem::path& filepath) {

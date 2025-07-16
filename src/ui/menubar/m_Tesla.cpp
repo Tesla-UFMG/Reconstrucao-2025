@@ -2,6 +2,13 @@
 
 void MenuBar::Tesla() {
     if (ImGui::BeginMenu("Tesla")) {
+        if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
+            SDLWrapper::changeFullscreen();
+        }
+
+        MenuBar::changeAppStyleTheme();
+
+        ImGui::Separator();
 
         if (ImGui::MenuItem("Novo", "CTRL + C")) {
             DB::getInstance().createProjectDialog();

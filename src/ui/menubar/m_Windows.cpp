@@ -4,10 +4,9 @@ void MenuBar::Windows() {
     WindowManager& vw = WindowManager::getInstance();
 
     if (ImGui::BeginMenu("Janelas")) {
-        if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
-            SDLWrapper::changeFullscreen();
-        }
-        MenuBar::changeColorMap();
+
+        MenuBar::changePlotColormap();
+
         ImGui::Separator();
 
         if (ImGui::BeginMenu("Salvar Layout")) {
