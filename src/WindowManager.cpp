@@ -61,31 +61,46 @@ void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) 
 }
 
 void WindowManager::setup() {
-    auto temp_video_ptr = std::make_unique<Window::Video>(m_renderer, &visibility.showVideo);
+    // --- Criação das Janelas "Reproduzíveis" ---
 
+    // 1. Janela de Vídeo 
+    auto temp_video_ptr = std::make_unique<Window::Video>(m_renderer, &visibility.showVideo);
     m_videoWindow = temp_video_ptr.get();
 
+    // 2. Janela de Reconstrução
     auto temp_reconstruction_ptr = std::make_unique<Window::Reconstruction>(&visibility.showReconstruction);
-
     m_reconstructionWindow = temp_reconstruction_ptr.get();
+
+    // 3. Janela de Pedal 
+    auto temp_pedal_ptr = std::make_unique<Window::Pedal>(&visibility.showPedal);
+    auto m_pedalWindow = temp_pedal_ptr.get(); 
+
+    // --- Montagem da Lista de Reprodução ---
 
     std::vector<IPlayable*> playables;
     playables.push_back(m_videoWindow);
     playables.push_back(m_reconstructionWindow);
+    playables.push_back(m_pedalWindow); 
+
+    // --- Criação da Janela de Playback ---
 
     auto temp_playback_ptr = std::make_unique<Window::Playback>(&visibility.showPlayback, playables);
     m_playbackWindow = temp_playback_ptr.get();
 
+    // --- Adiciona todos os ponteiros únicos ao vetor principal de janelas ---
+    
     windows.emplace_back(std::move(temp_video_ptr));
     windows.emplace_back(std::move(temp_reconstruction_ptr));
     windows.emplace_back(std::move(temp_playback_ptr));
+    windows.emplace_back(std::move(temp_pedal_ptr));
 
+    // --- Criação das Outras Janelas (não-reproduzíveis) ---
+    
     home = std::make_unique<Window::HomePage>();
     windows.emplace_back(std::make_unique<Window::About>(&visibility.showAbout));
     windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
     windows.emplace_back(std::make_unique<Window::Plot>(&visibility.showPlot));
     windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
-    windows.emplace_back(std::make_unique<Window::Pedal>(&visibility.showPedal));
     windows.emplace_back(std::make_unique<Window::ImGuiDemo>(&visibility.showImGuiDemo));
     windows.emplace_back(std::make_unique<Window::ImPlotDemo>(&visibility.showImPlotDemo));
     windows.emplace_back(std::make_unique<Window::ImPlot3dDemo>(&visibility.showImPlot3dDemo));
