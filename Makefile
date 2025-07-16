@@ -66,11 +66,13 @@ $(OBJ_FOLDER)/lib/%.o: lib/%.c
 
 ifeq ($(WINDOWS), 1)
 $(BUILD_FOLDER):
-	@mkdir -p $@
+	@mkdir -p $@ $@/assets
 	cp lib/SDL2/*.dll $(BUILD_FOLDER)
+	cp assets/* $(BUILD_FOLDER)/assets/ 
 else 
 $(BUILD_FOLDER):
-	@mkdir -p $@
+	@mkdir -p $@ $@/assets
+	cp assets/* $(BUILD_FOLDER)/assets/
 endif
 
 $(OBJ_FOLDER):

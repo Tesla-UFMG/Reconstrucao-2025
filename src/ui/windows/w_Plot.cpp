@@ -1,10 +1,5 @@
 #include "ui/windows/w_Plot.hpp"
 
-// Variáveis globais para os gráficos e configurações
-static std::vector<GraphData> graphs;
-static bool                   autoFit          = true;
-static bool                   showResizeButton = false;
-
 Window::Plot::Plot(bool* isOpen) : IWindow(isOpen) {
     title = "Plot";
     flags = ImGuiWindowFlags_MenuBar;
@@ -13,18 +8,17 @@ Window::Plot::Plot(bool* isOpen) : IWindow(isOpen) {
 void Window::Plot::render() {
     if (this->isOpen && *this->isOpen) {
         ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
-        drawMenuBar();
+        this->drawMenuBar();
 
         if (ImPlot::BeginAlignedPlots("AlignedGroup")) {
-            for (size_t i = 0; i < graphs.size(); i++) {
-                renderGraph(i);
-                if (showResizeButton) {
-                    renderResizeButton(i);
+            for (size_t graphIndex = 0; graphIndex < this->graphs.size(); graphIndex++) {
+                renderGraph(graphIndex);
+                if (this->showResizeButton) {
+                    renderResizeButton(graphIndex);
                 }
             }
             ImPlot::EndAlignedPlots();
         }
-
         ImGui::End();
     }
 }
@@ -32,62 +26,68 @@ void Window::Plot::render() {
 void Window::Plot::drawMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::MenuItem("Novo Gráfico")) {
-            this->addGraph(graphs);
+            this->addNewGraph();
         }
 
         if (graphs.size() > 0 && ImGui::BeginMenu("Remover Gráfico")) {
-            for (size_t i = 0; i < graphs.size(); i++) {
-                if (ImGui::MenuItem(("Gráfico " + std::to_string(i)).c_str())) {
-                    this->removeGraph(graphs, i);
+            for (size_t graphIndex = 0; graphIndex < graphs.size(); graphIndex++) {
+                size_t graphId = graphs[graphIndex].config.id;
+                if (ImGui::MenuItem(("Gráfico " + std::to_string(graphId)).c_str())) {
+                    this->removeGraph(graphIndex);
                 }
             }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Configurações")) {
-            if (ImGui::MenuItem("Auto Fit", nullptr, &autoFit)) {
-                LOG("DEBUG", "Botão Auto Fit gráfico " + std::string(autoFit ? "ativado." : "desativado."));
+            if (ImGui::MenuItem("Auto Fit", nullptr, &this->autoFit)) {
+                for (Graph& graph : this->graphs) {
+                    graph.config.autoFit = this->autoFit;
+                }
+                LOG("DEBUG", "Botão Auto Fit gráfico " + std::string(this->autoFit ? "ativado." : "desativado."));
             }
 
-            if (ImGui::MenuItem("Redimensionar", nullptr, &showResizeButton)) {
-                LOG("DEBUG",
-                    "Botão de redimensionamento gráfico " + std::string(showResizeButton ? "ativado." : "desativado."));
+            if (ImGui::MenuItem("Redimensionar", nullptr, &this->showResizeButton)) {
+                LOG("DEBUG", "Botão de redimensionamento gráfico " +
+                                 std::string(this->showResizeButton ? "ativado." : "desativado."));
             }
 
             ImGui::Separator();
-
             MenuBar::changeColorMap();
-
             ImGui::EndMenu();
         }
-
         ImGui::EndMenuBar();
     }
 }
 
-void Window::Plot::addGraph(std::vector<GraphData>& graphs) {
-    graphs.emplace_back(GraphData());
+void Window::Plot::addNewGraph() {
+    Graph  newGraph;
+    size_t graphId     = this->graphs.size() ? this->graphs.back().config.id + 1 : 0;
+    newGraph.config.id = graphId; // Configura o ID
+    this->graphs.push_back(newGraph);
     ImPlot::BustItemCache();
-    LOG("INFO", "Gráfico " + std::to_string(graphs.size() - 1) + " criado.");
+    LOG("INFO", "Gráfico " + std::to_string(graphId) + " criado.");
 }
 
-void Window::Plot::removeGraph(std::vector<GraphData>& graphs, size_t graphIndex) {
-    if (graphIndex >= graphs.size()) {
+void Window::Plot::removeGraph(size_t graphIndex) {
+    std::cout << graphIndex << std::endl;
+    std::cout << this->graphs.size() << std::endl;
+    if (graphIndex >= this->graphs.size()) {
         LOG("ERROR", "Não foi possível remover o gráfico, índice inválido.");
         return;
     }
 
-    graphs.erase(graphs.begin() + graphIndex);
+    this->graphs.erase(this->graphs.begin() + graphIndex);
     ImPlot::BustItemCache();
     LOG("INFO", "Gráfico " + std::to_string(graphIndex) + " removido.");
 }
 
-void Window::Plot::processColumnDragDrop(GraphData& graphData) {
+void Window::Plot::processColumnDragDrop(Graph& graph) {
 
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-            this->addColumnToGraph(graphData, columnPayload);
+            this->addColumnToGraph(graph, columnPayload);
         } else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
             const ArchivePayload* archivePayload = reinterpret_cast<const ArchivePayload*>(payload->Data);
             //  this->addColumnToGraph(graphData, columnPayload);
@@ -96,115 +96,121 @@ void Window::Plot::processColumnDragDrop(GraphData& graphData) {
     }
 }
 
-void Window::Plot::addColumnToGraph(GraphData& graphData, const ColumnPayload* payload) {
+void Window::Plot::addColumnToGraph(Graph& graph, const ColumnPayload* payload) {
     std::string fileType   = payload->fileType;
     std::string fileName   = payload->fileName;
     std::string columnName = payload->columnName;
 
     // Verifica se o arquivo já está no gráfico
-    for (size_t i = 0; i < graphData.fileNames.size(); ++i) {
-        if (graphData.fileNames[i] == fileName && graphData.columns[i] == columnName) {
-            LOG("WARN", "Gráfico " + std::to_string(i) + ": A coluna " + columnName + " do arquivo " + fileName +
-                            " já existe.");
+    for (const GraphData& graphData : graph.data) {
+        if (graphData.fileName == fileName && graphData.columnName == columnName) {
+            LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já está no gráfico.");
             return;
         }
     }
 
+    // Cria um novo GraphData
+    GraphData graphData;
+    graphData.columnName = columnName;
+    graphData.fileName   = fileName;
+
     // Adiciona os eixos
-    const std::vector<double>* y = nullptr;
     if (fileType == "CSV") {
-        y = &DB::getInstance().getCSVData(fileName, columnName);
+        graphData.y = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        y = &DB::getInstance().getTelemetryData(fileName, columnName);
+        graphData.y = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
-
-    graphData.y.push_back(y);
-
-    std::vector<double> x(y->size());
-    for (size_t i = 0; i < y->size(); ++i) {
-        x[i] = static_cast<double>(i);
-    }
-    graphData.x.push_back(x);
-
-    // Adiciona a coluna, o nome do arquivo e o multiplicador padrão (1.0)
-    graphData.columns.push_back(columnName);
-    graphData.fileNames.push_back(fileName);
-    graphData.multiplier.push_back(1.0);
+    graphData.buildXVector();
+    graph.data.push_back(graphData);
 
     ImPlot::BustItemCache();
-    LOG("DEBUG", "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graphs.size() - 1) + ".");
+    LOG("DEBUG", "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graph.config.id) + ".");
 }
-void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex) {
-    if (!graphData.columns.empty()) {
-        const char* tipos[] = {"Linha", "Barra", "Scatter", "Preenchido"};
+
+void Window::Plot::drawLegendPopup(Graph& graph, size_t graphIndex) {
+    if (!graph.data.empty()) {
+        const char* graphTypes[] = {"Linha", "Barra", "Scatter", "Preenchido"};
 
         bool popupOpen = false;
-        for (const auto& col : graphData.columns) {
+        for (const std::string& col : graph.getColumnNames()) {
             if (ImPlot::BeginLegendPopup(col.c_str())) {
                 popupOpen = true;
                 break;
             }
         }
-        if (popupOpen) {
 
-            // Tipo do gráfico
+        if (popupOpen) {
+            // Mudar tipo do gráfico
             ImGui::SeparatorText("Tipo de Gráfico");
-            int currentType = static_cast<int>(graphData.type);
-            if (ImGui::Combo("##Tipo", &currentType, tipos, IM_ARRAYSIZE(tipos))) {
-                graphData.type = static_cast<GraphType>(currentType);
-                LOG("DEBUG", "Gráfico " + std::to_string(graphIndex) + " alterado para " + tipos[currentType] + ".");
+            int currentType = static_cast<int>(graph.config.type);
+            if (ImGui::Combo("##Tipo", &currentType, graphTypes, IM_ARRAYSIZE(graphTypes))) {
+                graph.config.type = static_cast<GraphType>(currentType);
+                LOG("DEBUG",
+                    "Gráfico " + std::to_string(graph.config.id) + " alterado para " + graphTypes[currentType] + ".");
             }
 
-            // Configurações de exibição
-            ImGui::SeparatorText("Eixos");
-            ImGui::Checkbox("Eixo X", &graphData.showXAxis);
+            // Tipo de exibição
+            ImGui::SeparatorText("Exibição");
+            ImGui::Checkbox("Auto Fit", &graph.config.autoFit);
             ImGui::SameLine();
-            ImGui::Checkbox("Eixo Y", &graphData.showYAxis);
+            ImGui::Checkbox("Seguir o final", &graph.config.followTheEnd);
+            if (graph.config.followTheEnd) {
+                ImGui::InputInt("Pontos", &graph.config.numPoints, 1, 10);
+            }
 
-            // Seleção do eixo X (com opção "Nenhuma")
-            if (ImGui::BeginCombo("##EixoX", graphData.xColumn.empty() ? "Nenhuma" : graphData.xColumn.c_str())) {
-                if (ImGui::Selectable("Nenhuma", graphData.xColumn.empty())) {
-                    graphData.xColumn.clear();
+            // Mostrar ou esconder os eixos
+            ImGui::SeparatorText("Eixos");
+            ImGui::Checkbox("Eixo X", &graph.config.showXAxis);
+            ImGui::SameLine();
+            ImGui::Checkbox("Eixo Y", &graph.config.showYAxis);
+
+            // Escolher eixo X em função de uma coluna
+            if (ImGui::BeginCombo("##EixoX", graph.config.xColumn.empty() ? "Nenhuma" : graph.config.xColumn.c_str())) {
+                if (ImGui::Selectable("Nenhuma", graph.config.xColumn.empty())) {
+                    graph.config.xColumn.clear();
                 }
-                for (const auto& column : graphData.columns) {
-                    if (ImGui::Selectable(column.c_str(), graphData.xColumn == column)) {
-                        graphData.xColumn = column;
+                for (const std::string& col : graph.getColumnNames()) {
+                    if (ImGui::Selectable(col.c_str(), graph.config.xColumn == col)) {
+                        graph.config.xColumn = col;
                         ImPlot::BustItemCache();
                     }
                 }
                 ImGui::EndCombo();
             }
 
+            // Configuração de colunas
             ImGui::SeparatorText("Colunas");
             if (ImGui::BeginTable("TabelaColunas", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
                 ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
                 ImGui::TableSetupColumn("Coluna", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("Multiplicador", ImGuiTableColumnFlags_WidthFixed);
                 ImGui::TableHeadersRow();
-                for (size_t j = 0; j < graphData.columns.size(); j++) {
-                    if (graphData.columns[j] == graphData.xColumn)
+                for (size_t columnIndex = 0; columnIndex < graph.data.size(); columnIndex++) {
+                    GraphData& graphData = graph.data[columnIndex];
+                    if (graphData.columnName == graph.config.xColumn)
                         continue;
+
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    std::string btnLabel = "X##" + std::to_string(j);
+                    std::string btnLabel = "X##" + std::to_string(columnIndex);
                     if (ImGui::Button(btnLabel.c_str())) {
-                        this->removeColumnFromGraph(graphData, j);
+                        this->removeColumnFromGraph(graphIndex, columnIndex);
                         break;
                     }
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::TextUnformatted(graphData.columns[j].c_str());
+                    ImGui::TextUnformatted(graphData.columnName.c_str());
 
                     ImGui::TableSetColumnIndex(2);
                     ImGui::PushItemWidth(120.0f);
-                    ImGui::InputDouble(("##mult" + std::to_string(j)).c_str(), &graphData.multiplier[j], 0.001, 100.0,
-                                       "%.15gx");
+                    ImGui::InputDouble(("##mult" + std::to_string(columnIndex)).c_str(), &graphData.multiplier, 0.001,
+                                       100.0, "%.15gx");
                     ImGui::PopItemWidth();
                 }
                 ImGui::EndTable();
             }
 
             if (ImGui::Button("Remover Gráfico")) {
-                this->removeGraph(graphs, graphIndex);
+                this->removeGraph(graphIndex);
             }
 
             ImPlot::EndLegendPopup();
@@ -212,113 +218,113 @@ void Window::Plot::drawLegendPopup(GraphData& graphData, int graphIndex) {
     }
 }
 
-void Window::Plot::removeColumnFromGraph(GraphData& graphData, int graphIndex) {
-    if (graphIndex < 0 || graphIndex >= static_cast<int>(graphData.columns.size())) {
-        LOG("ERROR", "Não foi possível remover o gráfico, índice inválido.");
+void Window::Plot::removeColumnFromGraph(size_t graphIndex, size_t columnIndex) {
+    if (graphIndex >= this->graphs.size() || columnIndex >= this->graphs[graphIndex].data.size()) {
+        LOG("ERROR", "Não foi possível remover a coluna do gráfico, índice inválido.");
         return;
     }
-
-    graphData.fileNames.erase(graphData.fileNames.begin() + graphIndex);
-    graphData.columns.erase(graphData.columns.begin() + graphIndex);
-    graphData.x.erase(graphData.x.begin() + graphIndex);
-    graphData.y.erase(graphData.y.begin() + graphIndex);
-    graphData.multiplier.erase(graphData.multiplier.begin() + graphIndex);
-
-    if (graphData.xColumn == graphData.columns[graphIndex]) {
-        graphData.xColumn.clear();
-    }
-
+    this->graphs[graphIndex].data.erase(this->graphs[graphIndex].data.begin() + columnIndex);
     ImPlot::BustItemCache();
-
     LOG("DEBUG", "Coluna removida do gráfico " + std::to_string(graphIndex) + ".");
 }
 
 void Window::Plot::renderGraph(size_t graphIndex) {
-    GraphData& graphData = graphs[graphIndex];
-    ImGui::PushID(static_cast<int>(graphIndex));
+    Graph&       graph       = this->graphs[graphIndex];
+    GraphConfig& graphConfig = graph.config;
 
-    std::string plotID = "##Plot " + std::to_string(graphIndex);
-    if (ImPlot::BeginPlot(plotID.c_str(), ImVec2(-1, graphData.plotHeight), ImPlotFlags_NoFrame)) {
-
-        ImPlotAxisFlags xAxisFlags = 0;
-        ImPlotAxisFlags yAxisFlags = 0;
-
-        if (!graphData.showXAxis) {
-            xAxisFlags |= ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels;
+    // Se uma coluna foi selecionada como eixo X, obtém seus dados.
+    std::vector<double> customX;
+    bool                useCustomX = false;
+    if (!graphConfig.xColumn.empty()) {
+        for (const GraphData& graphData : graph.data) {
+            if (graphData.columnName == graphConfig.xColumn) {
+                customX    = *graphData.y;
+                useCustomX = true;
+                break;
+            }
         }
-        if (!graphData.showYAxis) {
-            yAxisFlags |= ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels;
-        }
-        if (autoFit) {
+    }
+    std::string title = useCustomX ? "Gráfico vs " + graphConfig.xColumn : "";
+    if (ImPlot::BeginPlot((title + "##Plot " + std::to_string(graphIndex)).c_str(), ImVec2(-1, graphConfig.plotHeight),
+                          ImPlotFlags_NoFrame)) {
+
+        // Define as flags dos eixos
+        ImPlotAxisFlags xAxisFlags = !graphConfig.showXAxis ? ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks |
+                                                                  ImPlotAxisFlags_NoTickLabels
+                                                            : ImPlotAxisFlags_None;
+        ImPlotAxisFlags yAxisFlags = !graphConfig.showYAxis ? ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks |
+                                                                  ImPlotAxisFlags_NoTickLabels
+                                                            : ImPlotAxisFlags_None;
+
+        if (graphConfig.autoFit) {
             xAxisFlags |= ImPlotAxisFlags_AutoFit;
             yAxisFlags |= ImPlotAxisFlags_AutoFit;
         }
 
         ImPlot::SetupAxes(nullptr, nullptr, xAxisFlags, yAxisFlags);
-        ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
-        // Se uma coluna foi selecionada como eixo X, obtém seus dados.
-        std::vector<double> customX;
-        bool                useCustomX = false;
-        if (!graphData.xColumn.empty()) {
-            auto it = std::find(graphData.columns.begin(), graphData.columns.end(), graphData.xColumn);
-            if (it != graphData.columns.end()) {
-                size_t index = std::distance(graphData.columns.begin(), it);
-                if (index < graphData.y.size() && !graphData.y[index]->empty()) {
-                    customX    = *graphData.y[index];
-                    useCustomX = true;
+        size_t axisLength = 0;
+        if (useCustomX) {
+            axisLength = customX.size();
+        } else if (!graph.data.empty()) {
+            axisLength = graph.data[0].y->size();
+            for (const GraphData& graphData : graph.data) {
+                if (graphData.y->size() > axisLength) {
+                    axisLength = graphData.y->size();
                 }
             }
         }
 
-        // Plota cada série, exceto a coluna selecionada como eixo X.
-        for (size_t i = 0; i < graphData.columns.size(); i++) {
-            if (!graphData.xColumn.empty() && graphData.columns[i] == graphData.xColumn)
+        if (graphConfig.followTheEnd) {
+            ImPlot::SetupAxisLimits(ImAxis_X1, axisLength - graphConfig.numPoints, axisLength, ImGuiCond_Always);
+        }
+
+        ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
+
+        // Plota cada coluna
+        for (GraphData& graphData : graph.data) {
+            // Se a coluna for a do eixo X, pula
+            if (!graphConfig.xColumn.empty() && graphData.columnName == graphConfig.xColumn)
                 continue;
 
-            const std::string&         col       = graphData.columns[i];
-            const std::vector<double>& y         = *graphData.y[i];
-            int                        numPoints = static_cast<int>(y.size());
-            std::vector<double>        scaledY(numPoints);
-            double                     multiplier = graphData.multiplier[i];
-            for (int j = 0; j < numPoints; ++j) {
-                scaledY[j] = y[j] * multiplier;
-            }
-
-            // Define qual vetor de X será usado.
-            const std::vector<double>* xData = nullptr;
-            if (useCustomX && customX.size() == y.size()) {
-                xData = &customX;
+            const std::vector<double>& y = *graphData.y;
+            std::vector<double>        yData(y.size());
+            if (graphData.multiplier == 1.0) {
+                yData = y;
             } else {
-                if (graphData.x[i].size() != y.size()) {
-                    graphData.x[i].resize(y.size());
-                    for (size_t j = 0; j < y.size(); ++j) {
-                        graphData.x[i][j] = static_cast<double>(j);
-                    }
+                for (size_t j = 0; j < y.size(); ++j) {
+                    yData[j] = y[j] * graphData.multiplier;
                 }
-
-                xData = &graphData.x[i];
             }
 
-            // Plota a série usando o vetor de X selecionado.
-            switch (graphData.type) {
+            // Define qual vetor de X sera usado
+            if (graphData.x.size() != y.size())
+                graphData.buildXVector();
+
+            //&& customX.size() == y.size()
+            std::vector<double> xData = (useCustomX) ? customX : graphData.x;
+
+            // Plota
+            const char* columnName = graphData.columnName.c_str();
+            int         numPoints  = static_cast<int>(std::min(xData.size(), yData.size()));
+            switch (graphConfig.type) {
                 case GRAPH_LINE:
-                    ImPlot::PlotLine(col.c_str(), xData->data(), scaledY.data(), numPoints);
+                    ImPlot::PlotLine(columnName, xData.data(), yData.data(), numPoints);
                     break;
                 case GRAPH_BAR:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotBars(col.c_str(), xData->data(), scaledY.data(), numPoints, 0.8f);
+                    ImPlot::PlotBars(columnName, xData.data(), yData.data(), numPoints, 0.8f);
                     ImPlot::PopStyleVar();
                     break;
                 case GRAPH_SCATTER:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotScatter(col.c_str(), xData->data(), scaledY.data(), numPoints);
+                    ImPlot::PlotScatter(columnName, xData.data(), yData.data(), numPoints);
                     ImPlot::PopStyleVar();
                     break;
                 case GRAPH_FILLED_LINE:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotShaded(col.c_str(), xData->data(), scaledY.data(), numPoints);
-                    ImPlot::PlotLine(col.c_str(), xData->data(), scaledY.data(), numPoints);
+                    ImPlot::PlotShaded(columnName, xData.data(), yData.data(), numPoints);
+                    ImPlot::PlotLine(columnName, xData.data(), yData.data(), numPoints);
                     ImPlot::PopStyleVar();
                     break;
                 default:
@@ -326,16 +332,15 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             }
         }
 
-        drawLegendPopup(graphData, static_cast<int>(graphIndex));
+        this->drawLegendPopup(graph, graphIndex);
         ImPlot::EndPlot();
     }
 
-    processColumnDragDrop(graphData);
-    ImGui::PopID();
+    this->processColumnDragDrop(graph);
 }
 
 void Window::Plot::renderResizeButton(size_t graphIndex) {
-    GraphData& graphData = graphs[graphIndex];
+    Graph& graph = this->graphs[graphIndex];
 
     ImGui::Dummy(ImVec2(0, RESIZE_BAR_SIZE));
     ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -344,9 +349,10 @@ void Window::Plot::renderResizeButton(size_t graphIndex) {
 
     // Se a área estiver ativa e o mouse estiver sendo arrastado, atualiza a altura.
     if (ImGui::IsItemActive() && ImGui::IsMouseDragging(0)) {
-        float delta = ImGui::GetMouseDragDelta(0).y;
-        // Atualiza a altura, garantindo limites mínimo e máximo.
-        graphData.plotHeight = std::max(MIN_GRAPH_SIZE, std::min(graphData.plotHeight + delta, MAX_GRAPH_SIZE));
+        float delta             = ImGui::GetMouseDragDelta(0).y;
+        graph.config.plotHeight = std::max(
+            MIN_GRAPH_SIZE, std::min(graph.config.plotHeight + delta,
+                                     MAX_GRAPH_SIZE)); // Atualiza a altura, garantindo limites mínimo e máximo.
         ImGui::ResetMouseDragDelta();
     }
 
