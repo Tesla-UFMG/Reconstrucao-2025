@@ -49,14 +49,6 @@ double Window::Reconstruction::getDuration() const {
 
 static std::vector<TrackPoint> m_track;
 
-inline ImVec2 operator-(const ImVec2& lhs, const ImVec2& rhs) {
-    return ImVec2(lhs.x - rhs.x, lhs.y - rhs.y);
-}
-
-static inline float ImLength(const ImVec2& v) {
-    return std::sqrt(v.x*v.x + v.y*v.y);
-}
-
 //variaveis para aba "coordenadas"
 int m_latIndex = -1;
 int m_lonIndex = -1;
@@ -77,7 +69,6 @@ float m_kartPosition = 0.0f;
 bool  m_isSimulating    = false; // Se true, força a velocidade a ser a referência
 
 // Vetores para registrar os marcadores (verde e vermelho) com informações do instante do registro
-// CORRETO: guarda MarkerInfo
 std::vector<MarkerInfo> m_markedPositionsGreen;
 std::vector<MarkerInfo> m_markedPositionsRed;
 std::vector<CommentInfo> m_comments;
@@ -155,16 +146,16 @@ void Window::Reconstruction::ConvertLatLonToXY(std::vector<float>& outX, std::ve
     }
 }
 
-// Called after columns for latitude and longitude have been added
+// Chamado depois das colunas de latitude e longitude serem adicionadas
 void Window::Reconstruction::BuildTrackFromLatLon() {
     if (m_latIndex >= m_coordDataList.size() || m_lonIndex >= m_coordDataList.size()) return;
 
-    // Extract raw lat/lon
+    // Extrai Lat/Lon
     const auto& latData = m_coordDataList[m_latIndex].data;
     const auto& lonData = m_coordDataList[m_lonIndex].data;
     size_t n = std::min(latData.size(), lonData.size());
-    
-    // Convert to planar X/Y
+
+    // Converte para X/Y
     std::vector<float> xs(n), ys(n);
     for (size_t i = 0; i < n; ++i) {
         xs[i] = static_cast<float>(lonData[i]);
@@ -172,17 +163,17 @@ void Window::Reconstruction::BuildTrackFromLatLon() {
     }
     ConvertLatLonToXY(xs, ys);
 
-    // Rebuild m_track
+    // Rebuilda o m_track
     m_track.clear();
     m_track.reserve(n+1);
     for (size_t i = 0; i < n; ++i) {
         TrackPoint pt;
         pt.x = xs[i];
         pt.y = ys[i];
-        pt.referenceSpeed = DEFAULT_SPEED; // or compute per segment
+        pt.referenceSpeed = DEFAULT_SPEED;
         m_track.push_back(pt);
     }
-    // close loop if desired
+    // fecha loop
     if (n > 1) m_track.push_back(m_track.front());
 }
 
@@ -253,44 +244,6 @@ void Window::Reconstruction::addColumnToMap(const std::string& archiveName,
         this->BuildTrackFromLatLon(); // Chamada crucial da função!
         LOG("INFO", "Pista construída. Total de pontos em m_track: " + std::to_string(m_track.size()));
     }
-}
-
-void Window::Reconstruction::generateSimulatedData(int numPoints, size_t coordIndex, float* x, float* y) {
-    // Gera dados de uma curva simples (círculo ou senóide) como fallback
-    (void)coordIndex; // Para ignorar o warning
-
-    if (x == nullptr || y == nullptr) {
-        LOG("ERROR", "generateSimulatedData: Ponteiros x ou y são nulos.");
-        return;
-    }
-    float radius = 100.0f;
-    for (int i = 0; i < numPoints; ++i) {
-        float t = (float)i / (numPoints - 1) * 2.0f * M_PI;
-        x[i]    = radius * std::cos(t);
-        y[i]    = radius * std::sin(t) + Y_OFFSET;
-    }
-}
-
-//---------------------------------------------------------
-// Função auxiliar para desenhar uma seta entre dois pontos
-//---------------------------------------------------------
-
-static void DrawArrow(ImDrawList* draw_list, const ImVec2& p_from, const ImVec2& p_to, ImU32 col,
-                      float thickness = 2.0f) {
-    draw_list->AddLine(p_from, p_to, col, thickness);
-    ImVec2 dir = {p_from.x - p_to.x, p_from.y - p_to.y};
-    float  len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-    if (len <= 0.0f)
-        return;
-    dir.x                     /= len;
-    dir.y                     /= len;
-    float       arrowHeadSize  = 10.0f;
-    const float arrowAngle     = 0.5f; // ~30 graus
-    ImVec2      left  = {p_to.x + arrowHeadSize * (dir.x * std::cos(arrowAngle) - dir.y * std::sin(arrowAngle)),
-                         p_to.y + arrowHeadSize * (dir.x * std::sin(arrowAngle) + dir.y * std::cos(arrowAngle))};
-    ImVec2      right = {p_to.x + arrowHeadSize * (dir.x * std::cos(-arrowAngle) - dir.y * std::sin(-arrowAngle)),
-                         p_to.y + arrowHeadSize * (dir.x * std::sin(-arrowAngle) + dir.y * std::cos(-arrowAngle))};
-    draw_list->AddTriangleFilled(p_to, left, right, col);
 }
 
 // Função para SALVAR o estado atual da simulação em um slot
@@ -390,108 +343,132 @@ void Window::Reconstruction::removeColumnFromMap(size_t index) {
         LOG("INFO", "Pista (m_track) limpa pois um componente essencial (lat/lon) foi removido.");
     }
 
-    // --- IMPORTANTE: Reajustar os índices restantes ---
-    // Se removemos um item, os índices dos itens posteriores mudaram.
-    // A maneira mais segura é revalidar os índices.
+    // Reajustar os índices restantes
     if (m_latIndex > static_cast<int>(index)) m_latIndex--;
     if (m_lonIndex > static_cast<int>(index)) m_lonIndex--;
 }
 
+// ===================================================================
+// PASSO 1: A FUNÇÃO render() 
+// ===================================================================
+
 void Window::Reconstruction::render() {
-    if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen);
+    if (!isOpen || !*isOpen) {
+        return;
+    }
 
-        static int    activeTab   = 0;
-        static int    prevTab     = -1;
-        static Uint32 simLastTime = SDL_GetTicks();
+    ImGui::Begin(this->title.c_str(), this->isOpen);
 
+    // Variáveis de estado da UI que precisam ser mantidas aqui
+    static int    activeTab   = 0;
+    static int    prevTab     = -1; // Adicionado para resetar o tempo
+    static Uint32 simLastTime = SDL_GetTicks();
 
-            // Se mudou de aba, reseta o relógio
-            if (activeTab != prevTab) {
-                simLastTime = SDL_GetTicks();
-                prevTab     = activeTab;
-            }
+    // Se mudou de aba, reseta o relógio da simulação
+    if (activeTab != prevTab) {
+        simLastTime = SDL_GetTicks();
+        prevTab     = activeTab;
+    }
 
-        // --- Funcionalidade de minimização ---
-        if (ImGui::IsWindowCollapsed()) {
-            if (ImGui::Button("Restaurar Reconstrução"))
-                ImGui::SetWindowCollapsed(false);
-            ImGui::End();
-            return;
-        }
-        // --- Fim da minimização ---
+    // Calcula o delta time
+    Uint32 now = SDL_GetTicks();
+    float  dt  = (now - simLastTime) * 0.001f;
+    simLastTime = now;
 
-        // Variáveis estáticas para controle do menu
-        // activeTab: 0 para Simulação; 1 para Gerenciar Corridas
-        static bool showTrackInfo = false;
+    // --- Renderização dos Componentes da UI ---
+    
+    // 1. Renderiza a barra de menu com os botões das abas
+    RenderMainMenuBar(activeTab, m_showTrackInfo);
 
-        if (ImGui::CollapsingHeader("Janelas de Reconstrução")) {
-        // Menu horizontal com os 4 botões
-        if (ImGui::Button("Simulação"))
-            activeTab = 0;
+    // 2. Renderiza a tabela de colunas de coordenadas
+    RenderCoordinatesTable();
+    ImGui::Separator();
+
+    // 3. Renderiza o conteúdo da aba que está ativa
+    ImGui::BeginChild("DragAndDropArea");
+    RenderActiveTab(activeTab, dt);
+    ImGui::EndChild();
+
+    // 4. Processa o Drag and Drop na área
+    processColumnDragDrop();
+
+    ImGui::End();
+}
+
+// ===================================================================
+// PASSO 2: AS FUNÇÕES AUXILIARES
+// (Cada uma com sua responsabilidade específica)
+// ===================================================================
+
+void Window::Reconstruction::RenderMainMenuBar(int& activeTab, bool& showTrackInfo) {
+    if (ImGui::CollapsingHeader("Janelas de Reconstrução")) {
+        if (ImGui::Button("Simulação")) activeTab = 0;
         ImGui::SameLine();
-        if (ImGui::Button("Gerenciar Corridas"))
-            activeTab = 1;
+        if (ImGui::Button("Gerenciar Corridas")) activeTab = 1;
         ImGui::SameLine();
-        if (ImGui::Button("Coordenadas"))
-            activeTab = 2;
-        if (ImGui::Button(showTrackInfo ? "Ocultar Informações" : "Mostrar Informações"))
+        if (ImGui::Button("Coordenadas")) activeTab = 2;
+        ImGui::SameLine();
+        if (ImGui::Button(showTrackInfo ? "Ocultar Informações" : "Mostrar Informações")) {
             showTrackInfo = !showTrackInfo;
+        }
         ImGui::SameLine();
         if (ImGui::Button("Limpar Corrida")) {
             m_markedPositionsGreen.clear();
             m_markedPositionsRed.clear();
-            m_markerWindows.clear();
             m_comments.clear();
             m_highSpeedSegments.clear();
             m_lowSpeedSegments.clear();
-            
         }
     }
+}
 
-        if (ImGui::BeginTable("TabelaColunas", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-            ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("Coluna", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Multiplicador", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableHeadersRow();
-            for (size_t i = 0; i < m_coordDataList.size(); i++) {
-                COORDData coordData = m_coordDataList[i];
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                std::string btnLabel = "X##" + std::to_string(i);
-                if (ImGui::Button(btnLabel.c_str())) {
-                    this->removeColumnFromMap(i);
-                    break;
-                }
-                ImGui::TableSetColumnIndex(1);
-                ImGui::TextUnformatted(coordData.archive.c_str());
-
-                ImGui::TableSetColumnIndex(2);
-                ImGui::TextUnformatted(coordData.column.c_str());
-
-                ImGui::TableSetColumnIndex(3);
-                ImGui::PushItemWidth(120.0f);
-                ImGui::InputDouble(("##mult" + std::to_string(i)).c_str(), &coordData.multiplier, 0.001, 100.0,
-                                   "%.15gx");
-
-                ImGui::PopItemWidth();
+void Window::Reconstruction::RenderCoordinatesTable() {
+    if (ImGui::BeginTable("TabelaColunas", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Coluna", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Multiplicador", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableHeadersRow();
+        for (size_t i = 0; i < m_coordDataList.size(); i++) {
+            COORDData& coordData = m_coordDataList[i]; // Pegar referência para modificar
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            std::string btnLabel = "X##" + std::to_string(i);
+            if (ImGui::Button(btnLabel.c_str())) {
+                this->removeColumnFromMap(i);
+                break;
             }
-            ImGui::EndTable();
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextUnformatted(coordData.archive.c_str());
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextUnformatted(coordData.column.c_str());
+
+            ImGui::TableSetColumnIndex(3);
+            ImGui::PushItemWidth(120.0f);
+            ImGui::InputDouble(("##mult" + std::to_string(i)).c_str(), &coordData.multiplier, 0.001, 100.0,
+                               "%.15gx");
+            ImGui::PopItemWidth();
         }
-        ImGui::Separator();
+        ImGui::EndTable();
+    }
+}
 
-        ImGui::BeginChild("DragAndDropArea");
-        // Conteúdo dependendo da área ativa selecionada no menu
+void Window::Reconstruction::RenderActiveTab(int activeTab, float deltaTime) {
+    switch (activeTab) {
+        case 0:
+            RenderSimulationTab(deltaTime);
+            break;
+        case 1:
+            RenderRaceManagementTab();
+            break;
+        case 2:
+            RenderCoordinatesDataTab();
+            break;
+    }
+}
 
-        
+void Window::Reconstruction::RenderSimulationTab(float dt) {
 
-// --- Aba Simulação ---
-if (activeTab == 0) {
-    
-    // 1) Calcula dt uma única vez por frame
-    Uint32 now      = SDL_GetTicks();
-    float  dt       = (now - simLastTime) * 0.001f;
-    simLastTime     = now;
 
     if (ImGui::CollapsingHeader("Configurações da Simulação")) {
         ImGui::SliderFloat("Altura do Gráfico", &m_cartHeight,      100.0f, 800.0f,  "%.0f px");
@@ -859,7 +836,7 @@ for (size_t i = 0; i < m_markedPositionsRed.size(); ++i) {
 }
 
         // 10) Info extra
-        if (showTrackInfo) {
+        if (m_showTrackInfo) {
             ImGui::SetNextWindowPos(
                 ImVec2(origin.x + size.x - 10, origin.y + 10),
                 ImGuiCond_Always,
@@ -880,67 +857,52 @@ for (size_t i = 0; i < m_markedPositionsRed.size(); ++i) {
 
     ImGui::EndChild();
     }
-
 }
 
-// --- PASSO 4: CÓDIGO PARA A ABA "GERENCIAR CORRIDAS" ---
-else if (activeTab == 1) {
+void Window::Reconstruction::RenderRaceManagementTab() {
+    // O código desta função é todo o conteúdo que estava dentro de 'else if (activeTab == 1)'
     ImGui::Text("Gerencie até %d corridas salvas.", NUM_RACE_SLOTS);
     ImGui::Text("Salve o estado atual da simulação ou carregue um estado anterior.");
     ImGui::Separator();
 
-    // Cria uma seção para cada slot de corrida
     for (int i = 0; i < NUM_RACE_SLOTS; ++i) {
-        // PushID é essencial para que o ImGui saiba diferenciar botões com o mesmo nome em um loop
         ImGui::PushID(i);
-
-        // Usa um CollapsingHeader para manter a UI organizada
         char headerName[32];
         sprintf(headerName, "Slot de Corrida %d", i + 1);
         if (ImGui::CollapsingHeader(headerName)) {
-            
-            // Campo para nomear a corrida
             ImGui::InputText("Nome", m_savedRaces[i].name, sizeof(m_savedRaces[i].name));
-
-            // Exibe o status do slot
             const char* status = m_savedRaces[i].isSaved ? "Salvo" : "Vazio";
             ImGui::Text("Status: %s", status);
 
-            // Botão para Salvar
             if (ImGui::Button("Salvar Estado Atual Neste Slot")) {
                 SalvarCorrida(i);
             }
+            ImGui::SameLine();
 
-            ImGui::SameLine(); // Coloca o próximo item na mesma linha
-
-            // Desabilita o botão de carregar se o slot estiver vazio
             if (!m_savedRaces[i].isSaved) {
                 ImGui::BeginDisabled();
             }
             if (ImGui::Button("Carregar Este Slot")) {
                 CarregarCorrida(i);
-                ImGui::SetWindowFocus(NULL); // Opcional: Tira o foco da janela para evitar cliques duplos
-                activeTab = 0; // Opcional: Muda para a aba de simulação após carregar
+                ImGui::SetWindowFocus(NULL);
             }
             if (!m_savedRaces[i].isSaved) {
                 ImGui::EndDisabled();
             }
-
             ImGui::SameLine();
 
-            // Botão para Limpar
             if (ImGui::Button("Limpar Slot")) {
                 LimparCorrida(i);
             }
         }
-        ImGui::PopID(); // Libera o ID
+        ImGui::PopID();
     }
 }
 
-        else if (activeTab == 2) {
-
-        ImGui::Separator();
-        ImGui::Text("Coordenadas carregadas:");
+void Window::Reconstruction::RenderCoordinatesDataTab() {
+    // O código desta função é todo o conteúdo que estava dentro de 'else if (activeTab == 2)'
+    ImGui::Separator();
+    ImGui::Text("Coordenadas carregadas:");
     if (m_latIndex < 0 || m_lonIndex < 0) {
         ImGui::TextDisabled("Arraste colunas de latitude e longitude primeiro.");
     } else {
@@ -948,9 +910,8 @@ else if (activeTab == 1) {
         const auto& lonData = m_coordDataList[m_lonIndex].data;
         size_t n = std::min(latData.size(), lonData.size());
 
-        if (ImGui::BeginTable("TabelaCoordenadas", 2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Latitude",  ImGuiTableColumnFlags_WidthStretch);
+        if (ImGui::BeginTable("TabelaCoordenadas", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Latitude", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Longitude", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
             for (size_t i = 0; i < n; ++i) {
@@ -962,12 +923,6 @@ else if (activeTab == 1) {
             }
             ImGui::EndTable();
         }
-    }
-}
-
-        ImGui::EndChild();
-        processColumnDragDrop();
-        ImGui::End();
     }
 }
 

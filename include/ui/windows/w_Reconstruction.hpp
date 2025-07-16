@@ -90,6 +90,18 @@ namespace Window {
 
 
         private:
+        
+            Uint32 m_simLastTime = 0;
+            bool m_showTrackInfo = false;
+
+                        // --- Funções de Renderização ---
+            void RenderMainMenuBar(int& activeTab, bool& showTrackInfo);
+            void RenderCoordinatesTable();
+            void RenderActiveTab(int activeTab, float deltaTime);
+
+            void RenderSimulationTab(float deltaTime);
+            void RenderRaceManagementTab();
+            void RenderCoordinatesDataTab();
 
             bool m_seekJustOccurred = false;
             // --- Funções Auxiliares de Renderização e Lógica ---
@@ -98,12 +110,9 @@ namespace Window {
             void  DrawTrackAndKartAt(const std::vector<ImVec2>& screenPts,
                                      const ImVec2& origin,
                                      float scale);
-            void  UpdateKartSimulation(float deltaTime,
-                                       const std::vector<ImVec2>& screenPts);
             void processColumnDragDrop();
             void addColumnToMap(const std::string& archiveName, const std::string& columnName);
             void removeColumnFromMap(size_t index);
-            void generateSimulatedData(int numPoints, size_t coordIndex, float* x, float* y);
             void ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY);
             void BuildTrackFromLatLon(); // Não precisa mais dos índices como parâmetro
 
