@@ -62,6 +62,7 @@ void MenuBar::changePlotColormap() {
 
         if (ImPlot::ColormapButton(ImPlot::GetColormapName(colormap), ImVec2(225, 0), colormap)) {
             colormap = (colormap + 1) % ImPlot::GetColormapCount();
+            ImGuiWrapper::saveAppTheme();
             ImPlot::BustItemCache();
         }
 

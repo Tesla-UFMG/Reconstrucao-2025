@@ -21,7 +21,7 @@ void ImGuiWrapper::initSubsystem() {
     ImGuiWrapper::io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGuiWrapper::io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImGuiWrapper::loadStyleTheme();
+    ImGuiWrapper::loadAppTheme();
 
     ImGui_ImplSDL2_InitForSDLRenderer(SDLWrapper::window, SDLWrapper::renderer);
     ImGui_ImplSDLRenderer2_Init(SDLWrapper::renderer);
@@ -106,10 +106,6 @@ void ImGuiWrapper::loadLayout(const std::filesystem::path& filepath) { ImGuiWrap
 void ImGuiWrapper::handleEvent(SDL_Event& event) { ImGui_ImplSDL2_ProcessEvent(&event); }
 
 void ImGuiWrapper::StyleLightTheme() {
-    // IMPLOT STYLE
-    ImPlotContext& gp = *GImPlot;
-    gp.Style.Colormap = ImPlotColormap_Paired;
-
     // IMGUI STYLE
     ImGuiStyle& style  = ImGui::GetStyle();
     ImVec4*     colors = style.Colors;
@@ -212,10 +208,6 @@ void ImGuiWrapper::StyleLightTheme() {
 }
 
 void ImGuiWrapper::StyleDarkTheme() {
-    // IMPLOT STYLE
-    ImPlotContext& gp = *GImPlot;
-    gp.Style.Colormap = ImPlotColormap_Paired;
-
     // IMGUI STYLE
     ImGuiStyle& style  = ImGui::GetStyle();
     ImVec4*     colors = style.Colors;
@@ -327,17 +319,17 @@ void ImGuiWrapper::changeStyleTheme(const ImGuiWrapper_Theme& theme) {
             break;
 
         default:
-            LOG("DEBUG", "Trocado o estilo para o estilo escuro.")
+            LOG("DEBUG", "Foi trocado para o estilo escuro, porém porque não foi reconhecido o tema.")
             ImGuiWrapper::StyleDarkTheme();
             break;
     }
     ImGuiWrapper::currentTheme = theme;
-    ImGuiWrapper::saveStyleTheme(theme);
+    ImGuiWrapper::saveAppTheme();
 }
 
-void ImGuiWrapper::saveStyleTheme(const ImGuiWrapper_Theme& theme) {
-    std::filesystem::path filepath = std::string(LAYOUT_OUTPUT) + ".theme.bin";
-
+void ImGuiWrapper::saveAppTheme() {
+    ImPlotColormap&       colormap   = (*GImPlot).Style.Colormap;
+    std::filesystem::path filepath   = std::string(LAYOUT_OUTPUT) + ".theme.bin";
     std::filesystem::path parentPath = filepath.parent_path();
     if (!parentPath.empty() && std::filesystem::create_directories(parentPath)) {
         LOG("INFO", "Criada pasta '" + parentPath.string() + "'.");
@@ -349,11 +341,14 @@ void ImGuiWrapper::saveStyleTheme(const ImGuiWrapper_Theme& theme) {
         return;
     }
 
-    file.write(reinterpret_cast<const char*>(&theme), sizeof(theme));
+    file.write(reinterpret_cast<char*>(&colormap), sizeof(colormap));
+    file.write(reinterpret_cast<const char*>(&ImGuiWrapper::currentTheme), sizeof(ImGuiWrapper::currentTheme));
     LOG("INFO", "Estilo '" + filepath.string() + "' salvo com sucesso.");
 }
 
-void ImGuiWrapper::loadStyleTheme() {
+void ImGuiWrapper::loadAppTheme() {
+
+    ImPlotColormap&       colormap = (*GImPlot).Style.Colormap;
     ImGuiWrapper_Theme    theme    = DARK;
     std::filesystem::path filepath = std::string(LAYOUT_OUTPUT) + ".theme.bin";
     std::ifstream         file(filepath, std::ios::binary);
@@ -363,6 +358,7 @@ void ImGuiWrapper::loadStyleTheme() {
         return;
     }
 
+    file.read(reinterpret_cast<char*>(&colormap), sizeof(colormap));
     file.read(reinterpret_cast<char*>(&theme), sizeof(theme));
     LOG("INFO", "Estilo '" + filepath.string() + "' carregado com sucesso.");
     ImGuiWrapper::changeStyleTheme(theme);

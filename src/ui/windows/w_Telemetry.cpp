@@ -105,6 +105,9 @@ void Window::Telemetry::readMessages() {
 
 void Window::Telemetry::drainQueueIntoRecent() {
     std::lock_guard lk(queueMutex);
+    if (recentMessages.size() >= 1000)
+        recentMessages.clear();
+
     while (!messageQueue.empty()) {
         recentMessages.push_back(std::move(messageQueue.front()));
         this->processingStatus = this->processPacket(recentMessages.back());

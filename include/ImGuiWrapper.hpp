@@ -37,11 +37,11 @@ class ImGuiWrapper {
         static void                  StyleDarkTheme();
         static void                  StyleLightTheme();
         static void                  loadLayoutFromQueue();
-        static void                  saveStyleTheme(const ImGuiWrapper_Theme& theme);
-        static void                  loadStyleTheme();
+        static void                  loadAppTheme();
 
     public:
         static ImGuiWrapper_Theme currentTheme;
+        static void               saveAppTheme();
 
         static void changeStyleTheme(const ImGuiWrapper_Theme& theme);
         static void initSubsystem();               // Inicia todos os subsistemas do ImGui
