@@ -86,11 +86,10 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
 
     else if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
         const std::string& packetId = telemetryFile->getPacketId();
-        char               buf[packetId.size() + fileName.size() + 4];
-        std::snprintf(buf, sizeof(buf), "[%s] %s", packetId.c_str(), fileName.c_str());
+        std::string        msg      = "[" + packetId + "] " + fileName;
 
         ImGui::PushStyleColor(ImGuiCol_Text, HI(1));
-        if (ImGui::TreeNode(buf)) {
+        if (ImGui::TreeNode(msg.c_str())) {
             this->sendArchivePayload(fileType, packetId);
             for (const std::string& colName : telemetryFile->getColumnNames()) {
                 this->renderColumnItem(fileType, packetId, colName);
