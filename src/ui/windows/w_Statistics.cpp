@@ -125,19 +125,22 @@ void Window::Statistics::renderTable() {
 }
 
 void Window::Statistics::renderGraph(const Metric& metric, size_t i) {
-    std::string         id    = metric.unique_id;
-    std::vector<double> y     = *(metric.data);
-    size_t              ySize = y.size();
+    std::string         id          = metric.unique_id;
+    std::vector<double> y           = *(metric.data);
+    size_t              ySize       = y.size();
+    size_t              numOfPoints = std::min<size_t>(ySize, HISTORY_SIZE);
+    size_t              begin       = ySize - numOfPoints;
 
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
     if (ImPlot::BeginPlot(id.c_str(), ImVec2(-1, 50), ImPlotFlags_CanvasOnly)) {
         ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations,
                           ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
-        ImPlot::SetupAxisLimits(ImAxis_X1, y.size() - HISTORY_SIZE, y.size(), ImGuiCond_Always);
+
+        ImPlot::SetupAxisLimits(ImAxis_X1, (double)begin, (double)ySize, ImGuiCond_Always);
         ImVec4 color = ImPlot::GetColormapColor(static_cast<int>(i) % ImPlot::GetColormapSize());
         ImPlot::SetNextLineStyle(color, 1.0f);
         ImPlot::SetNextFillStyle(color, 0.25f);
-        ImPlot::PlotLine(id.c_str(), y.data(), ySize, 1.0, 0, ImPlotLineFlags_Shaded);
+        ImPlot::PlotLine(id.c_str(), y.data() + begin, (int)numOfPoints, 1.0, (double)begin, ImPlotLineFlags_Shaded);
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();

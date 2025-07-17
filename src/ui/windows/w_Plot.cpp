@@ -261,6 +261,10 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             yAxisFlags |= ImPlotAxisFlags_AutoFit;
         }
 
+        if (graphConfig.followTheEnd) {
+            xAxisFlags |= ImPlotAxisFlags_AutoFit;
+        }
+
         ImPlot::SetupAxes(nullptr, nullptr, xAxisFlags, yAxisFlags);
 
         size_t axisLength = 0;
@@ -275,9 +279,7 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             }
         }
 
-        if (graphConfig.followTheEnd) {
-            ImPlot::SetupAxisLimits(ImAxis_X1, axisLength - graphConfig.numPoints, axisLength, ImGuiCond_Always);
-        }
+        int start = graphConfig.followTheEnd ? std::max(0, int(axisLength) - graphConfig.numPoints) : 0;
 
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
@@ -304,27 +306,32 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             //&& customX.size() == y.size()
             std::vector<double> xData = (useCustomX) ? customX : graphData.x;
 
+            const double* xPtr = xData.data() + start;
+            const double* yPtr = yData.data() + start;
+
             // Plota
             const char* columnName = graphData.columnName.c_str();
-            int         numPoints  = static_cast<int>(std::min(xData.size(), yData.size()));
+
+            int totalPts  = static_cast<int>(std::min(xData.size(), yData.size()));
+            int numPoints = graphConfig.followTheEnd ? std::min(totalPts, graphConfig.numPoints) : totalPts;
             switch (graphConfig.type) {
                 case GRAPH_LINE:
-                    ImPlot::PlotLine(columnName, xData.data(), yData.data(), numPoints);
+                    ImPlot::PlotLine(columnName, xPtr, yPtr, numPoints);
                     break;
                 case GRAPH_BAR:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotBars(columnName, xData.data(), yData.data(), numPoints, 0.8f);
+                    ImPlot::PlotBars(columnName, xPtr, yPtr, numPoints, 0.8f);
                     ImPlot::PopStyleVar();
                     break;
                 case GRAPH_SCATTER:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotScatter(columnName, xData.data(), yData.data(), numPoints);
+                    ImPlot::PlotScatter(columnName, xPtr, yPtr, numPoints);
                     ImPlot::PopStyleVar();
                     break;
                 case GRAPH_FILLED_LINE:
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                    ImPlot::PlotShaded(columnName, xData.data(), yData.data(), numPoints);
-                    ImPlot::PlotLine(columnName, xData.data(), yData.data(), numPoints);
+                    ImPlot::PlotShaded(columnName, xPtr, yPtr, numPoints);
+                    ImPlot::PlotLine(columnName, xPtr, yPtr, numPoints);
                     ImPlot::PopStyleVar();
                     break;
                 default:
