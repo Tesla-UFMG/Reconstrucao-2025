@@ -17,7 +17,7 @@ class IWindow {
 
     public:
         explicit IWindow(bool* isOpen = nullptr) { this->setupVisibility(isOpen); }
-        ~IWindow() = default;
+        virtual ~IWindow() = default;
 
         virtual void setupVisibility(bool* isOpen) { this->isOpen = isOpen; }
         virtual void render() = 0;

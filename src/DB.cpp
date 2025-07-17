@@ -105,3 +105,56 @@ bool DB::processTelemetryPacket(const std::string& packetId, const std::vector<d
     }
     return false;
 }
+
+bool DB::saveTelemetryPackets(const std::string& outputFolder) {
+
+    std::filesystem::path baseDir = outputFolder.empty() ? std::filesystem::path(TELEMETRY_OUTPUT)
+                                                         : TELEMETRY_OUTPUT / std::filesystem::path(outputFolder);
+
+    if (std::filesystem::create_directories(baseDir)) {
+        LOG("INFO", "Criada pasta de saída: " + baseDir.string());
+    }
+
+    for (const TelemetryFile& file : this->getProject().telemetryFiles) {
+        const std::string                      packetName  = file.getName();
+        const std::string                      packetId    = file.getPacketId();
+        const std::vector<std::vector<double>> data        = file.getData();
+        const std::vector<std::string>         columnNames = file.getColumnNames();
+
+        // nome do arquivo
+        std::string           filename = packetId + "_" + packetName + ".csv";
+        std::filesystem::path outPath  = baseDir / filename;
+
+        // abre o arquivo
+        std::ofstream ofs(outPath, std::ios::trunc);
+        if (!ofs.is_open()) {
+            LOG("ERROR", "Não foi possível criar arquivo: " + outPath.string());
+            return false;
+        }
+
+        // cabeçalho
+        for (size_t i = 0; i < columnNames.size(); ++i) {
+            ofs << columnNames[i];
+            if (i + 1 < columnNames.size())
+                ofs << ',';
+        }
+        ofs << '\n';
+
+        // dados
+        size_t numRows = data.empty() ? 0 : data[0].size();
+        size_t numCols = data.size();
+        for (size_t row = 0; row < numRows; ++row) {
+            for (size_t col = 0; col < numCols; ++col) {
+                ofs << data[col][row];
+                if (col + 1 < numCols)
+                    ofs << ',';
+            }
+            ofs << '\n';
+        }
+
+        ofs.close();
+        LOG("INFO", "Salvo CSV: " + outPath.string());
+    }
+
+    return true;
+}

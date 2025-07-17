@@ -22,6 +22,9 @@
 #include "serialib.h"
 #include "tinyfiledialogs.h"
 
+// Defines
+#define MAX_RECENT_MESSAGES 1000
+
 namespace Window {
     class Telemetry : public IWindow {
         private:
@@ -33,6 +36,7 @@ namespace Window {
             int                      selectedPortIndex;
             std::vector<std::string> recentMessages;
             bool                     saveToFile;
+            std::string              outputPacketFolder;
 
             // Pacotes
             std::string              packetName;
@@ -58,6 +62,8 @@ namespace Window {
             void renderConfigMenu();
             void renderPacketConfigMenu();
             void renderRecentMessages();
+
+            void savePacketsToFile(const std::string& outputFolder);
 
         public:
             explicit Telemetry(bool* isOpen = nullptr);

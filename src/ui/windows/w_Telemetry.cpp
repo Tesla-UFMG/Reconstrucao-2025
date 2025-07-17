@@ -17,6 +17,7 @@ Window::Telemetry::Telemetry(bool* isOpen) : IWindow(isOpen) {
     this->getAvailablePorts();
     this->selectedPortIndex = 0;
     this->saveToFile        = false;
+    this->outputPacketFolder.resize(COLUMN_NAME_SIZE);
 
     // Packet configuration
     this->clearAndResizeInputBuffers();
@@ -36,6 +37,10 @@ void Window::Telemetry::clearAndResizeInputBuffers() {
         this->packetColumnNames[i].clear();
         this->packetColumnNames[i].resize(COLUMN_NAME_SIZE);
     }
+}
+
+void Window::Telemetry::savePacketsToFile(const std::string& outputFolder) {
+    DB::getInstance().saveTelemetryPackets(std::string(outputFolder.data()));
 }
 
 Window::Telemetry::~Telemetry() { this->closeDevice(); }
@@ -64,7 +69,7 @@ void Window::Telemetry::closeDevice() {
 
     if (this->device.isDeviceOpen()) {
         this->device.closeDevice();
-        LOG("INFO", "Dispositivo fechado");
+        LOG("INFO", "Dispositivo fechado: " + this->serialPort);
     }
     DB::getInstance().getProject().setTelemetryStatus(this->device.isDeviceOpen());
 }
@@ -105,8 +110,12 @@ void Window::Telemetry::readMessages() {
 
 void Window::Telemetry::drainQueueIntoRecent() {
     std::lock_guard lk(queueMutex);
-    if (recentMessages.size() >= 1000)
+    if (recentMessages.size() >= MAX_RECENT_MESSAGES) {
+        if (this->saveToFile) {
+            this->savePacketsToFile(this->outputPacketFolder);
+        }
         recentMessages.clear();
+    }
 
     while (!messageQueue.empty()) {
         recentMessages.push_back(std::move(messageQueue.front()));
@@ -117,27 +126,62 @@ void Window::Telemetry::drainQueueIntoRecent() {
 }
 
 void Window::Telemetry::renderConfigMenu() {
+
+    ImGui::SeparatorText("Configuração da UART");
     ImGui::BeginGroup();
+    if (ImGui::BeginTable("##cfg", 2, ImGuiTableFlags_SizingFixedFit)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableSetupColumn("Widget", ImGuiTableColumnFlags_WidthStretch);
 
-    ImGui::Text("Baudrate:");
-    ImGui::SameLine();
-    ImGui::InputInt("##baudrate", &this->baudrate, 0, 0, ImGuiInputTextFlags_None);
+        // baudrate
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Baudrate");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::InputInt("##baudrate", &this->baudrate, 0, 0);
 
-    std::vector<const char*> items;
-    items.reserve(serialPorts.size());
-    for (auto& s : serialPorts)
-        items.push_back(s.c_str());
+        // porta serial
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Porta Serial");
+        ImGui::TableSetColumnIndex(1);
+        {
+            std::vector<const char*> items;
+            items.reserve(serialPorts.size());
+            for (auto& s : serialPorts)
+                items.push_back(s.c_str());
+            ImGui::SetNextItemWidth(150.0f);
+            ImGui::Combo("##PortasSeriais", &this->selectedPortIndex, items.data(), (int)items.size());
 
-    ImGui::Text("Porta Serial:");
-    ImGui::SameLine();
-    ImGui::Combo("##PortasSeriais", &selectedPortIndex, items.data(), (int)items.size());
-    if (selectedPortIndex >= (int)items.size()) {
-        this->serialPort = "";
-    } else {
-        this->serialPort = items[selectedPortIndex];
+            if (selectedPortIndex >= (int)items.size()) {
+                this->serialPort = "";
+            } else {
+                this->serialPort = items[selectedPortIndex];
+            }
+        }
+
+        // pasta output
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Salvar na Pasta");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::InputText("##outputPacketFolder", outputPacketFolder.data(), COLUMN_NAME_SIZE,
+                         ImGuiInputTextFlags_CharsNoBlank);
+
+        // salvar automaticamente
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Salvar Automat.");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Checkbox("##saveInFile", &this->saveToFile);
+        ImGui::EndTable();
     }
 
-    ImGui::Checkbox("Salvar em Arquivo", &saveToFile);
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
 
     ImGui::Text("Status:");
     ImGui::SameLine();
@@ -149,6 +193,8 @@ void Window::Telemetry::renderConfigMenu() {
     std::string processing = this->processingStatus ? "Ok" : "Erro";
     ImGui::SameLine();
     ImGui::TextColored(this->processingStatus ? HI(1) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), processing.c_str());
+
+    ImGui::Spacing();
 
     // Botões
     if (ImGui::Button("Conectar") && !this->serialPort.empty()) {
@@ -165,34 +211,63 @@ void Window::Telemetry::renderConfigMenu() {
         this->getAvailablePorts();
     }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Salvar Pacotes")) {
+        this->savePacketsToFile(this->outputPacketFolder);
+    }
+
     ImGui::EndGroup();
 }
 
 void Window::Telemetry::renderPacketConfigMenu() {
+    ImGui::SeparatorText("Configuração dos Pacotes");
     ImGui::BeginGroup();
-    // Nome
-    ImGui::Text("Nome do Pacote:");
-    ImGui::SameLine();
-    ImGui::InputText("##packet_name", this->packetName.data(), 128, ImGuiInputTextFlags_CharsNoBlank);
+    if (ImGui::BeginTable("##packetCfg", 2, ImGuiTableFlags_SizingFixedFit)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableSetupColumn("Input", ImGuiTableColumnFlags_WidthStretch);
 
-    // ID
-    ImGui::Text("ID do Pacote:");
-    ImGui::SameLine();
-    ImGui::InputText("##packet_id", this->packetId.data(), 16, ImGuiInputTextFlags_CharsNoBlank);
-    ImGui::Spacing();
+        // Nome do Pacote
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Nome do Pacote");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::InputText("##packet_name", this->packetName.data(), FILE_NAME_SIZE, ImGuiInputTextFlags_CharsNoBlank);
 
-    // Nomes das colunas
-    ImGui::Text("Nomes das colunas:");
-    for (int i = 0; i < 8; ++i) {
-        ImGui::PushID(i);
-        ImGui::InputText(std::string("##colname" + std::to_string(i)).c_str(), this->packetColumnNames[i].data(), 128,
-                         ImGuiInputTextFlags_CharsNoBlank);
-        ImGui::SameLine();
-        ImGui::Text("Coluna %d", i + 1);
-        ImGui::PopID();
+        // ID do Pacote
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("ID do Pacote");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::InputText("##packet_id", this->packetId.data(), COLUMN_NAME_SIZE, ImGuiInputTextFlags_CharsNoBlank);
+        ImGui::EndTable();
+    }
+
+    ImGui::Separator();
+
+    if (ImGui::BeginTable("##packetCfg", 2, ImGuiTableFlags_SizingFixedFit)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableSetupColumn("Input", ImGuiTableColumnFlags_WidthStretch);
+
+        for (int i = 0; i < 8; ++i) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("Coluna %d", i + 1);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::PushID(i);
+            ImGui::SetNextItemWidth(150.0f);
+            ImGui::InputText("##colname", this->packetColumnNames[i].data(), COLUMN_NAME_SIZE,
+                             ImGuiInputTextFlags_CharsNoBlank);
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
     }
 
     ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
     if (ImGui::Button("Salvar Configuração")) {
         // Verifica o nome do pacote
         if (std::string(this->packetName.data()).empty()) {
@@ -288,7 +363,7 @@ void Window::Telemetry::renderPacketConfigMenu() {
             // Coluna 3: Botão Remover
             ImGui::TableSetColumnIndex(10);
             ImGui::PushID(telemetryFile.getPacketId().c_str());
-            if (ImGui::Button("Remover")) {
+            if (ImGui::Button("X")) {
                 if (Dialogs::showConfirmationDialog("Tem certeza que deseja remover o pacote " +
                                                     telemetryFile.getName() + "?")) {
                     DB::getInstance().getProject().removePacket(telemetryFile.getPacketId());
