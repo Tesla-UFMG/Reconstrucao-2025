@@ -17,6 +17,5 @@ int main() {
     app.init(WINDOW_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT);
     app.loop();
     app.close();
-
     return 0;
 }

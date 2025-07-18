@@ -133,6 +133,7 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         }
 
         // cabeçalho
+        ofs << "index,";
         for (size_t i = 0; i < columnNames.size(); ++i) {
             ofs << columnNames[i];
             if (i + 1 < columnNames.size())
@@ -144,6 +145,7 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         size_t numRows = data.empty() ? 0 : data[0].size();
         size_t numCols = data.size();
         for (size_t row = 0; row < numRows; ++row) {
+            ofs << row << ",";
             for (size_t col = 0; col < numCols; ++col) {
                 ofs << data[col][row];
                 if (col + 1 < numCols)

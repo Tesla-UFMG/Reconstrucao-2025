@@ -4,9 +4,9 @@ extern "C" {
 }
 #include "App.hpp"
 
-App::App() {}
+App::App() { LOG("TRACE", "App iniciado com sucesso."); }
 
-App::~App() {}
+App::~App() { LOG("TRACE", "App encerrado."); }
 
 void App::init(const std::string& windowTitle, int windowWidth, int windowHeight) {
     this->windowTitle = windowTitle;
@@ -23,7 +23,6 @@ void App::init(const std::string& windowTitle, int windowWidth, int windowHeight
 void App::close() {
     ImGuiWrapper::closeSubystem();
     SDLWrapper::closeSubystem();
-
     avformat_network_deinit();
 }
 
