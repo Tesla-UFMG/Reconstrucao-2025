@@ -15,15 +15,15 @@ void ProjectData::loadCSV(const std::filesystem::path& filepath) {
         }
     }
 
-    try {
-        std::ifstream file(filepath);
+    std::ifstream file(filepath);
+    if (file){
         auto          doc = std::make_unique<rapidcsv::Document>(file, rapidcsv::LabelParams(0, 0));
         csvFiles.emplace_back(CSVFile(filepath, std::move(doc)));
         file.close();
         LOG("INFO", "CSV carregado com sucesso " + filepath.string());
-    } catch (const std::exception& e) {
-        LOG("ERROR", std::string("Erro ao abrir o CSV: ") + e.what());
     }
+        
+    LOG("ERROR", "Erro ao abrir o CSV: " + filepath.string());
 }
 
 void ProjectData::removeCSV(const std::filesystem::path& filepath) {
