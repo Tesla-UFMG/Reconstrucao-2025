@@ -42,9 +42,17 @@ void Log::log(const std::string& level, const std::string& message) {
         return;
 
     std::string formattedMessage = "[" + getCurrentTime() + "] " + level + " - " + message;
+
+    // Coloca no arquivo
     this->file << formattedMessage << std::endl;
     this->file.flush();
 
+    // Coloca no terminal
+    if (PRINT_TO_THE_TERMINAL) {
+        std::cout << formattedMessage << std::endl;
+    }
+
+    // Coloca no banco de mensagens
     this->messages.push_back(formattedMessage);
 }
 

@@ -25,20 +25,31 @@
 #define MED(a) ImVec4(0.184f, 0.564f, 0.317f, a)
 #define LOW(a) ImVec4(0.152f, 0.231f, 0.180f, a)
 
+#define LAYOUT_OUTPUT "./cache/layouts/"
+
+enum ImGuiWrapper_Theme { DARK, LIGHT };
+
 class ImGuiWrapper {
     private:
         static bool                  isSubsystemInited;
         static ImGuiIO*              io;
         static std::filesystem::path layoutQueue;
-        static void                  configStyle();
+        static void                  StyleDarkTheme();
+        static void                  StyleLightTheme();
         static void                  loadLayoutFromQueue();
+        static void                  loadAppTheme();
 
     public:
-        static void initSubsystem();                                   // Inicia todos os subsistemas do ImGui
-        static void prepareForNewFrame();                              // Prepara o ImGui para um novo frame
-        static void render();                                          // Renderiza as janelas do ImGui
-        static void closeSubystem();                                   // Fecha todos os subsistemas do ImGui
-        static void handleEvent(SDL_Event& event);                     // Trata os eventos
+        static ImGuiWrapper_Theme currentTheme;
+        static void               saveAppTheme();
+
+        static void changeStyleTheme(const ImGuiWrapper_Theme& theme);
+        static void initSubsystem();               // Inicia todos os subsistemas do ImGui
+        static void prepareForNewFrame();          // Prepara o ImGui para um novo frame
+        static void render();                      // Renderiza as janelas do ImGui
+        static void closeSubystem();               // Fecha todos os subsistemas do ImGui
+        static void handleEvent(SDL_Event& event); // Trata os eventos
+
         static void saveLayout(const std::filesystem::path& filepath); // Salva o layout
         static void loadLayout(const std::filesystem::path& filepath); // Carrega o layout
 };

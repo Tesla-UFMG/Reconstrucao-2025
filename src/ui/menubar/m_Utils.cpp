@@ -15,20 +15,35 @@ void MenuBar::changeWindowVisibility(const std::filesystem::path& windowName, bo
 }
 
 void MenuBar::renderStatus() {
+    std::string text;
+
+    // Telemetry Status
+    bool telemetryStatus  = DB::getInstance().getProject().getTelemetryStatus();
+    text                 += telemetryStatus ? "Conectado  " : "Desconectado  ";
+
+    // Telemetry Status
+    bool processingStatus = DB::getInstance().getProject().getProcessingStatus();
+    if (telemetryStatus) {
+        text += processingStatus ? "Ok  " : "Erro  ";
+    }
+
+    // Get FPS
+    float fps = ImGui::GetIO().Framerate;
+    char  fpsText[16];
+    std::snprintf(fpsText, sizeof(fpsText), "%.1f  ", fps);
+    text += fpsText;
+
     // Get Hour
     std::time_t t   = std::time(nullptr);
     std::tm*    now = std::localtime(&t);
     char        currentTime[64];
     std::strftime(currentTime, sizeof(currentTime), "%H:%M:%S  %d-%m-%Y", now);
+    text += currentTime;
 
-    // Get FPS
-    float fps = ImGui::GetIO().Framerate;
-
-    char status[128];
-    std::snprintf(status, sizeof(status), "%.1f  %s", fps, currentTime);
-    float statusWidth = ImGui::CalcTextSize(status)[0];
-    ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth * 1.1f);
-    ImGui::Text("%s", status);
+    // Render text
+    float textWidth = ImGui::CalcTextSize(text.c_str()).x;
+    ImGui::SameLine(ImGui::GetWindowWidth() - textWidth * 1.1f);
+    ImGui::Text("%s", text.c_str());
 }
 
 void MenuBar::renderProgramName() {
@@ -40,18 +55,34 @@ void MenuBar::renderProgramName() {
     ImGui::Text("%s", programName.c_str());
 }
 
-void MenuBar::changeColorMap() {
+void MenuBar::changePlotColormap() {
     if (ImGui::BeginMenu("Mudar Cores")) {
         ImPlotContext&  gp       = *GImPlot;
         ImPlotColormap& colormap = gp.Style.Colormap;
 
         if (ImPlot::ColormapButton(ImPlot::GetColormapName(colormap), ImVec2(225, 0), colormap)) {
             colormap = (colormap + 1) % ImPlot::GetColormapCount();
+            ImGuiWrapper::saveAppTheme();
             ImPlot::BustItemCache();
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
         ImPlot::ShowColormapSelector("##");
+
+        ImGui::EndMenu();
+    }
+}
+
+void MenuBar::changeAppStyleTheme() {
+    if (ImGui::BeginMenu("Mudar Tema")) {
+
+        if (ImGui::MenuItem("Escuro")) {
+            ImGuiWrapper::changeStyleTheme(DARK);
+        }
+
+        if (ImGui::MenuItem("Claro")) {
+            ImGuiWrapper::changeStyleTheme(LIGHT);
+        }
 
         ImGui::EndMenu();
     }

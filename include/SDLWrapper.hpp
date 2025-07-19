@@ -7,6 +7,7 @@
 #include <string>
 
 // Project
+#include "ImGuiWrapper.hpp"
 #include "Log.hpp"
 
 // Third Party

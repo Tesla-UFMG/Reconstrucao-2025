@@ -4,10 +4,9 @@ void MenuBar::Windows() {
     WindowManager& vw = WindowManager::getInstance();
 
     if (ImGui::BeginMenu("Janelas")) {
-        if (ImGui::MenuItem("Tela Cheia", "F11", SDLWrapper::getIsFullscreen())) {
-            SDLWrapper::changeFullscreen();
-        }
-        MenuBar::changeColorMap();
+
+        MenuBar::changePlotColormap();
+
         ImGui::Separator();
 
         if (ImGui::BeginMenu("Salvar Layout")) {
@@ -36,6 +35,7 @@ void MenuBar::Windows() {
 
         MenuBar::changeWindowVisibility("Playback", &vw.visibility.showPlayback);
         MenuBar::changeWindowVisibility("Selecionador de Dados", &vw.visibility.showDataPicker);
+        MenuBar::changeWindowVisibility("Telemetria", &vw.visibility.showTelemetry);
         MenuBar::changeWindowVisibility("Reconstrução de Pista", &vw.visibility.showReconstruction);
         MenuBar::changeWindowVisibility("Video", &vw.visibility.showVideo);
         MenuBar::changeWindowVisibility("Plot", &vw.visibility.showPlot);

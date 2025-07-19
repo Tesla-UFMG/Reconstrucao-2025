@@ -21,9 +21,7 @@ WindowManager& WindowManager::getInstance() {
     return instance;
 }
 
-WindowManager::WindowManager() {
-    LOG("TRACE", "Window Manager iniciado com sucesso.");
-}
+WindowManager::WindowManager() { LOG("TRACE", "Window Manager iniciado com sucesso."); }
 
 WindowManager::~WindowManager() { LOG("TRACE", "Window Manager encerrado."); }
 
@@ -106,6 +104,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::ImPlot3dDemo>(&visibility.showImPlot3dDemo));
     windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
     windows.emplace_back(std::make_unique<Window::Statistics>(&visibility.showStatistics));
+    windows.emplace_back(std::make_unique<Window::Telemetry>(&visibility.showTelemetry));
 }
 
 void WindowManager::homePage() {

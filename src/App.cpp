@@ -4,9 +4,9 @@ extern "C" {
 }
 #include "App.hpp"
 
-App::App() {}
+App::App() { LOG("TRACE", "App iniciado com sucesso."); }
 
-App::~App() {}
+App::~App() { LOG("TRACE", "App encerrado."); }
 
 void App::init(const std::string& windowTitle, int windowWidth, int windowHeight) {
     this->windowTitle = windowTitle;
@@ -23,7 +23,6 @@ void App::init(const std::string& windowTitle, int windowWidth, int windowHeight
 void App::close() {
     ImGuiWrapper::closeSubystem();
     SDLWrapper::closeSubystem();
-
     avformat_network_deinit();
 }
 
@@ -54,26 +53,17 @@ bool App::handleEvent() {
                 }
             }
 
-            // Se CTRL estiver pressionado...
             if (SDLWrapper::events.key.keysym.mod & KMOD_CTRL) {
-
-                // L - Limpar o log
-                if (SDLWrapper::events.key.keysym.sym == SDLK_l) {
+                if (SDLWrapper::events.key.keysym.sym == SDLK_l) { // L - Limpar o log
                     Log::getInstance().clearLog();
                 }
-
-                // S - Salvar o projeto
-                if (SDLWrapper::events.key.keysym.sym == SDLK_s) {
+                if (SDLWrapper::events.key.keysym.sym == SDLK_s) { // S - Salvar o projeto
                     DB::getInstance().saveProjectDialog();
                 }
-
-                // N - Carregar o projeto
-                if (SDLWrapper::events.key.keysym.sym == SDLK_n) {
+                if (SDLWrapper::events.key.keysym.sym == SDLK_n) { // N - Carregar o projeto
                     DB::getInstance().loadProjectDialog();
                 }
-
-                // C - Cria o projeto
-                if (SDLWrapper::events.key.keysym.sym == SDLK_c) {
+                if (SDLWrapper::events.key.keysym.sym == SDLK_c) { // C - Cria o projeto
                     DB::getInstance().createProjectDialog();
                 }
             }
@@ -87,12 +77,10 @@ void App::loop() {
 
     WindowManager& wm = WindowManager::getInstance();
 
-    // Inicia como padrão o layout 1
     wm.loadWindowVisibility("./cache/layouts/.visibility_1.bin");
     ImGuiWrapper::loadLayout("./cache/layouts/.layout_1.ini");
 
     while (true) {
-        // Fecha o programa caso cliquem em fechar.
         if (App::handleEvent()) {
             break;
         }
@@ -107,7 +95,8 @@ void App::loop() {
                                          ImGuiDockNodeFlags_PassthruCentralNode);
 
             // Se não tiver um projeto carregado
-            if (DB::getInstance().getProject().currentProject.empty()) {
+            // MELHORAR ESSA PORCARIA - de lucas para lucas
+            if (DB::getInstance().getProject().currentProjectName.empty()) {
                 wm.homePage();
             } else {
                 wm.mainPage();

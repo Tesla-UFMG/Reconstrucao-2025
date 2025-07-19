@@ -36,6 +36,6 @@ namespace Window {
             std::vector<bool> m_groupCreationSelection;
     };
 
-}
+} // namespace Window
 
 #endif

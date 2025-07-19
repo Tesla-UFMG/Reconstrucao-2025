@@ -14,7 +14,17 @@ OBJ_FILES += $(patsubst lib/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(LIB_CPP_FILES))
 OBJ_FILES += $(patsubst lib/%.c, $(OBJ_FOLDER)/lib/%.o, $(LIB_C_FILES))
 
 CXX_FLAGS := -Wall -Wextra -pedantic -std=c++17 -g
-INCLUDES := -I./include -I./lib -I./lib/imgui -I./lib/SDL2 -I./lib/implot -I./lib/tinyDialogs -I./lib/rapidcsv -I./lib/implot3d -I./src/ui/windows -I./lib/ffmpeg/include
+INCLUDES := -I./include \
+    -I./lib\
+  	-I./lib/imgui\
+   	-I./lib/SDL2\
+    -I./lib/implot\
+	-I./lib/tinyDialogs\
+	-I./lib/rapidcsv\
+	-I./lib/implot3d\
+	-I./src/ui/windows\
+	-I./lib/ffmpeg/include\
+	-I./lib/serialib
 
 ifeq ($(WINDOWS), 1)
 	CXX := x86_64-w64-mingw32-g++
@@ -56,11 +66,13 @@ $(OBJ_FOLDER)/lib/%.o: lib/%.c
 
 ifeq ($(WINDOWS), 1)
 $(BUILD_FOLDER):
-	@mkdir -p $@
+	@mkdir -p $@ $@/assets
 	cp lib/SDL2/*.dll $(BUILD_FOLDER)
+	cp assets/* $(BUILD_FOLDER)/assets/ 
 else 
 $(BUILD_FOLDER):
-	@mkdir -p $@
+	@mkdir -p $@ $@/assets
+	cp assets/* $(BUILD_FOLDER)/assets/
 endif
 
 $(OBJ_FOLDER):
@@ -78,7 +90,7 @@ run: all
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip cache
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip cache telemetry output
 
 copy:
 	zip -r Reconstrucao.zip $(BUILD_FOLDER)

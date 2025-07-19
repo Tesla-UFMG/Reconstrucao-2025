@@ -14,6 +14,7 @@
 #include "ui/windows/w_Playback.hpp"
 #include "ui/windows/w_Plot.hpp"
 #include "ui/windows/w_Statistics.hpp"
+#include "ui/windows/w_Telemetry.hpp"
 #include "ui/windows/w_Terminal.hpp"
 #include "ui/windows/w_Video.hpp"
 #include "ui/windows/w_WheelControl.hpp"
@@ -25,9 +26,9 @@
 // C++
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 struct SDL_Renderer;
 
@@ -46,6 +47,7 @@ struct VisibilityFlags {
         bool showImPlot3dDemo   = false;
         bool showImGuiDemo      = false;
         bool showStatistics     = false;
+        bool showTelemetry      = false;
 };
 
 namespace Window {
@@ -53,17 +55,17 @@ namespace Window {
 }
 
 class WindowManager {
-private:
-    explicit WindowManager();
-    void                                  setup();
-    std::vector<std::unique_ptr<IWindow>> windows;
-    std::unique_ptr<IWindow>              home;
-    SDL_Renderer* m_renderer = nullptr; 
+    private:
+        explicit WindowManager();
+        void                                  setup();
+        std::vector<std::unique_ptr<IWindow>> windows;
+        std::unique_ptr<IWindow>              home;
+        SDL_Renderer*                         m_renderer = nullptr;
 
         // Estes ponteiros servem apenas para facilitar a comunicação entre janelas.
-    Window::Video* m_videoWindow = nullptr;
-    Window::Reconstruction* m_reconstructionWindow = nullptr;
-    Window::Playback* m_playbackWindow = nullptr;
+        Window::Video* m_videoWindow = nullptr;
+        Window::Reconstruction* m_reconstructionWindow = nullptr;
+        Window::Playback* m_playbackWindow = nullptr;
 
 public:
     WindowManager(WindowManager&&)            = delete;
@@ -71,15 +73,15 @@ public:
     ~WindowManager();
     static WindowManager& getInstance();
 
-    void init(SDL_Renderer* renderer); 
+        void init(SDL_Renderer* renderer);
 
-    VisibilityFlags visibility;
-    void            saveWindowVisibility(const std::filesystem::path& filepath);
-    void            loadWindowVisibility(const std::filesystem::path& filepath);
+        VisibilityFlags visibility;
+        void            saveWindowVisibility(const std::filesystem::path& filepath);
+        void            loadWindowVisibility(const std::filesystem::path& filepath);
 
-    void menuBar();
-    void homePage();
-    void mainPage();
+        void menuBar();
+        void homePage();
+        void mainPage();
 };
 
 #endif // WINDOW_HPP

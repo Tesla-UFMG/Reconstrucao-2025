@@ -106,7 +106,19 @@ void SDLWrapper::changeFullscreen() {
 bool SDLWrapper::getIsFullscreen() { return SDLWrapper::isFullscreen; }
 
 void SDLWrapper::clearScreen() {
-    SDL_SetRenderDrawColor(SDLWrapper::renderer, 33, 33, 33, 255);
+    uint8_t r, g, b;
+    if (ImGuiWrapper::currentTheme == DARK) {
+        r = 35;
+        g = 35;
+        b = 35;
+    } else {
+        ImVec4 backgroundColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+        r                       = backgroundColour.x * 255;
+        b                       = backgroundColour.y * 255;
+        g                       = backgroundColour.z * 255;
+    }
+
+    SDL_SetRenderDrawColor(SDLWrapper::renderer, r, g, b, 255);
     SDL_RenderClear(SDLWrapper::renderer);
 }
 

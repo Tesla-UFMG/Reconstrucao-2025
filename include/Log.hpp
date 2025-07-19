@@ -24,9 +24,11 @@ METRICS → Dados de desempenho (ex: tempo de resposta de uma função).
 #include <string>
 #include <vector>
 
-#define LOG_OUTPUT "cache/log.txt"
+#define LOG_OUTPUT "log.txt"
 
 #define LOG(level, message) Log::getInstance().log(level, message);
+
+#define PRINT_TO_THE_TERMINAL true
 
 class Log {
     private:
