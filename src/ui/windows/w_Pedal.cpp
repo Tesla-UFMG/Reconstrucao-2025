@@ -28,7 +28,7 @@ void Window::Pedal::render() {
         }
     }
 
-    // --- Seção para gerenciar as colunas de dados (sem alterações) ---
+    // --- Seção para gerenciar as colunas de dados ---
     if (ImGui::CollapsingHeader("Fontes de Dados dos Pedais")) {
         if (m_dataList.empty()) {
             ImGui::TextDisabled("Arraste colunas de acelerador e freio aqui.");
@@ -56,7 +56,7 @@ void Window::Pedal::render() {
         }
     }
     
-    // --- Slider de controle de velocidade (sem alterações) ---
+    // --- Slider de controle de velocidade ---
     ImGui::Separator();
     ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); 
     ImGui::SliderFloat("Velocidade", &m_playbackSpeed, 1.0f, 240.0f, "%.1f dados/s");
@@ -92,7 +92,7 @@ void Window::Pedal::render() {
         if (ImGui::IsKeyDown(ImGuiKey_S)) { brakeValue = 1.0f; }
     }
 
-    // --- Área de Desenho (o código de desenho em si não precisa de alterações) ---
+    // --- Área de Desenho ---
     ImGui::BeginChild("PedalDrawingArea", ImGui::GetContentRegionAvail(), false, ImGuiWindowFlags_NoScrollbar);
     
     ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -214,27 +214,39 @@ void Window::Pedal::setStepSize(float size) {
 void Window::Pedal::processColumnDragDrop() {
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-            std::stringstream ss(static_cast<const char*>(payload->Data));
-            std::string archiveName, columnName;
-            if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
-                this->addColumn(archiveName, columnName);
-            }
+            const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
+
+            this->addColumn(columnPayload->fileType, columnPayload->fileName, columnPayload->columnName);
         }
         ImGui::EndDragDropTarget();
     }
 }
 
-void Window::Pedal::addColumn(const std::string& archiveName, const std::string& columnName) {
-    // Lógica para adicionar uma coluna e identificar se é acelerador ou freio
-    std::vector<double> data = DB::getInstance().getCSVData(archiveName, columnName);
-    if (data.empty()) return;
+void Window::Pedal::addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
+    // Verifica se a coluna já não foi adicionada
+    for (const auto& data : m_dataList) {
+        if (data.archive == fileName && data.column == columnName) {
+            LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já foi adicionada ao Pedal.");
+            return;
+        }
+    }
 
     PedalData pd;
-    pd.archive = archiveName;
+    pd.archive = fileName;
     pd.column = columnName;
-    pd.data = data;
+    
+    // Lógica para carregar dados de diferentes fontes
+    if (fileType == "CSV") {
+        pd.data = DB::getInstance().getCSVData(fileName, columnName);
+    } else if (fileType == "Telemetry") {
+        pd.data = DB::getInstance().getTelemetryData(fileName, columnName);
+    }
+    
+    if (pd.data.empty()) {
+        LOG("ERROR", "Não foi possível carregar os dados para a coluna " + columnName);
+        return;
+    }
 
-    // Encontra o maior elemento no vetor de dados
     auto maxIt = std::max_element(pd.data.begin(), pd.data.end());
     if (maxIt != pd.data.end()) {
         pd.maxValue = *maxIt;
@@ -251,10 +263,10 @@ void Window::Pedal::addColumn(const std::string& archiveName, const std::string&
 
     if (lowerColumn.find("acelerador") != std::string::npos || lowerColumn.find("throttle") != std::string::npos) {
         m_throttleIndex = newIndex;
-        LOG("INFO", "Coluna de Acelerador adicionada à janela de Pedal.");
+        LOG("INFO", "Coluna de Acelerador (" + fileType + ") adicionada à janela de Pedal.");
     } else if (lowerColumn.find("freio") != std::string::npos || lowerColumn.find("brake") != std::string::npos) {
         m_brakeIndex = newIndex;
-        LOG("INFO", "Coluna de Freio adicionada à janela de Pedal.");
+        LOG("INFO", "Coluna de Freio (" + fileType + ") adicionada à janela de Pedal.");
     }
 }
 

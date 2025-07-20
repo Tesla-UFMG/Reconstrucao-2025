@@ -91,6 +91,8 @@ namespace Window {
 
         private:
         
+            static constexpr float DEFAULT_SPEED = 20.0f; // km/h
+
             Uint32 m_simLastTime = 0;
             bool m_showTrackInfo = false;
 
@@ -104,6 +106,7 @@ namespace Window {
             void RenderCoordinatesDataTab();
 
             bool m_seekJustOccurred = false;
+
             // --- Funções Auxiliares de Renderização e Lógica ---
             float m_stepSize = 30.0f;
             ImU32 GetColorForSpeed(float speed);
@@ -111,10 +114,13 @@ namespace Window {
                                      const ImVec2& origin,
                                      float scale);
             void processColumnDragDrop();
-            void addColumnToMap(const std::string& archiveName, const std::string& columnName);
+             void addColumnToMap(const std::string& fileType, const std::string& fileName, const std::string& columnName);
             void removeColumnFromMap(size_t index);
             void ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY);
-            void BuildTrackFromLatLon(); // Não precisa mais dos índices como parâmetro
+            void BuildTrackFromLatLon();
+            void SalvarCorrida(int slotIndex);
+            void CarregarCorrida(int slotIndex);
+            void LimparCorrida(int slotIndex);
 
             // --- ESTADO DA JANELA (Variáveis que eram 'g_') ---
             // O estado agora é privado e pertence a cada instância da janela.

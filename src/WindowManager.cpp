@@ -73,12 +73,17 @@ void WindowManager::setup() {
     auto temp_pedal_ptr = std::make_unique<Window::Pedal>(&visibility.showPedal);
     auto m_pedalWindow = temp_pedal_ptr.get(); 
 
+    // 4. Janela de Volante 
+    auto temp_wheel_ptr = std::make_unique<Window::WheelControl>(&visibility.showWheelControl);
+    auto m_wheelWindow = temp_wheel_ptr.get();
+
     // --- Montagem da Lista de Reprodução ---
 
     std::vector<IPlayable*> playables;
     playables.push_back(m_videoWindow);
     playables.push_back(m_reconstructionWindow);
     playables.push_back(m_pedalWindow); 
+    playables.push_back(m_wheelWindow);
 
     // --- Criação da Janela de Playback ---
 
@@ -91,6 +96,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::move(temp_reconstruction_ptr));
     windows.emplace_back(std::move(temp_playback_ptr));
     windows.emplace_back(std::move(temp_pedal_ptr));
+    windows.emplace_back(std::move(temp_wheel_ptr));
 
     // --- Criação das Outras Janelas (não-reproduzíveis) ---
     
@@ -102,7 +108,7 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::ImGuiDemo>(&visibility.showImGuiDemo));
     windows.emplace_back(std::make_unique<Window::ImPlotDemo>(&visibility.showImPlotDemo));
     windows.emplace_back(std::make_unique<Window::ImPlot3dDemo>(&visibility.showImPlot3dDemo));
-    windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
+    // windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
     windows.emplace_back(std::make_unique<Window::Statistics>(&visibility.showStatistics));
     windows.emplace_back(std::make_unique<Window::Telemetry>(&visibility.showTelemetry));
 }

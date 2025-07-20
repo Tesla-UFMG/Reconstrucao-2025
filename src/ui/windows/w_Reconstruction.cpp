@@ -47,90 +47,6 @@ double Window::Reconstruction::getDuration() const {
     return m_track.empty() ? 0.0 : static_cast<double>(m_track.size() - 1.0);
 }
 
-static std::vector<TrackPoint> m_track;
-
-//variaveis para aba "coordenadas"
-int m_latIndex = -1;
-int m_lonIndex = -1;
-
-// array para corridas
-const int NUM_RACE_SLOTS = 10;
-RaceData m_savedRaces[NUM_RACE_SLOTS];
-
-float m_cartHeight        = 300.0f;
-float m_cartZoom          = 1.0f;
-float m_speedMultiplier   = 1.0f;
-float m_HighSpeedThreshold = 50.0f;
-float m_LowSpeedThreshold  = 10.0f;
-
-// Variáveis de simulação do kart
-float m_kartSpeed    = 30.0f;
-float m_kartPosition = 0.0f;
-bool  m_isSimulating    = false; // Se true, força a velocidade a ser a referência
-
-// Vetores para registrar os marcadores (verde e vermelho) com informações do instante do registro
-std::vector<MarkerInfo> m_markedPositionsGreen;
-std::vector<MarkerInfo> m_markedPositionsRed;
-std::vector<CommentInfo> m_comments;
-
-std::vector<std::vector<size_t>> m_highSpeedSegments;
-std::vector<size_t>              m_currentHighSpeed;
-bool m_prevHighSpeed = false;
-
-std::vector<std::vector<size_t>> m_lowSpeedSegments;
-std::vector<size_t>              m_currentLowSpeed;
-bool m_prevLowSpeed = false;
-
-// Novas variáveis: contabiliza voltas e aceleração atual (em km/h por segundo)
-int   m_lapCount            = 0;
-float m_currentAcceleration = 0.0f;
-
-// Velocidade padrão para retorno (km/h)
-const float DEFAULT_SPEED = 20.0f;
-
-// Constantes para aceleração (km/h por segundo)
-const float ACCELERATION = 20.0f;
-const float DECELERATION = 20.0f;
-
-// Constante para deslocar a pista para cima
-const float Y_OFFSET = 100.0f; // Ajuste conforme necessário
-
-// Estrutura para manter cada janela de informação dos marcadores abertos
-struct MarkerWindow {
-        MarkerInfo  marker;
-        std::string type;
-        bool        open;
-        bool        minimized;
-        bool        reposition;
-};
-
-std::vector<MarkerWindow> m_markerWindows;
-
-// Estrutura para armazenar o estado de uma corrida
-struct RaceState {
-        float                   kartSpeed;
-        float                   kartPosition;
-        bool                    autoSpeed;
-        std::vector<size_t> markedPositionsGreen;
-        std::vector<size_t> markedPositionsRed;
-        int                     lapCount;
-        float                   currentAcceleration;
-};
-
-// Nome do arquivo onde as corridas serão salvas
-static const std::string SAVE_FILE = "corridas_salvas.txt";
-
-
-// Estrutura para as janelas de comentários
-struct CommentWindow {
-        ImVec2      pos;
-        ImVec2      windowPos;
-        std::string comment;
-        bool        open;
-        bool        minimized;
-        bool        reposition;
-};
-static std::vector<CommentWindow> m_commentWindows;
 
 void Window::Reconstruction::ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY) {
     // Converte lat/lon em coordenadas planas (equiretangular projection)
@@ -180,102 +96,88 @@ void Window::Reconstruction::BuildTrackFromLatLon() {
 // --- Implementação das funções de drag & drop e manipulação de coordenadas ---
 
 void Window::Reconstruction::processColumnDragDrop() {
-
     if (ImGui::BeginDragDropTarget()) {
-        // Aceita o payload
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-            std::stringstream ss(static_cast<const char*>(payload->Data));
-            std::string       archiveName, columnName;
-
-            // Pega o nome do arquivo e a coluna
-            if (std::getline(ss, archiveName, ':') && std::getline(ss, columnName, ':')) {
-                this->addColumnToMap(archiveName, columnName);
-            }
+            const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
+            this->addColumnToMap(columnPayload->fileType, columnPayload->fileName, columnPayload->columnName);
         }
         ImGui::EndDragDropTarget();
     }
 }
 
-// Modificação em addColumnToMap para registrar índices de latitude/longitude
-void Window::Reconstruction::addColumnToMap(const std::string& archiveName,
-                                            const std::string& columnName) {
-
-                                                
-    // Verifica se a coluna do arquivo já foi adicionada
+void Window::Reconstruction::addColumnToMap(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
     for (COORDData& coordData : m_coordDataList) {
-        if (coordData.archive == archiveName && coordData.column == columnName) {
-            LOG("WARN", "Reconstrução: A coluna " + columnName + " do arquivo " + archiveName + " já existe.");
+        if (coordData.archive == fileName && coordData.column == columnName) {
+            LOG("WARN", "Reconstrução: A coluna " + columnName + " já existe.");
             return;
         }
     }
 
-    // Adiciona os eixos
-    std::vector<double> data = DB::getInstance().getCSVData(archiveName, columnName);
+    std::vector<double> data;
+    if (fileType == "CSV") {
+        data = DB::getInstance().getCSVData(fileName, columnName);
+    } else if (fileType == "Telemetry") {
+        data = DB::getInstance().getTelemetryData(fileName, columnName);
+    }
+
     if (data.empty()) {
-        LOG("ERROR",
-            "Não foi possível adicionar a coluna " + columnName + " do arquivo " + archiveName + " ao gráfico.");
+        LOG("ERROR", "Não foi possível carregar dados para " + columnName);
         return;
     }
 
-    // Cria e adiciona ao vetor
     COORDData coordData;
     coordData.data       = data;
     coordData.column     = columnName;
-    coordData.archive    = archiveName;
+    coordData.archive    = fileName;
     coordData.multiplier = 1.0;
     m_coordDataList.push_back(coordData);
 
-    // Identifica se é latitude ou longitude e armazena o índice
     int newIndex = static_cast<int>(m_coordDataList.size()) - 1;
     std::string lower = columnName;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
     if (lower.find("lat") != std::string::npos) {
         m_latIndex = newIndex;
-        LOG("DEBUG", "Latitude cadastrada em m_coordDataList[" + std::to_string(newIndex) + "]");
     } else if (lower.find("lon") != std::string::npos || lower.find("lng") != std::string::npos) {
         m_lonIndex = newIndex;
-        LOG("DEBUG", "Longitude cadastrada em m_coordDataList[" + std::to_string(newIndex) + "]");
     }
 
-    LOG("DEBUG", "Coluna " + columnName + " adicionada à reconstrução.");
-        // Após adicionar uma nova coluna, verificamos se já temos o suficiente para montar a pista.
     if (m_latIndex != -1 && m_lonIndex != -1) {
-        LOG("INFO", "Detectados dados de latitude e longitude. Construindo a pista (m_track)...");
-        this->BuildTrackFromLatLon(); // Chamada crucial da função!
-        LOG("INFO", "Pista construída. Total de pontos em m_track: " + std::to_string(m_track.size()));
+        LOG("INFO", "Detectados dados de latitude e longitude. Construindo a pista...");
+        this->BuildTrackFromLatLon();
     }
 }
 
 // Função para SALVAR o estado atual da simulação em um slot
-void SalvarCorrida(int slotIndex) {
+void Window::Reconstruction::SalvarCorrida(int slotIndex) {
     if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS) return;
 
     RaceData& race = m_savedRaces[slotIndex];
 
     // Copia as configurações da simulação
-    race.cartHeight        = m_cartHeight;
-    race.cartZoom          = m_cartZoom;
-    race.speedMultiplier   = m_speedMultiplier;
-    race.HighSpeedThreshold = m_HighSpeedThreshold;
-    race.LowSpeedThreshold  = m_LowSpeedThreshold;
+    race.cartHeight        = this->m_cartHeight;
+    race.cartZoom          = this->m_cartZoom;
+    race.speedMultiplier   = this->m_speedMultiplier;
+    race.HighSpeedThreshold = this->m_HighSpeedThreshold;
+    race.LowSpeedThreshold  = this->m_LowSpeedThreshold;
 
     // Copia os dados resultantes da simulação
-    race.markedPositionsGreen = m_markedPositionsGreen;
-    race.markedPositionsRed   = m_markedPositionsRed;
-    race.highSpeedSegments    = m_highSpeedSegments;
-    race.lowSpeedSegments     = m_lowSpeedSegments;
-    race.comments             = m_comments;
+    race.markedPositionsGreen = this->m_markedPositionsGreen;
+    race.markedPositionsRed   = this->m_markedPositionsRed;
+    race.highSpeedSegments    = this->m_highSpeedSegments;
+    race.lowSpeedSegments     = this->m_lowSpeedSegments;
+    race.comments             = this->m_comments;
     
     // Salva os índices dos dados de pista
-    race.latIndex = m_latIndex;
-    race.lonIndex = m_lonIndex;
+    race.latIndex = this->m_latIndex;
+    race.lonIndex = this->m_lonIndex;
 
     // Marca o slot como salvo
     race.isSaved = true;
 }
 
 // Função para CARREGAR o estado de um slot para a simulação ativa
-void CarregarCorrida(int slotIndex) {
+void Window::Reconstruction::CarregarCorrida(int slotIndex) {
     if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS || !m_savedRaces[slotIndex].isSaved) return;
 
     const RaceData& race = m_savedRaces[slotIndex];
@@ -303,7 +205,7 @@ void CarregarCorrida(int slotIndex) {
 }
 
 // Função para LIMPAR um slot de corrida
-void LimparCorrida(int slotIndex) {
+void Window::Reconstruction::LimparCorrida(int slotIndex) {
     if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS) return;
 
     // Reseta o slot para o estado inicial, criando um novo objeto RaceData vazio
@@ -468,46 +370,41 @@ void Window::Reconstruction::RenderActiveTab(int activeTab, float deltaTime) {
 }
 
 void Window::Reconstruction::RenderSimulationTab(float dt) {
-
-
     if (ImGui::CollapsingHeader("Configurações da Simulação")) {
-        ImGui::SliderFloat("Altura do Gráfico", &m_cartHeight,      100.0f, 800.0f,  "%.0f px");
-        ImGui::SliderFloat("Zoom (escala)",     &m_cartZoom,        0.1f,   5.0f,    "%.2fx");
-        ImGui::SliderFloat("Fator Velocidade",  &m_speedMultiplier, 0.1f,   100.0f,  "%.1fx");
-
+        ImGui::SliderFloat("Altura do Gráfico", &m_cartHeight, 100.0f, 800.0f, "%.0f px");
+        ImGui::SliderFloat("Zoom (escala)", &m_cartZoom, 0.1f, 5.0f, "%.2fx");
+        ImGui::SliderFloat("Fator Velocidade", &m_speedMultiplier, 0.1f, 100.0f, "%.1fx");
         ImGui::Separator();
-        ImGui::Text ("Ajuste de Traçado");
+        ImGui::Text("Ajuste de Traçado");
         ImGui::SliderFloat("Traçado Verde", &m_HighSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
         ImGui::SliderFloat("Traçado Vermelho", &m_LowSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
     }
-            ImGui::Separator();
+    ImGui::Separator();
 
-    // 3) Pan offset
     static ImVec2 panOffset = ImVec2(0, 0);
+    ImVec2        avail     = ImGui::GetContentRegionAvail();
+    float         childWidth = std::max(1.0f, avail.x);
+    ImVec2        childSize(childWidth, m_cartHeight);
 
-    ImVec2 avail = ImGui::GetContentRegionAvail();
-    float childWidth = std::max(1.0f, avail.x);
-    ImVec2 childSize(childWidth, m_cartHeight);
+    if (childSize.y > 0.0f) {
+        ImGui::BeginChild("Sim_Cartesiano", childSize, true);
+        ImDrawList* draw   = ImGui::GetWindowDrawList();
+        ImVec2      origin = ImGui::GetCursorScreenPos();
+        ImVec2      size   = ImGui::GetContentRegionAvail();
+        ImVec2      maxPt(origin.x + size.x, origin.y + size.y);
 
-    // 4) Canvas dedicado
-       if (childSize.y > 0.0f) {
-    ImGui::BeginChild("Sim_Cartesiano", childSize, true);
-        ImDrawList* draw = ImGui::GetWindowDrawList();
-        ImVec2 origin    = ImGui::GetCursorScreenPos();
-        ImVec2 size      = ImGui::GetContentRegionAvail();
-        ImVec2 maxPt(origin.x + size.x, origin.y + size.y);
+        draw->AddRectFilled(origin, maxPt, IM_COL32(20, 20, 20, 255));
+        ImVec2 mid((origin.x + maxPt.x) * 0.5f, (origin.y + maxPt.y) * 0.5f);
+        draw->AddLine({origin.x, mid.y}, {maxPt.x, mid.y}, IM_COL32(100, 100, 100, 255));
+        draw->AddLine({mid.x, origin.y}, {mid.x, maxPt.y}, IM_COL32(100, 100, 100, 255));
 
-        // fundo + eixos
-        draw->AddRectFilled(origin, maxPt, IM_COL32(20,20,20,255));
-        ImVec2 mid((origin.x + maxPt.x)*0.5f, (origin.y + maxPt.y)*0.5f);
-        draw->AddLine({origin.x, mid.y}, {maxPt.x, mid.y}, IM_COL32(100,100,100,255));
-        draw->AddLine({mid.x, origin.y}, {mid.x, maxPt.y}, IM_COL32(100,100,100,255));
-
-        // captura drag
-        ImGui::InvisibleButton("canvas_drag", size);
-        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-            panOffset.x += ImGui::GetIO().MouseDelta.x;
-            panOffset.y += ImGui::GetIO().MouseDelta.y;
+        // Captura drag com guarda de segurança
+        if (size.x > 0 && size.y > 0) {
+            ImGui::InvisibleButton("canvas_drag", size);
+            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                panOffset.x += ImGui::GetIO().MouseDelta.x;
+                panOffset.y += ImGui::GetIO().MouseDelta.y;
+            }
         }
 
         // 5) Geração de screenPts
@@ -875,7 +772,7 @@ void Window::Reconstruction::RenderRaceManagementTab() {
             ImGui::Text("Status: %s", status);
 
             if (ImGui::Button("Salvar Estado Atual Neste Slot")) {
-                SalvarCorrida(i);
+                this->SalvarCorrida(i);
             }
             ImGui::SameLine();
 
@@ -883,7 +780,7 @@ void Window::Reconstruction::RenderRaceManagementTab() {
                 ImGui::BeginDisabled();
             }
             if (ImGui::Button("Carregar Este Slot")) {
-                CarregarCorrida(i);
+                this->CarregarCorrida(i);
                 ImGui::SetWindowFocus(NULL);
             }
             if (!m_savedRaces[i].isSaved) {
@@ -892,7 +789,7 @@ void Window::Reconstruction::RenderRaceManagementTab() {
             ImGui::SameLine();
 
             if (ImGui::Button("Limpar Slot")) {
-                LimparCorrida(i);
+                this->LimparCorrida(i);
             }
         }
         ImGui::PopID();
