@@ -265,6 +265,10 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             xAxisFlags |= ImPlotAxisFlags_AutoFit;
         }
 
+        //if (graphConfig.showValuesInGraph) {
+            yAxisFlags |= ImPlotAxisFlags_Opposite;
+        /q}
+
         ImPlot::SetupAxes(nullptr, nullptr, xAxisFlags, yAxisFlags);
 
         size_t axisLength = 0;
@@ -284,6 +288,7 @@ void Window::Plot::renderGraph(size_t graphIndex) {
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
         // Plota cada coluna
+        size_t j = 0;
         for (GraphData& graphData : graph.data) {
             // Se a coluna for a do eixo X, pula
             if (!graphConfig.xColumn.empty() && graphData.columnName == graphConfig.xColumn)
@@ -337,8 +342,15 @@ void Window::Plot::renderGraph(size_t graphIndex) {
                 default:
                     break;
             }
-        }
 
+            if (graph.config.showValuesInGraph){
+                ImVec4 lineColor = ImPlot::GetColormapColor(j);
+                double currentValue = yData.back();
+                ImPlot::TagY(currentValue, lineColor, "%0.2f", currentValue);
+            }
+            j++;    
+        }
+        
         this->drawLegendPopup(graph, graphIndex);
         ImPlot::EndPlot();
     }

@@ -50,6 +50,7 @@ struct GraphConfig {
         double      plotHeight   = 190;        // Tamanho do gráfico
         bool        followTheEnd = false;      // Seguir o final dos dados
         bool        autoFit      = true;       // Ajustar automaticamente os eixos
+        bool        showValuesInGraph   = true;       // Mostra os valores no nome da coluna
         std::string xColumn;                   // Coluna selecionada como eixo X
 };
 
