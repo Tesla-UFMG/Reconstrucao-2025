@@ -371,8 +371,8 @@ void Window::Telemetry::renderPacketConfigMenu() {
             }
             ImGui::PopID();
         }
+        ImGui::EndTable();
     }
-    ImGui::EndTable();
     ImGui::EndGroup();
 }
 
