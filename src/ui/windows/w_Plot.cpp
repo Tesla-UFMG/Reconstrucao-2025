@@ -52,6 +52,14 @@ void Window::Plot::drawMenuBar() {
                                  std::string(this->showResizeButton ? "ativado." : "desativado."));
             }
 
+            if (ImGui::MenuItem("Exibir Valor no Eixo Y", nullptr, &this->showValueOnYAxis)) {
+                for (Graph& graph : this->graphs) {
+                    graph.config.showValueOnYAxis = this->showValueOnYAxis;
+                }
+                LOG("DEBUG", "Botão de Exibir Valor no Eixo Y " +
+                                 std::string(this->showValueOnYAxis ? "ativado." : "desativado."));
+            }
+
             ImGui::Separator();
             MenuBar::changePlotColormap();
             ImGui::EndMenu();
@@ -120,6 +128,13 @@ void Window::Plot::addColumnToGraph(Graph& graph, const ColumnPayload* payload) 
     } else if (fileType == "Telemetry") {
         graphData.y = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
+
+    if (graphData.y->empty()) {
+        Dialogs::showErrorDialog("Não é possível adicionar uma coluna vazia ao gráfico!");
+        LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " está vazia.");
+        return;
+    }
+
     graphData.buildXVector();
     graph.data.push_back(graphData);
 
@@ -157,6 +172,7 @@ void Window::Plot::drawLegendPopup(Graph& graph, size_t graphIndex) {
             if (graph.config.followTheEnd) {
                 ImGui::InputInt("Pontos", &graph.config.numPoints, 1, 10);
             }
+            ImGui::Checkbox("Exibir Valor no Eixo Y", &graph.config.showValueOnYAxis);
 
             // Mostrar ou esconder os eixos
             ImGui::SeparatorText("Eixos");
@@ -252,9 +268,12 @@ void Window::Plot::renderGraph(size_t graphIndex) {
         ImPlotAxisFlags xAxisFlags = !graphConfig.showXAxis ? ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks |
                                                                   ImPlotAxisFlags_NoTickLabels
                                                             : ImPlotAxisFlags_None;
+
         ImPlotAxisFlags yAxisFlags = !graphConfig.showYAxis ? ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickMarks |
                                                                   ImPlotAxisFlags_NoTickLabels
                                                             : ImPlotAxisFlags_None;
+
+        yAxisFlags |= ImPlotAxisFlags_Opposite;
 
         if (graphConfig.autoFit) {
             xAxisFlags |= ImPlotAxisFlags_AutoFit;
@@ -284,7 +303,8 @@ void Window::Plot::renderGraph(size_t graphIndex) {
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
         // Plota cada coluna
-        for (GraphData& graphData : graph.data) {
+        for (size_t j = 0; j < graph.data.size(); j++) {
+            GraphData& graphData = graph.data[j];
             // Se a coluna for a do eixo X, pula
             if (!graphConfig.xColumn.empty() && graphData.columnName == graphConfig.xColumn)
                 continue;
@@ -336,6 +356,12 @@ void Window::Plot::renderGraph(size_t graphIndex) {
                     break;
                 default:
                     break;
+            }
+
+            if (graph.config.showValueOnYAxis) {
+                ImVec4 lineColor    = ImPlot::GetColormapColor(j);
+                double currentValue = yData.back();
+                ImPlot::TagY(currentValue, lineColor, "%0.2f", currentValue);
             }
         }
 

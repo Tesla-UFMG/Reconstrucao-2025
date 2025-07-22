@@ -43,14 +43,15 @@ struct GraphData {
 
 struct GraphConfig {
         size_t      id;
-        GraphType   type         = GRAPH_LINE; // Tipo do gráfico
-        bool        showXAxis    = false;      // Mostrar eixo X
-        bool        showYAxis    = true;       // Mostrar eixo Y
-        int         numPoints    = 300;        // Quantidade de pontos a serem seguidos
-        double      plotHeight   = 190;        // Tamanho do gráfico
-        bool        followTheEnd = false;      // Seguir o final dos dados
-        bool        autoFit      = true;       // Ajustar automaticamente os eixos
-        std::string xColumn;                   // Coluna selecionada como eixo X
+        GraphType   type             = GRAPH_LINE; // Tipo do gráfico
+        bool        showXAxis        = false;      // Mostrar eixo X
+        bool        showYAxis        = true;       // Mostrar eixo Y
+        int         numPoints        = 300;        // Quantidade de pontos a serem seguidos
+        double      plotHeight       = 190;        // Tamanho do gráfico
+        bool        followTheEnd     = false;      // Seguir o final dos dados
+        bool        autoFit          = true;       // Ajustar automaticamente os eixos
+        bool        showValueOnYAxis = true;       // Mostra os valores no nome da coluna
+        std::string xColumn;                       // Coluna selecionada como eixo X
 };
 
 struct Graph {
@@ -77,6 +78,7 @@ namespace Window {
             std::vector<Graph> graphs;
             bool               autoFit          = true;
             bool               showResizeButton = false;
+            bool               showValueOnYAxis = true;
 
             // Funções de renderização da interface
             void drawMenuBar();
