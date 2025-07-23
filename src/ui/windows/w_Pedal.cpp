@@ -71,13 +71,13 @@ void Window::Pedal::render() {
     size_t time_idx = static_cast<size_t>(m_currentTime);
 
     // --- NORMALIZAÇÃO DINÂMICA ---
-    if (time_idx < m_dataList[m_throttleIndex].data.size()) {
-        double rawThrottle = m_dataList[m_throttleIndex].data[time_idx];
+    if (time_idx < m_dataList[m_throttleIndex].data->size()) {
+        double rawThrottle = (*m_dataList[m_throttleIndex].data)[time_idx];
         double maxThrottle = m_dataList[m_throttleIndex].maxValue; // Pega o máximo específico do acelerador
         throttleValue = static_cast<float>(rawThrottle / maxThrottle);
     }
-    if (time_idx < m_dataList[m_brakeIndex].data.size()) {
-        double rawBrake = m_dataList[m_brakeIndex].data[time_idx];
+    if (time_idx < m_dataList[m_brakeIndex].data->size()) {
+        double rawBrake = (*m_dataList[m_brakeIndex].data)[time_idx];
         double maxBrake = m_dataList[m_brakeIndex].maxValue; // Pega o máximo específico do freio
         brakeValue = static_cast<float>(rawBrake / maxBrake);
     }
@@ -192,7 +192,7 @@ double Window::Pedal::getCurrentTime() const {
 
 double Window::Pedal::getDuration() const {
     if (m_throttleIndex != -1) {
-        return static_cast<double>(m_dataList[m_throttleIndex].data.size() - 1);
+        return static_cast<double>(m_dataList[m_throttleIndex].data->size() - 1);
     }
     return 0.0;
 }
@@ -237,18 +237,18 @@ void Window::Pedal::addColumn(const std::string& fileType, const std::string& fi
     
     // Lógica para carregar dados de diferentes fontes
     if (fileType == "CSV") {
-        pd.data = DB::getInstance().getCSVData(fileName, columnName);
+        pd.data = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        pd.data = DB::getInstance().getTelemetryData(fileName, columnName);
+        pd.data = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
     
-    if (pd.data.empty()) {
+    if (pd.data->empty()) {
         LOG("ERROR", "Não foi possível carregar os dados para a coluna " + columnName);
         return;
     }
 
-    auto maxIt = std::max_element(pd.data.begin(), pd.data.end());
-    if (maxIt != pd.data.end()) {
+    auto maxIt = std::max_element(pd.data->begin(), pd.data->end());
+    if (maxIt != pd.data->end()) {
         pd.maxValue = *maxIt;
     }
     if (pd.maxValue == 0) {

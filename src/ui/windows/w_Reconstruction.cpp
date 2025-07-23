@@ -393,10 +393,23 @@ void Window::Reconstruction::RenderSimulationTab(float dt) {
         ImVec2      size   = ImGui::GetContentRegionAvail();
         ImVec2      maxPt(origin.x + size.x, origin.y + size.y);
 
-        draw->AddRectFilled(origin, maxPt, IM_COL32(20, 20, 20, 255));
+
+
+
+        // --- CORREÇÃO APLICADA AQUI ---
+        // 1. Pega as cores do tema atual do ImGui
+        ImU32 bgColor = ImGui::GetColorU32(ImGuiCol_ChildBg); // Cor de fundo de janelas filhas
+        ImU32 gridColor = ImGui::GetColorU32(ImGuiCol_Border);   // Cor das bordas
+
+        // 2. Usa as cores do tema em vez de cores fixas
+        draw->AddRectFilled(origin, maxPt, bgColor); // Usa a cor de fundo do tema
         ImVec2 mid((origin.x + maxPt.x) * 0.5f, (origin.y + maxPt.y) * 0.5f);
-        draw->AddLine({origin.x, mid.y}, {maxPt.x, mid.y}, IM_COL32(100, 100, 100, 255));
-        draw->AddLine({mid.x, origin.y}, {mid.x, maxPt.y}, IM_COL32(100, 100, 100, 255));
+        draw->AddLine({origin.x, mid.y}, {maxPt.x, mid.y}, gridColor); // Usa a cor de borda do tema
+        draw->AddLine({mid.x, origin.y}, {mid.x, maxPt.y}, gridColor); // Usa a cor de borda do tema
+        // --- FIM DA CORREÇÃO ---
+
+
+
 
         // Captura drag com guarda de segurança
         if (size.x > 0 && size.y > 0) {
@@ -485,7 +498,7 @@ void Window::Reconstruction::RenderSimulationTab(float dt) {
         prevSpeed = m_kartSpeed;
 
         // 8) Lógica de movimento do kart
-        LOG("DEBUG", "[Render] Início do frame. Valor de m_seekJustOccurred: " + std::to_string(m_seekJustOccurred));
+        // LOG("DEBUG", "[Render] Início do frame. Valor de m_seekJustOccurred: " + std::to_string(m_seekJustOccurred));
         if (m_seekJustOccurred) {
             LOG("DEBUG", "[Render] CONDIÇÃO 1: 'seek' ocorreu. Ignorando simulação e resetando a flag.");
             // Um seek manual acabou de acontecer.
@@ -865,14 +878,32 @@ void Window::Reconstruction::DrawTrackAndKartAt(const std::vector<ImVec2>& scree
         }
     };
 
-    // Desenha o kart amarelo seguindo exatamente screenPts
+    // Desenha o kart com cor dinâmica
     if (screenPts.size() >= 2) {
         int idx = (int)std::floor(m_kartPosition);
         idx = std::clamp(idx, 0, (int)screenPts.size() - 2);
         float frac = m_kartPosition - (float)idx;
         frac = std::clamp(frac, 0.0f, 1.0f);
         ImVec2 kartP = ImLerp(screenPts[idx], screenPts[idx + 1], frac);
-        draw_list->AddCircleFilled(kartP, 8.0f * scale, IM_COL32(255,255,0,255));
+        
+        // --- LÓGICA DE COR DINÂMICA DO KART ---
+
+        // 1. Pega a cor de fundo do tema atual
+        ImVec4 bgColor = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+
+        // 2. Calcula a "luminosidade" da cor 
+        float luminance = (bgColor.x * 0.299f + bgColor.y * 0.587f + bgColor.z * 0.114f);
+
+        // 3. Decide a cor do kart com base na luminosidade
+        ImU32 kartColor;
+        if (luminance > 0.5f) {
+            kartColor = IM_COL32(0, 0, 255, 255);
+        } else {
+            kartColor = IM_COL32(255, 255, 0, 255);
+        }
+
+        // 4. Usa a cor escolhida para desenhar o círculo
+        draw_list->AddCircleFilled(kartP, 8.0f * scale, kartColor);
     }
 }
 

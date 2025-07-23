@@ -81,8 +81,8 @@ void Window::WheelControl::render() {
     size_t time_idx = static_cast<size_t>(m_currentTime);
     const auto& wheelData = m_dataList[m_steerIndex];
     
-    if (time_idx < wheelData.data.size()) {
-        double rawValue = wheelData.data[time_idx];
+    if (time_idx < wheelData.data->size()) {
+        double rawValue = (*wheelData.data)[time_idx];
 
         // --- LÓGICA CONDICIONAL ---
         if (m_dataIsDegrees) {
@@ -158,7 +158,7 @@ double Window::WheelControl::getCurrentTime() const { return m_currentTime; }
 
 double Window::WheelControl::getDuration() const {
     if (isLoaded()) {
-        return static_cast<double>(m_dataList[m_steerIndex].data.size() - 1);
+        return static_cast<double>(m_dataList[m_steerIndex].data->size() - 1);
     }
     return 0.0;
 }
@@ -193,18 +193,18 @@ void Window::WheelControl::addColumn(const std::string& fileType, const std::str
 
     // Lógica para carregar dados de diferentes fontes
     if (fileType == "CSV") {
-        wd.data = DB::getInstance().getCSVData(fileName, columnName);
+        wd.data = &DB::getInstance().getCSVData(fileName, columnName); // <-- ALTERADO: '&'
     } else if (fileType == "Telemetry") {
-        wd.data = DB::getInstance().getTelemetryData(fileName, columnName);
+        wd.data = &DB::getInstance().getTelemetryData(fileName, columnName); // <-- ALTERADO: '&'
     }
 
-    if (wd.data.empty()) {
+    if (wd.data->empty()) {
         LOG("ERROR", "Não foi possível carregar os dados para a coluna " + columnName);
         return;
     }
 
-    auto minmax = std::minmax_element(wd.data.begin(), wd.data.end());
-    if (minmax.first != wd.data.end()) {
+    auto minmax = std::minmax_element(wd.data->begin(), wd.data->end());
+    if (minmax.first != wd.data->end()) {
         wd.minValue = *minmax.first;
         wd.maxValue = *minmax.second;
     }

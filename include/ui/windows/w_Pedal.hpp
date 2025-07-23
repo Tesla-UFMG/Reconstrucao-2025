@@ -18,7 +18,7 @@
 struct PedalData {
     std::string         column;
     std::string         archive;
-    std::vector<double> data;
+    const std::vector<double>* data;
     double              maxValue = 1.0;
 };
 

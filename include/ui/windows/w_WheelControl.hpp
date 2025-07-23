@@ -19,7 +19,7 @@
 struct WheelData {
     std::string         column;
     std::string         archive;
-    std::vector<double> data;
+    const std::vector<double>* data;
     double              maxValue = 1.0;
     double              minValue = 0.0; 
 };
