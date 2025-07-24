@@ -95,9 +95,10 @@ namespace Window {
 
             Uint32 m_simLastTime = 0;
             bool m_showTrackInfo = false;
+            bool m_showCoordinatesTable = true;
+            int m_activeTab = 0;
 
                         // --- Funções de Renderização ---
-            void RenderMainMenuBar(int& activeTab, bool& showTrackInfo);
             void RenderCoordinatesTable();
             void RenderActiveTab(int activeTab, float deltaTime);
 

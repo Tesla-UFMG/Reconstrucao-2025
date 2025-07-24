@@ -32,7 +32,7 @@ void DrawRotatedImage(ImTextureID texture, const ImVec2& pos, float size, float 
 
 Window::WheelControl::WheelControl(bool* isOpen) : IWindow(isOpen) {
     this->title = "Controle do Volante";
-    this->flags = ImGuiWindowFlags_NoScrollbar;
+    this->flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar;
 }
 
 void Window::WheelControl::render() {
@@ -42,73 +42,79 @@ void Window::WheelControl::render() {
     static float anguloVolante = 0.0f;
     static float sensibilidade = 1.0f;
     static int   anguloMaximo  = 900;
-    static bool  forceFeedback = true;
-    static bool  showSettings  = false;
 
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
-    // --- Lógica de avanço do tempo (só funciona se os dados estiverem carregados) ---
-    if (m_isPlaying && isLoaded()) {
-        m_currentTime += ImGui::GetIO().DeltaTime * m_playbackSpeed;
-        if (m_currentTime > getDuration()) {
-            m_currentTime = getDuration();
-            m_isPlaying = false;
+    // --- BARRA DE MENU ---
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Configurações")) {
+            ImGui::SliderFloat("Sensibilidade (Teclado)", &sensibilidade, 0.1f, 5.0f, "%.1f");
+            ImGui::SliderInt("Ângulo Máximo", &anguloMaximo, 90, 1080);
+            ImGui::SliderFloat("Velocidade Playback", &m_playbackSpeed, 1.0f, 240.0f, "%.1f dados/s");
+            ImGui::Separator();
+            ImGui::Checkbox("Dados da coluna já estão em Graus", &m_dataIsDegrees);
+            ImGui::Separator();
+            ImGui::Text("Ângulo Atual: %.1f°", anguloVolante);
+            ImGui::EndMenu();
         }
-    }
-
-    // --- Seção de Drag-and-Drop e Dados Carregados ---
-    ImGui::BeginChild("DataArea", ImVec2(0, 50), false);
-    if (ImGui::CollapsingHeader("Fonte de Dados do Volante")) {
-        if (!isLoaded()) {
-            ImGui::TextDisabled("Arraste uma coluna de volante aqui.");
-        } else {
-            ImGui::PushID(0);
-            if (ImGui::Button("X")) {
-                removeColumn(m_steerIndex);
+        if (ImGui::BeginMenu("Fonte de Dados")) {
+            if (!isLoaded()) {
+                ImGui::MenuItem("(Nenhum dado carregado)", nullptr, false, false);
             } else {
-                ImGui::SameLine();
-                ImGui::Text("%s: %s", m_dataList[m_steerIndex].archive.c_str(), m_dataList[m_steerIndex].column.c_str());
+                ImGui::PushID(0);
+                if (ImGui::SmallButton("X")) {
+                    removeColumn(m_steerIndex);
+                } else {
+                    ImGui::SameLine();
+                    std::string label = m_dataList[m_steerIndex].archive + ": " + m_dataList[m_steerIndex].column;
+                    ImGui::TextUnformatted(label.c_str());
+                }
+                ImGui::PopID();
             }
-            ImGui::PopID();
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+    
+    // --- Lógica de avanço de tempo e modo "ao vivo" ---
+    if (isLoaded()) {
+        if (m_isPlaying) {
+            m_currentTime += ImGui::GetIO().DeltaTime * m_playbackSpeed;
+            if (m_currentTime > getDuration()) {
+                m_currentTime = getDuration();
+                m_isPlaying = false;
+            }
+        } else {
+            m_currentTime = getDuration();
         }
     }
-    ImGui::EndChild();
-    processColumnDragDrop(); // Permite dropar na área acima
-
+    
     // --- Lógica de cálculo do ângulo do volante ---
     if (isLoaded()) {
-    // MODO PLAYBACK: Usa os dados do arquivo
-    size_t time_idx = static_cast<size_t>(m_currentTime);
-    const auto& wheelData = m_dataList[m_steerIndex];
-    
-    if (time_idx < wheelData.data->size()) {
-        double rawValue = (*wheelData.data)[time_idx];
-
-        // --- LÓGICA CONDICIONAL ---
-        if (m_dataIsDegrees) {
-            // Se os dados já estão em graus, usamos o valor diretamente.
-            anguloVolante = static_cast<float>(rawValue);
-        } else {
-            // Se forem dados brutos, usamos a normalização 
-            double range = wheelData.maxValue - wheelData.minValue;
-            double normalizedValue = 0.0;
-            if (range > 0) {
-                normalizedValue = 2.0 * ((rawValue - wheelData.minValue) / range) - 1.0;
+        size_t time_idx = static_cast<size_t>(m_currentTime);
+        const auto& wheelData = m_dataList[m_steerIndex];
+        if (time_idx < wheelData.data->size()) {
+            double rawValue = (*wheelData.data)[time_idx];
+            if (m_dataIsDegrees) {
+                anguloVolante = static_cast<float>(rawValue);
+            } else {
+                double range = wheelData.maxValue - wheelData.minValue;
+                double normalizedValue = 0.0;
+                if (range > 0) {
+                    normalizedValue = 2.0 * ((rawValue - wheelData.minValue) / range) - 1.0;
+                }
+                anguloVolante = static_cast<float>(normalizedValue * (anguloMaximo / 2.0));
             }
-            anguloVolante = static_cast<float>(normalizedValue * (anguloMaximo / 2.0));
         }
+    } else {
+        const Uint8* keystates = SDL_GetKeyboardState(NULL);
+        if (keystates[SDL_SCANCODE_LEFT]) anguloVolante -= 5.0f * sensibilidade;
+        if (keystates[SDL_SCANCODE_RIGHT]) anguloVolante += 5.0f * sensibilidade;
     }
-} else {
-    // MODO TEMPO REAL: Usa o teclado 
-    const Uint8* keystates = SDL_GetKeyboardState(NULL);
-    if (keystates[SDL_SCANCODE_LEFT]) anguloVolante -= 5.0f * sensibilidade;
-    if (keystates[SDL_SCANCODE_RIGHT]) anguloVolante += 5.0f * sensibilidade;
-}
 
-    // Limita o ângulo do volante
     anguloVolante = std::clamp(anguloVolante, -anguloMaximo / 2.0f, anguloMaximo / 2.0f);
 
-    // --- Desenho do Volante (código original) ---
+    // --- Desenho do Volante ---
     SDL_Texture* volanteTexture = AssetManager::getInstance().getTexture(VOLANTE_PATH);
     if (volanteTexture) {
         ImVec2 avail = ImGui::GetContentRegionAvail();
@@ -121,23 +127,7 @@ void Window::WheelControl::render() {
         ImGui::Dummy(ImVec2(avail.x, size)); 
     }
 
-    // Botão e janela de configurações
-    if (ImGui::Button("Configurações")) showSettings = !showSettings;
-    if (showSettings) {
-        ImGui::Begin("Configurações do Volante", &showSettings, ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::SliderFloat("Sensibilidade (Teclado)", &sensibilidade, 0.1f, 5.0f, "%.1f");
-        ImGui::SliderInt("Ângulo Máximo", &anguloMaximo, 90, 1080);
-        ImGui::SliderFloat("Velocidade Playback", &m_playbackSpeed, 1.0f, 240.0f, "%.1f dados/s");
-
-        ImGui::Separator();
-        ImGui::Checkbox("Dados da coluna já estão em Graus", &m_dataIsDegrees);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Marque esta opção se o arquivo CSV já contém o ãngulo do volant em graus (ex: -450 a 450). \nDesmarque se forem dados brutos de um sensor (ex: 0 a 1023).");
-        }
-        ImGui::Separator();
-        ImGui::Text("Ângulo Atual: %.1f°", anguloVolante);
-        ImGui::End();
-    }
+    processColumnDragDrop();
 
     ImGui::End();
 }

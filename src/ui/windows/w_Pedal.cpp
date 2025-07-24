@@ -6,7 +6,7 @@ static float brakeValue    = 0.0f;
 
 Window::Pedal::Pedal(bool* isOpen) : IWindow(isOpen) {
     this->title             = "Pedal";
-    this->flags             = ImGuiWindowFlags_NoScrollbar;
+    this->flags             = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar;
     this->redPedalTexture   = (ImTextureID)AssetManager::getInstance().getTexture("assets/pedalvermelho.png");
     this->greenPedalTexture = (ImTextureID)AssetManager::getInstance().getTexture("assets/pedalverde.png");
 }
@@ -18,50 +18,54 @@ void Window::Pedal::render() {
 
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
-    // --- Lógica de avanço automático do tempo ---
-    if (m_isPlaying && isLoaded()) {
+// --- Lógica de avanço de tempo e modo "ao vivo" ---
+if (isLoaded()) {
+    if (m_isPlaying) {
+        // MODO PLAYBACK: O tempo avança normalmente.
         m_currentTime += ImGui::GetIO().DeltaTime * m_playbackSpeed; 
 
         if (m_currentTime > getDuration()) {
             m_currentTime = getDuration();
             m_isPlaying = false; // Pausa ao chegar no final
         }
+    } else {
+        // MODO AO VIVO: Se estiver pausado, vai para o último valor disponível.
+        m_currentTime = getDuration();
     }
+}
 
-    // --- Seção para gerenciar as colunas de dados ---
-    if (ImGui::CollapsingHeader("Fontes de Dados dos Pedais")) {
-        if (m_dataList.empty()) {
-            ImGui::TextDisabled("Arraste colunas de acelerador e freio aqui.");
-        } else {
-            for (int i = 0; i < m_dataList.size(); ++i) {
-                ImGui::PushID(i);
-                if (ImGui::Button("X")) {
-                    removeColumn(i);
-                    ImGui::PopID();
-                    break;
-                }
-                ImGui::SameLine();
-                ImGui::Text("%s: %s", m_dataList[i].archive.c_str(), m_dataList[i].column.c_str());
-                
-                if (i == m_throttleIndex) {
-                    ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "(Acelerador)");
-                }
-                if (i == m_brakeIndex) {
-                    ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "(Freio)");
-                }
-                ImGui::PopID();
-            }
+    // --- NOVA BARRA DE MENU ---
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Opções")) {
+            ImGui::SliderFloat("Velocidade", &m_playbackSpeed, 1.0f, 240.0f, "%.1f dados/s");
+            ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Fontes de Dados")) {
+            if (m_dataList.empty()) {
+                ImGui::MenuItem("(Nenhum dado carregado)", nullptr, false, false);
+            } else {
+                int index_to_remove = -1; // Variável para marcar qual item remover
+                for (int i = 0; i < m_dataList.size(); ++i) {
+                    ImGui::PushID(i);
+                    // 1. Desenha um pequeno botão "X"
+                    if (ImGui::SmallButton("X")) {
+                        index_to_remove = i; // 2. Marca para remoção
+                    }
+                    ImGui::SameLine();
+                    // 3. Mostra o nome do arquivo
+                    std::string label = m_dataList[i].archive + ": " + m_dataList[i].column;
+                    ImGui::TextUnformatted(label.c_str());
+                    ImGui::PopID();
+                }
+                // 4. Remove o item marcado 
+                if (index_to_remove != -1) {
+                    removeColumn(index_to_remove);
+                }
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
     }
-    
-    // --- Slider de controle de velocidade ---
-    ImGui::Separator();
-    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); 
-    ImGui::SliderFloat("Velocidade", &m_playbackSpeed, 1.0f, 240.0f, "%.1f dados/s");
-    ImGui::PopItemWidth();
-    ImGui::Separator();
     
     // --- Lógica de cálculo dos valores dos pedais ---
     float throttleValue = 0.0f;

@@ -259,41 +259,64 @@ void Window::Reconstruction::render() {
         return;
     }
 
-    ImGui::Begin(this->title.c_str(), this->isOpen);
+    ImGui::Begin(this->title.c_str(), this->isOpen, ImGuiWindowFlags_MenuBar);
 
-    // Variáveis de estado da UI que precisam ser mantidas aqui
-    static int    activeTab   = 0;
-    static int    prevTab     = -1; // Adicionado para resetar o tempo
-    static Uint32 simLastTime = SDL_GetTicks();
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Configurações")) {
+            ImGui::SliderFloat("Altura do Gráfico", &m_cartHeight, 100.0f, 800.0f, "%.0f px");
+            ImGui::SliderFloat("Zoom (escala)", &m_cartZoom, 0.1f, 5.0f, "%.2fx");
+            ImGui::SliderFloat("Fator Velocidade", &m_speedMultiplier, 0.1f, 100.0f, "%.1fx");
+            ImGui::Separator();
+            ImGui::Text("Ajuste de Traçado");
+            ImGui::SliderFloat("Traçado Verde", &m_HighSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
+            ImGui::SliderFloat("Traçado Vermelho", &m_LowSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
+            ImGui::EndMenu();
+        }
 
-    // Se mudou de aba, reseta o relógio da simulação
-    if (activeTab != prevTab) {
-        simLastTime = SDL_GetTicks();
-        prevTab     = activeTab;
+        if (ImGui::BeginMenu("Dados")) {
+            ImGui::MenuItem("Gerenciar Colunas", nullptr, &m_showCoordinatesTable);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Visualizar")) {
+
+            if (ImGui::MenuItem("Simulação")) { m_activeTab = 0; }
+            if (ImGui::MenuItem("Gerenciar Corridas")) { m_activeTab = 1; }
+            if (ImGui::MenuItem("Coordenadas")) { m_activeTab = 2; }
+            ImGui::Separator();
+            ImGui::MenuItem("Mostrar/Ocultar Informações", nullptr, &m_showTrackInfo);
+            if (ImGui::MenuItem("Limpar Análise Atual")) {
+                m_markedPositionsGreen.clear();
+                m_markedPositionsRed.clear();
+                m_comments.clear();
+                m_highSpeedSegments.clear();
+                m_lowSpeedSegments.clear();
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
     }
 
-    // Calcula o delta time
+    static int prevTab = -1;
+
+    if (m_activeTab != prevTab) {
+        m_simLastTime = SDL_GetTicks();
+        prevTab     = m_activeTab;
+    }
     Uint32 now = SDL_GetTicks();
-    float  dt  = (now - simLastTime) * 0.001f;
-    simLastTime = now;
+    float  dt  = (now - m_simLastTime) * 0.001f;
+    m_simLastTime = now;
 
-    // --- Renderização dos Componentes da UI ---
-    
-    // 1. Renderiza a barra de menu com os botões das abas
-    RenderMainMenuBar(activeTab, m_showTrackInfo);
+    if (m_showCoordinatesTable) {
+        RenderCoordinatesTable();
+        ImGui::Separator();
+    }
 
-    // 2. Renderiza a tabela de colunas de coordenadas
-    RenderCoordinatesTable();
-    ImGui::Separator();
-
-    // 3. Renderiza o conteúdo da aba que está ativa
     ImGui::BeginChild("DragAndDropArea");
-    RenderActiveTab(activeTab, dt);
+    RenderActiveTab(m_activeTab, dt);
     ImGui::EndChild();
 
-    // 4. Processa o Drag and Drop na área
     processColumnDragDrop();
-
     ImGui::End();
 }
 
@@ -301,28 +324,6 @@ void Window::Reconstruction::render() {
 // PASSO 2: AS FUNÇÕES AUXILIARES
 // (Cada uma com sua responsabilidade específica)
 // ===================================================================
-
-void Window::Reconstruction::RenderMainMenuBar(int& activeTab, bool& showTrackInfo) {
-    if (ImGui::CollapsingHeader("Janelas de Reconstrução")) {
-        if (ImGui::Button("Simulação")) activeTab = 0;
-        ImGui::SameLine();
-        if (ImGui::Button("Gerenciar Corridas")) activeTab = 1;
-        ImGui::SameLine();
-        if (ImGui::Button("Coordenadas")) activeTab = 2;
-        ImGui::SameLine();
-        if (ImGui::Button(showTrackInfo ? "Ocultar Informações" : "Mostrar Informações")) {
-            showTrackInfo = !showTrackInfo;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Limpar Corrida")) {
-            m_markedPositionsGreen.clear();
-            m_markedPositionsRed.clear();
-            m_comments.clear();
-            m_highSpeedSegments.clear();
-            m_lowSpeedSegments.clear();
-        }
-    }
-}
 
 void Window::Reconstruction::RenderCoordinatesTable() {
     if (ImGui::BeginTable("TabelaColunas", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
@@ -370,16 +371,6 @@ void Window::Reconstruction::RenderActiveTab(int activeTab, float deltaTime) {
 }
 
 void Window::Reconstruction::RenderSimulationTab(float dt) {
-    if (ImGui::CollapsingHeader("Configurações da Simulação")) {
-        ImGui::SliderFloat("Altura do Gráfico", &m_cartHeight, 100.0f, 800.0f, "%.0f px");
-        ImGui::SliderFloat("Zoom (escala)", &m_cartZoom, 0.1f, 5.0f, "%.2fx");
-        ImGui::SliderFloat("Fator Velocidade", &m_speedMultiplier, 0.1f, 100.0f, "%.1fx");
-        ImGui::Separator();
-        ImGui::Text("Ajuste de Traçado");
-        ImGui::SliderFloat("Traçado Verde", &m_HighSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
-        ImGui::SliderFloat("Traçado Vermelho", &m_LowSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
-    }
-    ImGui::Separator();
 
     static ImVec2 panOffset = ImVec2(0, 0);
     ImVec2        avail     = ImGui::GetContentRegionAvail();
@@ -393,10 +384,6 @@ void Window::Reconstruction::RenderSimulationTab(float dt) {
         ImVec2      size   = ImGui::GetContentRegionAvail();
         ImVec2      maxPt(origin.x + size.x, origin.y + size.y);
 
-
-
-
-        // --- CORREÇÃO APLICADA AQUI ---
         // 1. Pega as cores do tema atual do ImGui
         ImU32 bgColor = ImGui::GetColorU32(ImGuiCol_ChildBg); // Cor de fundo de janelas filhas
         ImU32 gridColor = ImGui::GetColorU32(ImGuiCol_Border);   // Cor das bordas
@@ -406,11 +393,7 @@ void Window::Reconstruction::RenderSimulationTab(float dt) {
         ImVec2 mid((origin.x + maxPt.x) * 0.5f, (origin.y + maxPt.y) * 0.5f);
         draw->AddLine({origin.x, mid.y}, {maxPt.x, mid.y}, gridColor); // Usa a cor de borda do tema
         draw->AddLine({mid.x, origin.y}, {mid.x, maxPt.y}, gridColor); // Usa a cor de borda do tema
-        // --- FIM DA CORREÇÃO ---
-
-
-
-
+ 
         // Captura drag com guarda de segurança
         if (size.x > 0 && size.y > 0) {
             ImGui::InvisibleButton("canvas_drag", size);
