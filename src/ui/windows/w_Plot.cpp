@@ -359,9 +359,27 @@ void Window::Plot::renderGraph(size_t graphIndex) {
             }
 
             if (graph.config.showValueOnYAxis) {
+                // Cria a formatação da TAG para evitar ficar balangando o gráfico
+                ImPlotRect limits = ImPlot::GetPlotLimits();
+                double     yMin   = limits.Y.Min;
+                double     yMax   = limits.Y.Max;
+                char       bufMin[32], bufMax[32];
+                int        prec   = 2;
+                int        lenMin = snprintf(bufMin, sizeof(bufMin), "%.*f", prec, yMin);
+                int        lenMax = snprintf(bufMax, sizeof(bufMax), "%.*f", prec, yMax);
+                int        maxLen = (lenMin > lenMax) ? lenMin : lenMax;
+                char       fmt[16];
+                snprintf(fmt, sizeof(fmt), "%%%d.%df", maxLen, prec);
+
+                // Pega a cor e o ultimo valor
                 ImVec4 lineColor    = ImPlot::GetColormapColor(j);
                 double currentValue = yData.back();
-                ImPlot::TagY(currentValue, lineColor, "%0.2f", currentValue);
+
+                ImPlot::TagY(currentValue, // posição da tag
+                             lineColor,    // cor
+                             fmt,          // formatação
+                             currentValue  // valor que será jogado para a formatação
+                );
             }
         }
 
