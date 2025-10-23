@@ -43,11 +43,11 @@ struct GraphData {
 
 struct GraphConfig {
         size_t      id;
-        GraphType   type             = GRAPH_LINE; // Tipo do gráfico
+        GraphType   type             = GRAPH_FILLED_LINE; // Tipo do gráfico
         bool        showXAxis        = false;      // Mostrar eixo X
         bool        showYAxis        = true;       // Mostrar eixo Y
-        int         numPoints        = 300;        // Quantidade de pontos a serem seguidos
-        double      plotHeight       = 190;        // Tamanho do gráfico
+        int         numPoints        = 500;        // Quantidade de pontos a serem seguidos
+        double      plotHeight       = 300;        // Tamanho do gráfico
         bool        followTheEnd     = false;      // Seguir o final dos dados
         bool        autoFit          = true;       // Ajustar automaticamente os eixos
         bool        showValueOnYAxis = true;       // Mostra os valores no nome da coluna
@@ -79,6 +79,7 @@ namespace Window {
             bool               autoFit          = true;
             bool               showResizeButton = false;
             bool               showValueOnYAxis = true;
+            bool telemetryMode = false;
 
             // Funções de renderização da interface
             void drawMenuBar();

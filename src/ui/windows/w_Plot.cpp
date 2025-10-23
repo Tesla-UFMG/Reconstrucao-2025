@@ -60,6 +60,23 @@ void Window::Plot::drawMenuBar() {
                                  std::string(this->showValueOnYAxis ? "ativado." : "desativado."));
             }
 
+            if (ImGui::MenuItem("Modo Telemetria", nullptr, &this->telemetryMode)) {
+                size_t numOfGraphs = this->graphs.size();
+
+                for (size_t i = 0; i < numOfGraphs; ++i) {
+                    GraphConfig& graphConfig = this->graphs[i].config;
+                    graphConfig.followTheEnd = this->telemetryMode;
+                    graphConfig.showXAxis    = false;
+                    graphConfig.autoFit = this->telemetryMode;
+                    if (i == numOfGraphs - 1) {
+                        graphConfig.showXAxis    = true;
+                        continue;
+                    }
+                }
+                LOG("DEBUG", "Botão modo telemetria " +
+                                 std::string(this->showValueOnYAxis ? "ativado." : "desativado."));
+            }
+
             ImGui::Separator();
             MenuBar::changePlotColormap();
             ImGui::EndMenu();
