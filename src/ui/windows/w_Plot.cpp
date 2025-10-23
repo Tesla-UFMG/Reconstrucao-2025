@@ -60,6 +60,15 @@ void Window::Plot::drawMenuBar() {
                                  std::string(this->showValueOnYAxis ? "ativado." : "desativado."));
             }
 
+            if (ImGui::MenuItem("Exibir Cursor no Eixo X/Y", nullptr, &this->showCursorOnYAxis)) {
+                for (Graph& graph : this->graphs) {
+                    graph.config.showCursorOnYAxis = this->showCursorOnYAxis;
+                }
+                LOG("DEBUG", "Botão de Exibir Cursor no Eixo X/Y " +
+                                 std::string(this->showCursorOnYAxis ? "ativado." : "desativado."));
+            }
+
+
             if (ImGui::MenuItem("Modo Telemetria", nullptr, &this->telemetryMode)) {
                 size_t numOfGraphs = this->graphs.size();
 
@@ -76,6 +85,8 @@ void Window::Plot::drawMenuBar() {
                 LOG("DEBUG", "Botão modo telemetria " +
                                  std::string(this->showValueOnYAxis ? "ativado." : "desativado."));
             }
+
+            
 
             ImGui::Separator();
             MenuBar::changePlotColormap();
@@ -398,6 +409,34 @@ void Window::Plot::renderGraph(size_t graphIndex) {
                              currentValue  // valor que será jogado para a formatação
                 );
             }
+
+
+            if (graph.config.showCursorOnYAxis) {
+                if (ImPlot::IsPlotHovered()) {
+                    ImPlotPoint mouse = ImPlot::GetPlotMousePos(); // coordenadas no sistema do plot
+                    double cursorX = mouse.x;
+                    double cursorY = mouse.y;
+
+                    // formatação (mantive a sua lógica)
+                    ImPlotRect limits = ImPlot::GetPlotLimits();
+                    double     yMin   = limits.Y.Min;
+                    double     yMax   = limits.Y.Max;
+                    char       bufMin[32], bufMax[32];
+                    int        prec   = 2;
+                    int        lenMin = snprintf(bufMin, sizeof(bufMin), "%.*f", prec, yMin);
+                    int        lenMax = snprintf(bufMax, sizeof(bufMax), "%.*f", prec, yMax);
+                    int        maxLen = (lenMin > lenMax) ? lenMin : lenMax;
+                    char       fmt[32];
+                    snprintf(fmt, sizeof(fmt), "%%%d.%df", maxLen, prec);
+
+                    ImVec4 lineColor = ImPlot::GetColormapColor(j);
+
+                    // marca no eixo Y e no eixo X onde está o cursor
+                    ImPlot::TagY(cursorY, HI(1), fmt, cursorY);
+                    ImPlot::TagX(cursorX, HI(1), fmt, cursorX);
+                }
+            }
+
         }
 
         this->drawLegendPopup(graph, graphIndex);

@@ -51,6 +51,7 @@ struct GraphConfig {
         bool        followTheEnd     = false;      // Seguir o final dos dados
         bool        autoFit          = true;       // Ajustar automaticamente os eixos
         bool        showValueOnYAxis = true;       // Mostra os valores no nome da coluna
+        bool        showCursorOnYAxis = true;      // Mostra o cursor no eixo Y
         std::string xColumn;                       // Coluna selecionada como eixo X
 };
 
@@ -76,10 +77,11 @@ namespace Window {
 
         private:
             std::vector<Graph> graphs;
-            bool               autoFit          = true;
+            bool               autoFit          = false;
             bool               showResizeButton = false;
             bool               showValueOnYAxis = true;
             bool telemetryMode = false;
+            bool showCursorOnYAxis = true;
 
             // Funções de renderização da interface
             void drawMenuBar();
