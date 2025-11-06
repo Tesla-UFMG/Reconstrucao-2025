@@ -66,6 +66,7 @@
         "stop_token": "cpp",
         "thread": "cpp",
         "filesystem": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "shared_mutex": "cpp"
     }
 }

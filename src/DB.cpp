@@ -97,10 +97,12 @@ const std::vector<double>& DB::getTelemetryData(const std::string& packetId, con
     return emptyVec;
 }
 
-bool DB::processTelemetryPacket(const std::string& packetId, const std::vector<double>& data) {
+bool DB::processTelemetryPacket(const std::string& packetId, const std::vector<double>& data, const std::string& date) {
     for (TelemetryFile& telemetryFile : this->projectData.telemetryFiles) {
         if (telemetryFile.getPacketId() == packetId) {
-            return telemetryFile.insertData(data);
+            if (telemetryFile.insertData(data)) {
+                return telemetryFile.insertDate(date);
+            }
         }
     }
     return false;
@@ -119,6 +121,7 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         const std::string                      packetName  = file.getName();
         const std::string                      packetId    = file.getPacketId();
         const std::vector<std::vector<double>> data        = file.getData();
+        const std::vector<std::string>         date        = file.getDate();
         const std::vector<std::string>         columnNames = file.getColumnNames();
 
         // nome do arquivo
@@ -133,7 +136,7 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         }
 
         // cabeçalho
-        ofs << "index,";
+        ofs << "index,date,";
         for (size_t i = 0; i < columnNames.size(); ++i) {
             ofs << columnNames[i];
             if (i + 1 < columnNames.size())
@@ -145,7 +148,7 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         size_t numRows = data.empty() ? 0 : data[0].size();
         size_t numCols = data.size();
         for (size_t row = 0; row < numRows; ++row) {
-            ofs << row << ",";
+            ofs << row << "," << date[row] << ",";
             for (size_t col = 0; col < numCols; ++col) {
                 ofs << data[col][row];
                 if (col + 1 < numCols)

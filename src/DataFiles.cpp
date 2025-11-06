@@ -54,9 +54,16 @@ bool TelemetryFile::insertData(const std::vector<double>& newData) {
     return true;
 }
 
+
+bool TelemetryFile::insertDate(const std::string& newDate) {
+    this->date.push_back(newDate);
+    return true;
+}
+
 const std::string&                      TelemetryFile::getPacketId() const { return this->packetId; }
 const std::vector<std::string>&         TelemetryFile::getColumnNames() const { return this->columnNames; }
 const std::vector<std::vector<double>>& TelemetryFile::getData() const { return this->data; }
+const std::vector<std::string>& TelemetryFile::getDate() const { return this->date; }
 
 const std::vector<double>& TelemetryFile::getColumnData(const std::string& columnName) const {
     static const std::vector<double> emptyVec{};

@@ -1,6 +1,6 @@
 #include "ui/windows/w_Statistics.hpp"
 
-static bool showGraphs = true;
+static bool showGraphs = false;
 
 Window::Statistics::Statistics(bool* isOpen) : IWindow(isOpen) {
     this->title = "Estatísticas";
@@ -22,16 +22,17 @@ void Window::Statistics::render() {
 void Window::Statistics::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Opções")) {
-            ImGui::MenuItem("Mostrar Gráficos", nullptr, &showGraphs);
-            if (ImGui::BeginMenu("Cores do Gráfico")) {
+            if (ImGui::BeginMenu("Gráficos")) {
+                ImGui::MenuItem("Mostrar Gráficos", nullptr, &showGraphs);
                 MenuBar::changePlotColormap();
                 ImGui::EndMenu();
             }
-            ImGui::EndMenu();
+            ImGui::EndMenu(); 
         }
         ImGui::EndMenuBar();
     }
 }
+
 
 void Window::Statistics::processColumnDragDrop() {
     if (ImGui::BeginDragDropTarget()) {

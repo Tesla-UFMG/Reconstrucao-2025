@@ -50,7 +50,7 @@ void Window::Plot::drawMenuBar() {
             if (ImGui::MenuItem("Redimensionar", nullptr, &this->showResizeButton)) {
                 LOG("DEBUG", "Botão de redimensionamento gráfico " +
                                  std::string(this->showResizeButton ? "ativado." : "desativado."));
-            }
+            } 
 
             if (ImGui::MenuItem("Exibir Valor no Eixo Y", nullptr, &this->showValueOnYAxis)) {
                 for (Graph& graph : this->graphs) {
@@ -71,7 +71,7 @@ void Window::Plot::drawMenuBar() {
 
             if (ImGui::MenuItem("Modo Telemetria", nullptr, &this->telemetryMode)) {
                 size_t numOfGraphs = this->graphs.size();
-
+ 
                 for (size_t i = 0; i < numOfGraphs; ++i) {
                     GraphConfig& graphConfig = this->graphs[i].config;
                     graphConfig.followTheEnd = this->telemetryMode;

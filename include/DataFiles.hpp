@@ -48,6 +48,7 @@ class TelemetryFile : public GenericFile {
         std::string                      packetId;
         std::vector<std::string>         columnNames;
         std::vector<std::vector<double>> data;
+        std::vector<std::string> date;
 
     public:
         TelemetryFile(const std::string& packetName, const std::string& packetId,
@@ -56,8 +57,10 @@ class TelemetryFile : public GenericFile {
         const std::vector<std::string>&         getColumnNames() const;
         const std::vector<std::vector<double>>& getData() const;
         const std::vector<double>&              getColumnData(const std::string& columnName) const;
+        const std::vector<std::string>&         getDate() const;
         bool                                    insertData(const std::vector<double>& newData);
-};
+        bool insertDate(const std::string& newDate);
+    };
 
 struct ArchivePayload {
         char fileType[FILE_TYPE_SIZE];

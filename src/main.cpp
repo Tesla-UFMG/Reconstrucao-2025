@@ -9,7 +9,7 @@
 #include <iostream>
 
 int main() {
-    const std::string WINDOW_TITLE  = "Resconstrução de Pista";
+    const std::string WINDOW_TITLE  = "Reconstrução de Pista";
     const int         WINDOW_WIDTH  = 1280;
     const int         WINDOW_HEIGHT = 720;
 

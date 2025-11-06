@@ -47,7 +47,7 @@ struct GraphConfig {
         bool        showXAxis        = false;      // Mostrar eixo X
         bool        showYAxis        = true;       // Mostrar eixo Y
         int         numPoints        = 500;        // Quantidade de pontos a serem seguidos
-        double      plotHeight       = 300;        // Tamanho do gráfico
+        double      plotHeight       = 250;        // Tamanho do gráfico
         bool        followTheEnd     = false;      // Seguir o final dos dados
         bool        autoFit          = true;       // Ajustar automaticamente os eixos
         bool        showValueOnYAxis = true;       // Mostra os valores no nome da coluna

@@ -419,6 +419,12 @@ void Window::Telemetry::render() {
 }
 
 bool Window::Telemetry::processPacket(const std::string& packet) {
+    // Pega a data e hora atual com milissegundos em unix time
+    auto now = std::chrono::system_clock::now();
+    auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    std::string date = std::to_string(timestamp_ms);
+
+    // Processa os dados
     std::vector<double> data;
     std::stringstream   ss(packet);
     std::string         item;
@@ -438,5 +444,5 @@ bool Window::Telemetry::processPacket(const std::string& packet) {
         index++;
     }
 
-    return DB::getInstance().processTelemetryPacket(packetId, data);
+    return DB::getInstance().processTelemetryPacket(packetId, data, date);
 }
