@@ -139,6 +139,10 @@ Reformular janela do GNSS (ou criar gráfico XY?)
 
 Janela fazer anotações dos testes - mudar nome do teste facilmente e de piloto
 
-Matriz de Dados - O único bloco capaz de lidar com componentes massivamente paralelos, especificamente o BMS
+Matriz de Dados - O único bloco capaz de lidar com componentes massivamente paralelos, especificamente o BMS - OK
 
 Salvar as assinalações nos layouts, quando salvar ou mudar de aba
+
+Ver questão de marcar tempo e voltas na pista.
+
+Tela boas vindas iniciante.

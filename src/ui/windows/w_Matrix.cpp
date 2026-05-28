@@ -338,7 +338,7 @@ void Window::Matrix::renderGrid() {
                     if (mousePos.x >= x_min && mousePos.x <= x_max && mousePos.y >= y_min && mousePos.y <= y_max) {
                         ImGui::BeginTooltip();
                         std::string displayName = getIDDisplayName(col.archiveName, col.fileType);
-                        ImGui::Text("[%s] %s - %s", col.archiveName.c_str(), displayName.c_str(), varName.c_str()));
+                        ImGui::Text("[%s] %s - %s", col.archiveName.c_str(), displayName.c_str(), varName.c_str());
                         if (hasData) {
                             ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "Valor original: %.6f", val);
                             if (m_useFormula) {
