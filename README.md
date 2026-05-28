@@ -128,13 +128,12 @@ Janela numérica - OK
 - Adicionar fórmula;
 - Converter valor para texto?;
 
-
-Janela/gráfico de força/aceleração
-
 Janela de logs de avisos - OK
 - Poder assinalar cor do aviso;
 
 Janela dinâmica de barra - OK
+
+Janela/gráfico de força/aceleração
 
 Reformular janela do GNSS (ou criar gráfico XY?)
 

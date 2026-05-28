@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <limits>
 
 // Project
 #include "ui/windows/iWindow.hpp"
@@ -54,11 +55,12 @@ namespace Window {
             std::string getTitle() const { return title; }
             void setTitle(const std::string& t) { title = t; }
             bool hasData() const { return m_hasData; }
-            std::string getColumnName() const { return m_loadedData.column; }
-            std::string getArchiveName() const { return m_loadedData.archive; }
-            std::string getFileType() const { return m_loadedData.fileType; }
+            std::string getColumnName() const { return m_loadedColumns.empty() ? "" : m_loadedColumns.front().column; }
+            std::string getArchiveName() const { return m_loadedColumns.empty() ? "" : m_loadedColumns.front().archive; }
+            std::string getFileType() const { return m_loadedColumns.empty() ? "" : m_loadedColumns.front().fileType; }
             MetricType getMetricType() const { return m_currentMetric; }
             void setMetricType(MetricType metric) { m_currentMetric = metric; }
+            const std::vector<NumericData>& getLoadedColumns() const { return m_loadedColumns; }
 
             // Customizable properties
             char m_prefix[64] = "";
@@ -92,14 +94,16 @@ namespace Window {
             float m_fontScale = 1.0f;
             bool m_showColumnName = true;
             char m_stripPattern[64] = "";
+            bool m_statModeAll = true;
+            char m_customLabel[128] = "";
 
         private:
             void processColumnDragDrop();
 
-            bool        m_isOpen = true;
-            bool        m_hasData = false;
-            NumericData m_loadedData;
-            MetricType  m_currentMetric = MetricType::LAST;
+            bool                     m_isOpen = true;
+            bool                     m_hasData = false;
+            std::vector<NumericData> m_loadedColumns;
+            MetricType               m_currentMetric = MetricType::LAST;
     };
 } // namespace Window
 

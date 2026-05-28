@@ -26,6 +26,7 @@ Window::Numeric::Numeric(const std::string& title) : IWindow() {
     m_fontScale = 1.0f;
     m_showColumnName = true;
     memset(m_stripPattern, 0, sizeof(m_stripPattern));
+    memset(m_customLabel, 0, sizeof(m_customLabel));
 }
 
 void Window::Numeric::render() {
@@ -35,20 +36,77 @@ void Window::Numeric::render() {
     // Calculate value and styling overrides before ImGui::Begin so background color applies correctly
     double val = 0.0;
     bool hasVal = false;
-    if (m_hasData && m_loadedData.data && !m_loadedData.data->empty()) {
+
+    bool anyData = false;
+    for (const auto& col : m_loadedColumns) {
+        if (col.data && !col.data->empty()) {
+            anyData = true;
+            break;
+        }
+    }
+
+    if (m_hasData && anyData) {
         hasVal = true;
         if (m_currentMetric == MetricType::LAST) {
-            val = m_loadedData.data->back();
-        } else if (m_currentMetric == MetricType::AVERAGE) {
-            double sum = 0.0;
-            for (double x : *m_loadedData.data) {
-                sum += x;
+            val = m_loadedColumns.back().data->back();
+        } else {
+            if (m_statModeAll) {
+                if (m_currentMetric == MetricType::MIN) {
+                    double minVal = std::numeric_limits<double>::max();
+                    for (const auto& col : m_loadedColumns) {
+                        if (col.data && !col.data->empty()) {
+                            double colMin = *std::min_element(col.data->begin(), col.data->end());
+                            if (colMin < minVal) {
+                                minVal = colMin;
+                            }
+                        }
+                    }
+                    val = minVal;
+                } else if (m_currentMetric == MetricType::MAX) {
+                    double maxVal = -std::numeric_limits<double>::max();
+                    for (const auto& col : m_loadedColumns) {
+                        if (col.data && !col.data->empty()) {
+                            double colMax = *std::max_element(col.data->begin(), col.data->end());
+                            if (colMax > maxVal) {
+                                maxVal = colMax;
+                            }
+                        }
+                    }
+                    val = maxVal;
+                } else if (m_currentMetric == MetricType::AVERAGE) {
+                    double sum = 0.0;
+                    size_t count = 0;
+                    for (const auto& col : m_loadedColumns) {
+                        if (col.data && !col.data->empty()) {
+                            for (double x : *col.data) {
+                                sum += x;
+                                count++;
+                            }
+                        }
+                    }
+                    val = (count > 0) ? (sum / count) : 0.0;
+                }
+            } else {
+                std::vector<double> lastValues;
+                for (const auto& col : m_loadedColumns) {
+                    if (col.data && !col.data->empty()) {
+                        lastValues.push_back(col.data->back());
+                    }
+                }
+                if (!lastValues.empty()) {
+                    if (m_currentMetric == MetricType::MIN) {
+                        val = *std::min_element(lastValues.begin(), lastValues.end());
+                    } else if (m_currentMetric == MetricType::MAX) {
+                        val = *std::max_element(lastValues.begin(), lastValues.end());
+                    } else if (m_currentMetric == MetricType::AVERAGE) {
+                        double sum = 0.0;
+                        for (double x : lastValues) {
+                            sum += x;
+                        }
+                        val = sum / lastValues.size();
+                    }
+                }
             }
-            val = sum / m_loadedData.data->size();
-        } else if (m_currentMetric == MetricType::MIN) {
-            val = *std::min_element(m_loadedData.data->begin(), m_loadedData.data->end());
-        } else if (m_currentMetric == MetricType::MAX) {
-            val = *std::max_element(m_loadedData.data->begin(), m_loadedData.data->end());
         }
     }
 
@@ -127,17 +185,31 @@ void Window::Numeric::render() {
         
         // 1. Submenu: Dados & Exibição
         if (ImGui::BeginMenu("Dados & Exibição")) {
-            if (!m_hasData) {
+            if (m_loadedColumns.empty()) {
                 ImGui::TextDisabled("(Nenhum dado carregado)");
             } else {
-                std::string label = m_loadedData.archive + ": " + m_loadedData.column;
-                ImGui::TextUnformatted(label.c_str());
-                ImGui::SameLine();
-                if (ImGui::SmallButton("X##removeData")) {
-                    m_hasData         = false;
-                    m_loadedData.data = nullptr;
-                    ImGui::CloseCurrentPopup();
+                ImGui::Text("Colunas Carregadas:");
+                for (size_t i = 0; i < m_loadedColumns.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i));
+                    std::string label = m_loadedColumns[i].archive + ": " + m_loadedColumns[i].column;
+                    ImGui::TextUnformatted(label.c_str());
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("X##removeData")) {
+                        m_loadedColumns.erase(m_loadedColumns.begin() + i);
+                        if (m_loadedColumns.empty()) {
+                            m_hasData = false;
+                        }
+                        ImGui::PopID();
+                        break;
+                    }
+                    ImGui::PopID();
                 }
+                ImGui::Separator();
+                if (ImGui::Button("Limpar Todas as Colunas")) {
+                    m_loadedColumns.clear();
+                    m_hasData = false;
+                }
+
                 ImGui::Separator();
                 ImGui::Text("Exibição:");
                 if (ImGui::RadioButton("Último Valor", m_currentMetric == MetricType::LAST)) {
@@ -153,21 +225,43 @@ void Window::Numeric::render() {
                     m_currentMetric = MetricType::MAX;
                 }
 
-                ImGui::Separator();
-                ImGui::Checkbox("Exibir Nome da Coluna", &m_showColumnName);
-                ImGui::PushItemWidth(120.0f);
-                ImGui::InputText("Remover do Nome", m_stripPattern, sizeof(m_stripPattern));
-                ImGui::PopItemWidth();
+                if (m_currentMetric != MetricType::LAST) {
+                    ImGui::Separator();
+                    ImGui::Text("Calcular estatísticas sobre:");
+                    if (ImGui::RadioButton("Todos os valores existentes", m_statModeAll)) {
+                        m_statModeAll = true;
+                    }
+                    if (ImGui::RadioButton("Últimos valores de cada coluna", !m_statModeAll)) {
+                        m_statModeAll = false;
+                    }
+                }
             }
             ImGui::EndMenu();
         }
 
 
-        // 3. Submenu: Texto (Prefixo/Sufixo)
-        if (ImGui::BeginMenu("Texto (Prefixo/Sufixo)")) {
-            ImGui::PushItemWidth(120.0f);
+        // 3. Submenu: Textos
+        if (ImGui::BeginMenu("Textos")) {
+            ImGui::PushItemWidth(150.0f);
+            
+            // Prefixo e Sufixo
             ImGui::InputText("Prefixo", m_prefix, sizeof(m_prefix));
             ImGui::InputText("Sufixo", m_suffix, sizeof(m_suffix));
+            
+            ImGui::Separator();
+            
+            // Rótulo Personalizado e Exibição do Nome
+            ImGui::Checkbox("Exibir Nome da Coluna", &m_showColumnName);
+            if (m_showColumnName) {
+                ImGui::InputText("Rótulo Personalizado", m_customLabel, sizeof(m_customLabel));
+            }
+            
+            ImGui::Separator();
+            
+            // Tamanho / Escala do Texto
+            ImGui::SliderFloat("Escala do Texto", &m_fontScale, 0.5f, 5.0f, "%.1fx");
+            
+            ImGui::PushItemWidth(120.0f); // Restore default push width style
             ImGui::PopItemWidth();
             ImGui::EndMenu();
         }
@@ -299,20 +393,22 @@ void Window::Numeric::render() {
             ImGui::EndMenu();
         }
 
-        // 7. Submenu: Tamanho do Texto
-        if (ImGui::BeginMenu("Tamanho do Texto")) {
-            ImGui::PushItemWidth(120.0f);
-            ImGui::SliderFloat("Escala do Texto", &m_fontScale, 0.5f, 5.0f, "%.1fx");
-            ImGui::PopItemWidth();
-            ImGui::EndMenu();
-        }
+        // (Tamanho do Texto unificado no menu "Textos")
 
         ImGui::EndPopup();
     }
 
-    if (!m_hasData || !m_loadedData.data || m_loadedData.data->empty()) {
+    bool anyDataToRender = false;
+    for (const auto& col : m_loadedColumns) {
+        if (col.data && !col.data->empty()) {
+            anyDataToRender = true;
+            break;
+        }
+    }
+
+    if (!m_hasData || m_loadedColumns.empty() || !anyDataToRender) {
         // Exibe mensagem centralizada pedindo drag and drop
-        std::string placeholder = "(Arraste uma coluna de dados aqui)";
+        std::string placeholder = "(Arraste colunas de dados aqui)";
         ImVec2      textSize    = ImGui::CalcTextSize(placeholder.c_str());
         textSize.x             *= m_fontScale;
         textSize.y             *= m_fontScale;
@@ -323,21 +419,27 @@ void Window::Numeric::render() {
         ImGui::TextDisabled("%s", placeholder.c_str());
         ImGui::SetWindowFontScale(1.0f);
     } else {
-        std::string colName = m_loadedData.column;
-        if (strlen(m_stripPattern) > 0) {
-            std::string stripStr(m_stripPattern);
-            size_t pos = colName.find(stripStr);
-            while (pos != std::string::npos) {
-                colName.erase(pos, stripStr.length());
-                pos = colName.find(stripStr);
+        std::string colName = "";
+        if (strlen(m_customLabel) > 0) {
+            colName = m_customLabel;
+        } else {
+            for (size_t i = 0; i < m_loadedColumns.size(); ++i) {
+                std::string cName = m_loadedColumns[i].column;
+                if (i > 0) {
+                    colName += " + ";
+                }
+                colName += cName;
             }
-        }
-        if (m_currentMetric == MetricType::AVERAGE) {
-            colName += " (Média)";
-        } else if (m_currentMetric == MetricType::MIN) {
-            colName += " (Mínimo)";
-        } else if (m_currentMetric == MetricType::MAX) {
-            colName += " (Máximo)";
+
+            if (m_currentMetric == MetricType::AVERAGE) {
+                colName += m_statModeAll ? " (Média Geral)" : " (Média dos Últimos)";
+            } else if (m_currentMetric == MetricType::MIN) {
+                colName += m_statModeAll ? " (Mínimo Geral)" : " (Mínimo dos Últimos)";
+            } else if (m_currentMetric == MetricType::MAX) {
+                colName += m_statModeAll ? " (Máximo Geral)" : " (Máximo dos Últimos)";
+            } else if (m_currentMetric == MetricType::LAST) {
+                colName += " (Último)";
+            }
         }
 
         // Apply translations
@@ -418,29 +520,56 @@ void Window::Numeric::processColumnDragDrop() {
             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
             this->addColumn(columnPayload->fileType, columnPayload->fileName, columnPayload->columnName);
         }
+        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
+            const ArchivePayload* archivePayload = reinterpret_cast<const ArchivePayload*>(payload->Data);
+            std::string fileType = archivePayload->fileType;
+            std::string fileName = archivePayload->fileName;
+
+            if (fileType == "CSV") {
+                const auto& csvFiles = DB::getInstance().getProject().getCSVFiles();
+                for (const auto& csvFile : csvFiles) {
+                    if (csvFile.getName() == fileName) {
+                        for (const std::string& colName : csvFile.getColumnNames()) {
+                            this->addColumn(fileType, fileName, colName);
+                        }
+                        break;
+                    }
+                }
+            } else if (fileType == "Telemetry") {
+                const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
+                for (const auto& telemetryFile : telemetryFiles) {
+                    if (telemetryFile.getPacketId() == fileName) {
+                        for (const std::string& colName : telemetryFile.getColumnNames()) {
+                            this->addColumn(fileType, fileName, colName);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
         ImGui::EndDragDropTarget();
     }
 }
 
 void Window::Numeric::addColumn(const std::string& fileType, const std::string& fileName,
                                 const std::string& columnName) {
-    m_loadedData.archive  = fileName;
-    m_loadedData.column   = columnName;
-    m_loadedData.fileType = fileType;
+    NumericData colData;
+    colData.archive  = fileName;
+    colData.column   = columnName;
+    colData.fileType = fileType;
 
     if (fileType == "CSV") {
-        m_loadedData.data = &DB::getInstance().getCSVData(fileName, columnName);
+        colData.data = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        m_loadedData.data = &DB::getInstance().getTelemetryData(fileName, columnName);
+        colData.data = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (m_loadedData.data && !m_loadedData.data->empty()) {
+    if (colData.data && !colData.data->empty()) {
+        m_loadedColumns.push_back(colData);
         m_hasData = true;
-        LOG("INFO", "[Numérico] Carregado dados da coluna '" + columnName + "' de '" + fileName +
-                        "'. Total de registros: " + std::to_string(m_loadedData.data->size()));
+        LOG("INFO", "[Numérico] Adicionado dados da coluna '" + columnName + "' de '" + fileName +
+                        "'. Total de registros: " + std::to_string(colData.data->size()));
     } else {
-        m_hasData         = false;
-        m_loadedData.data = nullptr;
         LOG("ERROR", "[Numérico] Falha ao carregar dados da coluna '" + columnName + "' de '" + fileName + "'.");
     }
 }

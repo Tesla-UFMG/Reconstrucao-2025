@@ -251,11 +251,11 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                 auto* numWin = dynamic_cast<Window::Numeric*>(w.get());
                 if (numWin) {
                     file << numWin->getTitle() << "\n";
-                    file << numWin->hasData() << "\n";
-                    if (numWin->hasData()) {
-                        file << numWin->getFileType() << "\n";
-                        file << numWin->getArchiveName() << "\n";
-                        file << numWin->getColumnName() << "\n";
+                    file << numWin->getLoadedColumns().size() << "\n";
+                    for (const auto& col : numWin->getLoadedColumns()) {
+                        file << col.fileType << "\n";
+                        file << col.archive << "\n";
+                        file << col.column << "\n";
                     }
                     file << static_cast<int>(numWin->getMetricType()) << "\n";
 
@@ -305,11 +305,12 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     file << numWin->m_showColumnName << "\n";
                     file << numWin->m_stripPattern << "\n";
 
-                    // Gradient Configs
                     file << numWin->m_gradMinVal << "\n";
                     file << numWin->m_gradMaxVal << "\n";
                     file << numWin->m_gradMinColor[0] << " " << numWin->m_gradMinColor[1] << " " << numWin->m_gradMinColor[2] << " " << numWin->m_gradMinColor[3] << "\n";
                     file << numWin->m_gradMaxColor[0] << " " << numWin->m_gradMaxColor[1] << " " << numWin->m_gradMaxColor[2] << " " << numWin->m_gradMaxColor[3] << "\n";
+                    file << numWin->m_statModeAll << "\n";
+                    file << numWin->m_customLabel << "\n";
                 }
             } else if (w->getDynamicType() == "Bar") {
                 auto* barWin = dynamic_cast<Window::Bar*>(w.get());
@@ -467,25 +468,22 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
         }
 
         if (type == "Numeric") {
-            bool hasData = false;
-            file >> hasData;
+            size_t numColumns = 0;
+            file >> numColumns;
             std::getline(file, dummy); // Consome o newline
 
-            std::string fileType, archive, column;
-            if (hasData) {
+            auto numWin = std::make_unique<Window::Numeric>(title);
+            for (size_t c = 0; c < numColumns; ++c) {
+                std::string fileType, archive, column;
                 std::getline(file, fileType);
                 std::getline(file, archive);
                 std::getline(file, column);
+                numWin->addColumn(fileType, archive, column);
             }
 
             int metricVal = 0;
             file >> metricVal;
             std::getline(file, dummy); // Consome o newline
-
-            auto numWin = std::make_unique<Window::Numeric>(title);
-            if (hasData) {
-                numWin->addColumn(fileType, archive, column);
-            }
             numWin->setMetricType(static_cast<MetricType>(metricVal));
 
             // Prefix and Suffix
@@ -569,6 +567,19 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                 file >> numWin->m_gradMinColor[0] >> numWin->m_gradMinColor[1] >> numWin->m_gradMinColor[2] >> numWin->m_gradMinColor[3];
                 file >> numWin->m_gradMaxColor[0] >> numWin->m_gradMaxColor[1] >> numWin->m_gradMaxColor[2] >> numWin->m_gradMaxColor[3];
                 std::getline(file, dummy); // consume newline
+            }
+
+            bool statModeAll = true;
+            if (file >> statModeAll) {
+                numWin->m_statModeAll = statModeAll;
+                std::getline(file, dummy); // consume newline
+                
+                std::string customLabel;
+                if (std::getline(file, customLabel)) {
+                    strncpy(numWin->m_customLabel, customLabel.c_str(), sizeof(numWin->m_customLabel));
+                }
+            } else {
+                file.clear();
             }
 
             windows.emplace_back(std::move(numWin));

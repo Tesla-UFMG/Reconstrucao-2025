@@ -1,4 +1,5 @@
 #include "ui/windows/w_Bar.hpp"
+#include "ImGuiWrapper.hpp"
 
 Window::Bar::Bar(const std::string& title) : IWindow() {
     this->title    = title;
@@ -286,6 +287,11 @@ void Window::Bar::render() {
         ImU32 barColU32 = ImGui::ColorConvertFloat4ToU32(ImVec4(targetColor[0], targetColor[1], targetColor[2], targetColor[3]));
         ImU32 bgColU32  = ImGui::ColorConvertFloat4ToU32(ImVec4(m_bgColor[0], m_bgColor[1], m_bgColor[2], m_bgColor[3]));
 
+        ImVec4 textColor = ImVec4(m_fgColor[0], m_fgColor[1], m_fgColor[2], m_fgColor[3]);
+        if (ImGuiWrapper::currentTheme == LIGHT) {
+            textColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+
         float localStartX = ImGui::GetWindowContentRegionMin().x;
         float localStartY = ImGui::GetWindowContentRegionMin().y;
 
@@ -296,7 +302,7 @@ void Window::Bar::render() {
             float colNameWidth = ImGui::CalcTextSize(colName.c_str()).x * m_fontScale;
             ImGui::SetCursorPos(ImVec2(localStartX + std::max(0.0f, (avail.x - colNameWidth) * 0.5f), localStartY));
             ImGui::SetWindowFontScale(m_fontScale);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(m_fgColor[0], m_fgColor[1], m_fgColor[2], m_fgColor[3]));
+            ImGui::PushStyleColor(ImGuiCol_Text, textColor);
             ImGui::TextUnformatted(colName.c_str());
             ImGui::PopStyleColor(1);
             ImGui::SetWindowFontScale(1.0f);
@@ -376,7 +382,7 @@ void Window::Bar::render() {
                 float labelY = barY + barHeight + spacing;
                 ImGui::SetCursorPos(ImVec2(localStartX + std::max(0.0f, (avail.x - labelWidth) * 0.5f), labelY));
                 ImGui::SetWindowFontScale(m_fontScale);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(m_fgColor[0], m_fgColor[1], m_fgColor[2], m_fgColor[3]));
+                ImGui::PushStyleColor(ImGuiCol_Text, textColor);
                 ImGui::TextUnformatted(labelText.c_str());
                 ImGui::PopStyleColor(1);
                 ImGui::SetWindowFontScale(1.0f);
@@ -452,7 +458,7 @@ void Window::Bar::render() {
 
                 ImGui::SetCursorPos(ImVec2(textX, textY));
                 ImGui::SetWindowFontScale(m_fontScale);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(m_fgColor[0], m_fgColor[1], m_fgColor[2], m_fgColor[3]));
+                ImGui::PushStyleColor(ImGuiCol_Text, textColor);
                 ImGui::TextUnformatted(labelText.c_str());
                 ImGui::PopStyleColor(1);
                 ImGui::SetWindowFontScale(1.0f);
