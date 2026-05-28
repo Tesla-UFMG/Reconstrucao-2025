@@ -39,7 +39,7 @@ TelemetryFile::TelemetryFile(const std::string& packetName, const std::string& p
     this->packetId    = packetId;
     this->columnNames = columnNames;
     this->fileType    = "Telemetry";
-    this->data.resize(8);
+    this->data.resize(columnNames.size());
 }
 
 bool TelemetryFile::insertData(const std::vector<double>& newData) {

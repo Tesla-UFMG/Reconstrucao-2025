@@ -425,10 +425,23 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     for (const auto& col : matWin->m_columns) {
                         file << col.fileType    << "\n";
                         file << col.archiveName << "\n";
-                        file << col.variables.size() << "\n";
-                        for (const auto& var : col.variables) {
+                        file << matWin->m_rowVariables.size() << "\n";
+                        for (const auto& var : matWin->m_rowVariables) {
                             file << var << "\n";
                         }
+                    }
+                    file << matWin->m_fontScale << "\n";
+                    file << matWin->m_showVariableName << "\n";
+                    // Matrix extra configs
+                    file << matWin->m_suffix << "\n";
+                    file << matWin->m_useFormula << "\n";
+                    file << matWin->m_multiplier << "\n";
+                    file << matWin->m_offset << "\n";
+                    file << matWin->m_useTranslation << "\n";
+                    file << matWin->m_translationRules.size() << "\n";
+                    for (const auto& rule : matWin->m_translationRules) {
+                        file << rule.value << "\n";
+                        file << rule.text << "\n";
                     }
                 }
             }
@@ -738,6 +751,7 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
             std::getline(file, dummy); // consume newline
 
             matWin->m_columns.clear();
+            matWin->m_rowVariables.clear();
             for (size_t ci = 0; ci < numCols; ci++) {
                 MatrixColumn col;
                 std::getline(file, col.fileType);
@@ -745,13 +759,50 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                 size_t numVars = 0;
                 file >> numVars;
                 std::getline(file, dummy);
-                col.variables.clear();
                 for (size_t vi = 0; vi < numVars; vi++) {
                     std::string var;
                     std::getline(file, var);
-                    col.variables.push_back(var);
+                    if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), var) == matWin->m_rowVariables.end()) {
+                        matWin->m_rowVariables.push_back(var);
+                    }
                 }
                 matWin->m_columns.push_back(col);
+            }
+
+            float fontScale = 1.0f;
+            if (file >> fontScale) {
+                matWin->m_fontScale = fontScale;
+                file >> matWin->m_showVariableName;
+                std::getline(file, dummy); // consume newline
+
+                // Backward compatible loading of new Matrix properties
+                std::string suffix;
+                if (std::getline(file, suffix)) {
+                    strncpy(matWin->m_suffix, suffix.c_str(), sizeof(matWin->m_suffix));
+
+                    if (file >> matWin->m_useFormula) {
+                        file >> matWin->m_multiplier;
+                        file >> matWin->m_offset;
+
+                        if (file >> matWin->m_useTranslation) {
+                            size_t transSize = 0;
+                            if (file >> transSize) {
+                                std::getline(file, dummy); // consume newline
+                                matWin->m_translationRules.clear();
+                                for (size_t r = 0; r < transSize; r++) {
+                                    double rVal = 0.0;
+                                    std::string rTxt;
+                                    file >> rVal;
+                                    std::getline(file, dummy); // consume newline
+                                    std::getline(file, rTxt);
+                                    matWin->m_translationRules.push_back({rVal, rTxt});
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                file.clear();
             }
 
             windows.emplace_back(std::move(matWin));

@@ -244,8 +244,7 @@ void Window::Numeric::render() {
         if (ImGui::BeginMenu("Textos")) {
             ImGui::PushItemWidth(150.0f);
             
-            // Prefixo e Sufixo
-            ImGui::InputText("Prefixo", m_prefix, sizeof(m_prefix));
+            // Sufixo
             ImGui::InputText("Sufixo", m_suffix, sizeof(m_suffix));
             
             ImGui::Separator();
@@ -461,7 +460,7 @@ void Window::Numeric::render() {
             valStr = valTextBuf;
         }
 
-        std::string finalValText = std::string(m_prefix) + valStr + std::string(m_suffix);
+        std::string finalValText = valStr + std::string(m_suffix);
 
         // 1. Mostrar o nome da coluna no topo centralizado
         float colTextWidth = ImGui::CalcTextSize(colName.c_str()).x * m_fontScale;
