@@ -8,7 +8,6 @@
 #include "DB.hpp"
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
-#include "WindowManager.hpp"
 
 namespace MenuBar {
     void changeWindowVisibility(const std::filesystem::path& windowName, bool* isOpen);

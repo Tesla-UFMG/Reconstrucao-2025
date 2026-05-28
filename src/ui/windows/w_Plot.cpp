@@ -1,4 +1,5 @@
 #include "ui/windows/w_Plot.hpp"
+#include "ui/menubar/m_Utils.hpp"
 
 Window::Plot::Plot(bool* isOpen) : IWindow(isOpen) {
     title = "Plot";
@@ -41,7 +42,7 @@ void Window::Plot::drawMenuBar() {
 
         if (ImGui::BeginMenu("Configurações")) {
             if (ImGui::MenuItem("Auto Fit", nullptr, &this->autoFit)) {
-                for (Graph& graph : this->graphs) {
+                for (::Graph& graph : this->graphs) {
                     graph.config.autoFit = this->autoFit;
                 }
                 LOG("DEBUG", "Botão Auto Fit gráfico " + std::string(this->autoFit ? "ativado." : "desativado."));
@@ -53,7 +54,7 @@ void Window::Plot::drawMenuBar() {
             } 
 
             if (ImGui::MenuItem("Exibir Valor no Eixo Y", nullptr, &this->showValueOnYAxis)) {
-                for (Graph& graph : this->graphs) {
+                for (::Graph& graph : this->graphs) {
                     graph.config.showValueOnYAxis = this->showValueOnYAxis;
                 }
                 LOG("DEBUG", "Botão de Exibir Valor no Eixo Y " +
@@ -61,7 +62,7 @@ void Window::Plot::drawMenuBar() {
             }
 
             if (ImGui::MenuItem("Exibir Cursor no Eixo X/Y", nullptr, &this->showCursorOnYAxis)) {
-                for (Graph& graph : this->graphs) {
+                for (::Graph& graph : this->graphs) {
                     graph.config.showCursorOnYAxis = this->showCursorOnYAxis;
                 }
                 LOG("DEBUG", "Botão de Exibir Cursor no Eixo X/Y " +
@@ -97,7 +98,7 @@ void Window::Plot::drawMenuBar() {
 }
 
 void Window::Plot::addNewGraph() {
-    Graph  newGraph;
+    ::Graph  newGraph;
     size_t graphId     = this->graphs.size() ? this->graphs.back().config.id + 1 : 0;
     newGraph.config.id = graphId; // Configura o ID
     this->graphs.push_back(newGraph);
@@ -118,7 +119,7 @@ void Window::Plot::removeGraph(size_t graphIndex) {
     LOG("INFO", "Gráfico " + std::to_string(graphIndex) + " removido.");
 }
 
-void Window::Plot::processColumnDragDrop(Graph& graph) {
+void Window::Plot::processColumnDragDrop(::Graph& graph) {
 
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
@@ -132,7 +133,7 @@ void Window::Plot::processColumnDragDrop(Graph& graph) {
     }
 }
 
-void Window::Plot::addColumnToGraph(Graph& graph, const ColumnPayload* payload) {
+void Window::Plot::addColumnToGraph(::Graph& graph, const ColumnPayload* payload) {
     std::string fileType   = payload->fileType;
     std::string fileName   = payload->fileName;
     std::string columnName = payload->columnName;
@@ -149,6 +150,7 @@ void Window::Plot::addColumnToGraph(Graph& graph, const ColumnPayload* payload) 
     GraphData graphData;
     graphData.columnName = columnName;
     graphData.fileName   = fileName;
+    graphData.fileType   = fileType;
 
     // Adiciona os eixos
     if (fileType == "CSV") {
@@ -170,7 +172,7 @@ void Window::Plot::addColumnToGraph(Graph& graph, const ColumnPayload* payload) 
     LOG("DEBUG", "Coluna " + columnName + " adicionada ao gráfico " + std::to_string(graph.config.id) + ".");
 }
 
-void Window::Plot::drawLegendPopup(Graph& graph, size_t graphIndex) {
+void Window::Plot::drawLegendPopup(::Graph& graph, size_t graphIndex) {
     if (!graph.data.empty()) {
         const char* graphTypes[] = {"Linha", "Barra", "Scatter", "Preenchido"};
 
@@ -273,7 +275,7 @@ void Window::Plot::removeColumnFromGraph(size_t graphIndex, size_t columnIndex) 
 }
 
 void Window::Plot::renderGraph(size_t graphIndex) {
-    Graph&       graph       = this->graphs[graphIndex];
+    ::Graph&       graph       = this->graphs[graphIndex];
     GraphConfig& graphConfig = graph.config;
 
     // Se uma coluna foi selecionada como eixo X, obtém seus dados.
@@ -447,7 +449,7 @@ void Window::Plot::renderGraph(size_t graphIndex) {
 }
 
 void Window::Plot::renderResizeButton(size_t graphIndex) {
-    Graph& graph = this->graphs[graphIndex];
+    ::Graph& graph = this->graphs[graphIndex];
 
     ImGui::Dummy(ImVec2(0, RESIZE_BAR_SIZE));
     ImVec2 avail = ImGui::GetContentRegionAvail();

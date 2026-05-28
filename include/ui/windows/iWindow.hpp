@@ -22,6 +22,7 @@ class IWindow {
         virtual void setupVisibility(bool* isOpen) { this->isOpen = isOpen; }
         virtual void render() = 0;
         virtual bool isDynamic() const { return false; }
+        virtual std::string getDynamicType() const { return ""; }
         bool getIsOpen() const { return isOpen ? *isOpen : false; }
 };
 

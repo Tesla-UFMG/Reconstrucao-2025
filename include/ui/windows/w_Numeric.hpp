@@ -25,21 +25,67 @@ enum class MetricType {
     MAX
 };
 
+struct ColorThresholdConfig {
+    bool enabled = false;
+    float bg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
+    float fg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+};
+
+struct SpecificColorRule {
+    double value = 0.0;
+    float bg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
+    float fg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+};
+
+struct TranslationRule {
+    double value = 0.0;
+    std::string text = "";
+};
+
 namespace Window {
     class Numeric : public IWindow {
         public:
             explicit Numeric(const std::string& title);
             virtual void render() override;
             virtual bool isDynamic() const override { return true; }
+            virtual std::string getDynamicType() const override { return "Numeric"; }
 
             void addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName);
             std::string getTitle() const { return title; }
+            void setTitle(const std::string& t) { title = t; }
             bool hasData() const { return m_hasData; }
             std::string getColumnName() const { return m_loadedData.column; }
             std::string getArchiveName() const { return m_loadedData.archive; }
             std::string getFileType() const { return m_loadedData.fileType; }
             MetricType getMetricType() const { return m_currentMetric; }
             void setMetricType(MetricType metric) { m_currentMetric = metric; }
+
+            // Customizable properties
+            char m_prefix[64] = "";
+            char m_suffix[64] = "";
+
+            bool m_useFormula = false;
+            double m_multiplier = 1.0;
+            double m_offset = 0.0;
+
+            bool m_useTranslation = false;
+            std::vector<TranslationRule> m_translationRules;
+
+            int m_colorMode = 0; // 0 = Nenhuma, 1 = Por Faixas, 2 = Valores Específicos
+            double m_threshLL = 0.0;
+            double m_threshL = 0.0;
+            double m_threshH = 0.0;
+            double m_threshHH = 0.0;
+            ColorThresholdConfig m_confLL;
+            ColorThresholdConfig m_confL;
+            ColorThresholdConfig m_confNormal;
+            ColorThresholdConfig m_confH;
+            ColorThresholdConfig m_confHH;
+            std::vector<SpecificColorRule> m_specificRules;
+
+            float m_fontScale = 1.0f;
+            bool m_showColumnName = true;
+            char m_stripPattern[64] = "";
 
         private:
             void processColumnDragDrop();

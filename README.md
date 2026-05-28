@@ -118,3 +118,26 @@ Drone: https://www.kaggle.com/datasets/kunalkarnik95/drone-flight-video-with-tel
 Camera: https://www.kaggle.com/datasets/hassanmojab/autvi
 
 Race: https://www.kaggle.com/datasets/alexhexan/fm7-rio-de-janeiro-race-telemetry
+
+
+## Ideias Futuras
+
+Janela numérica
+- Mudar de cor em uma faixa de valor;
+- Adicionar unidade de medida;
+- Adicionar fórmula;
+- Converter valor para texto?;
+
+
+Janela/gráfico de força/aceleração
+
+Janela de logs de avisos
+- Poder assinalar cor do aviso;
+
+Janela dinâmica de barra
+
+Reformular janela do GNSS (ou criar gráfico XY?)
+
+Matriz de Dados - O único bloco capaz de lidar com componentes massivamente paralelos, especificamente o BMS
+
+Salvar as assinalações nos layouts, quando salvar ou mudar de aba

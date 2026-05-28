@@ -48,7 +48,7 @@ $(OUTPUT): $(OBJ_FILES)
 	@echo "Compilando o executável" $@
 	@$(CXX) $(OBJ_FILES) $(LDFLAGS) $(LINKFLAGS) -o $(OUTPUT)
 
-$(OBJ_FOLDER)/%.o: src/%.cpp $(wildcard include/*.hpp)
+$(OBJ_FOLDER)/%.o: src/%.cpp $(wildcard include/**/*.hpp) $(wildcard include/*.hpp)
 	@mkdir -p $(dir $@)
 	@echo $@
 	@$(CXX) $(CXX_FLAGS) $(INCLUDES) -c $< -o $@

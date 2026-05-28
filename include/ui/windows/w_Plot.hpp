@@ -4,7 +4,6 @@
 // Project
 #include "DB.hpp"
 #include "ImGuiWrapper.hpp"
-#include "ui/menubar/m_Utils.hpp"
 #include "ui/windows/iWindow.hpp"
 
 // C++
@@ -23,6 +22,7 @@ enum GraphType { GRAPH_LINE, GRAPH_BAR, GRAPH_SCATTER, GRAPH_FILLED_LINE };
 struct GraphData {
         std::string                columnName;       // Nome da coluna
         std::string                fileName;         // Nome do arquivo que contém a coluna
+        std::string                fileType;         // Tipo do arquivo (CSV ou Telemetry)
         double                     multiplier = 1.0; // Multiplicador para os valores de Y
         std::vector<double>        x;                // Valores de X
         const std::vector<double>* y;                // Valores de Y
@@ -76,7 +76,7 @@ namespace Window {
             void render() override;
 
         private:
-            std::vector<Graph> graphs;
+            std::vector<::Graph> graphs;
             bool               autoFit          = false;
             bool               showResizeButton = false;
             bool               showValueOnYAxis = true;
@@ -87,17 +87,17 @@ namespace Window {
             void drawMenuBar();
 
             // Funções auxiliares para processamento de dados e payload
-            void processColumnDragDrop(Graph& graph);
+            void processColumnDragDrop(::Graph& graph);
             void generateSimulatedData(int numPoints, size_t graphIndex, float* x, float* y);
 
             void addNewGraph();
             void removeGraph(size_t graphIndex);
 
-            void addColumnToGraph(Graph& graph, const ColumnPayload* payload);
+            void addColumnToGraph(::Graph& graph, const ColumnPayload* payload);
             void removeColumnFromGraph(size_t graphIndex, size_t columnIndex);
 
             // Funções de renderização dos gráficos
-            void drawLegendPopup(Graph& graph, size_t graphIndex);
+            void drawLegendPopup(::Graph& graph, size_t graphIndex);
             void renderGraph(size_t graphIndex);
             void renderResizeButton(size_t graphIndex);
     };

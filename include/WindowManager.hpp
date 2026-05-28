@@ -18,6 +18,7 @@
 #include "ui/windows/w_WheelControl.hpp"
 #include "ui/windows/w_Reconstruction.hpp" 
 #include "ui/windows/w_Numeric.hpp"
+#include "ui/windows/w_Graph.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -80,6 +81,7 @@ public:
         void homePage();
         void mainPage();
         void createNumericWindow();
+        void createGraphWindow();
 };
 
 #endif // WINDOW_HPP
