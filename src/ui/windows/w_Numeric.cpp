@@ -147,22 +147,6 @@ void Window::Numeric::render() {
             ImGui::EndMenu();
         }
 
-        // 2. Submenu: Renomear Janela
-        if (ImGui::BeginMenu("Renomear Janela")) {
-            ImGui::Text("Nome da Janela:");
-            char titleBuf[128];
-            strncpy(titleBuf, this->title.c_str(), sizeof(titleBuf));
-            ImGui::PushItemWidth(150.0f);
-            if (ImGui::InputText("##renameWindow", titleBuf, sizeof(titleBuf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                this->title = titleBuf;
-            }
-            ImGui::PopItemWidth();
-            ImGui::SameLine();
-            if (ImGui::Button("Ok##rename")) {
-                this->title = titleBuf;
-            }
-            ImGui::EndMenu();
-        }
 
         // 3. Submenu: Texto (Prefixo/Sufixo)
         if (ImGui::BeginMenu("Texto (Prefixo/Sufixo)")) {

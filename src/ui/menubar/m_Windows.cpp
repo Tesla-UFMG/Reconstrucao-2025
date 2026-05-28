@@ -46,6 +46,12 @@ void MenuBar::Windows() {
             }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Barra")) {
+            if (ImGui::MenuItem("Criar Nova Janela")) {
+                vw.createBarWindow();
+            }
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("Gráficos")) {
             if (ImGui::MenuItem("Criar Nova Janela")) {
                 vw.createGraphWindow();

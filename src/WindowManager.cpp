@@ -121,9 +121,25 @@ void WindowManager::mainPage() {
 }
 
 void WindowManager::createNumericWindow() {
-    static int numericCount = 0;
-    numericCount++;
-    std::string windowTitle = "Numérico #" + std::to_string(numericCount);
+    int maxIdx = 0;
+    for (const auto& w : windows) {
+        if (w->isDynamic() && w->getDynamicType() == "Numeric") {
+            auto* numWin = dynamic_cast<Window::Numeric*>(w.get());
+            if (numWin) {
+                std::string wTitle = numWin->getTitle();
+                size_t hashPos = wTitle.find('#');
+                if (hashPos != std::string::npos) {
+                    try {
+                        int idx = std::stoi(wTitle.substr(hashPos + 1));
+                        if (idx > maxIdx) {
+                            maxIdx = idx;
+                        }
+                    } catch (...) {}
+                }
+            }
+        }
+    }
+    std::string windowTitle = "Numérico #" + std::to_string(maxIdx + 1);
 
     auto numericWindow = std::make_unique<Window::Numeric>(windowTitle);
     windows.emplace_back(std::move(numericWindow));
@@ -132,14 +148,57 @@ void WindowManager::createNumericWindow() {
 }
 
 void WindowManager::createGraphWindow() {
-    static int graphCount = 0;
-    graphCount++;
-    std::string windowTitle = "Gráfico #" + std::to_string(graphCount);
+    int maxIdx = 0;
+    for (const auto& w : windows) {
+        if (w->isDynamic() && w->getDynamicType() == "Graph") {
+            auto* graphWin = dynamic_cast<Window::Graph*>(w.get());
+            if (graphWin) {
+                std::string wTitle = graphWin->getTitle();
+                size_t hashPos = wTitle.find('#');
+                if (hashPos != std::string::npos) {
+                    try {
+                        int idx = std::stoi(wTitle.substr(hashPos + 1));
+                        if (idx > maxIdx) {
+                            maxIdx = idx;
+                        }
+                    } catch (...) {}
+                }
+            }
+        }
+    }
+    std::string windowTitle = "Gráfico #" + std::to_string(maxIdx + 1);
 
     auto graphWindow = std::make_unique<Window::Graph>(windowTitle);
     windows.emplace_back(std::move(graphWindow));
 
     LOG("INFO", "Criada nova janela gráfica: " + windowTitle);
+}
+
+void WindowManager::createBarWindow() {
+    int maxIdx = 0;
+    for (const auto& w : windows) {
+        if (w->isDynamic() && w->getDynamicType() == "Bar") {
+            auto* barWin = dynamic_cast<Window::Bar*>(w.get());
+            if (barWin) {
+                std::string wTitle = barWin->getTitle();
+                size_t hashPos = wTitle.find('#');
+                if (hashPos != std::string::npos) {
+                    try {
+                        int idx = std::stoi(wTitle.substr(hashPos + 1));
+                        if (idx > maxIdx) {
+                            maxIdx = idx;
+                        }
+                    } catch (...) {}
+                }
+            }
+        }
+    }
+    std::string windowTitle = "Barra #" + std::to_string(maxIdx + 1);
+
+    auto barWindow = std::make_unique<Window::Bar>(windowTitle);
+    windows.emplace_back(std::move(barWindow));
+
+    LOG("INFO", "Criada nova janela de barra: " + windowTitle);
 }
 
 void WindowManager::saveDynamicWindows(const std::string& filepath) {
@@ -218,6 +277,56 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     file << numWin->m_showColumnName << "\n";
                     file << numWin->m_stripPattern << "\n";
                 }
+            } else if (w->getDynamicType() == "Bar") {
+                auto* barWin = dynamic_cast<Window::Bar*>(w.get());
+                if (barWin) {
+                    file << barWin->getTitle() << "\n";
+                    file << barWin->hasData() << "\n";
+                    if (barWin->hasData()) {
+                        file << barWin->getFileType() << "\n";
+                        file << barWin->getArchiveName() << "\n";
+                        file << barWin->getColumnName() << "\n";
+                    }
+                    file << static_cast<int>(barWin->getMetricType()) << "\n";
+
+                    // Orientation and scale limits
+                    file << barWin->m_orientation << "\n";
+                    file << barWin->m_useManualLimits << "\n";
+                    file << barWin->m_minVal << "\n";
+                    file << barWin->m_maxVal << "\n";
+
+                    // Colors
+                    file << barWin->m_barColor[0] << " " << barWin->m_barColor[1] << " " << barWin->m_barColor[2] << " " << barWin->m_barColor[3] << "\n";
+                    file << barWin->m_bgColor[0] << " " << barWin->m_bgColor[1] << " " << barWin->m_bgColor[2] << " " << barWin->m_bgColor[3] << "\n";
+                    file << barWin->m_fgColor[0] << " " << barWin->m_fgColor[1] << " " << barWin->m_fgColor[2] << " " << barWin->m_fgColor[3] << "\n";
+
+                    // Text properties
+                    file << barWin->m_fontScale << "\n";
+                    file << barWin->m_showPercentage << "\n";
+                    file << barWin->m_showValue << "\n";
+                    file << barWin->m_showColumnName << "\n";
+                    file << barWin->m_stripPattern << "\n";
+                    file << barWin->m_prefix << "\n";
+                    file << barWin->m_suffix << "\n";
+
+                    // Thresholds
+                    file << barWin->m_useThresholds << "\n";
+                    file << barWin->m_threshLL << "\n";
+                    file << barWin->m_threshL << "\n";
+                    file << barWin->m_threshH << "\n";
+                    file << barWin->m_threshHH << "\n";
+
+                    auto saveBarConf = [&](const BarThresholdConfig& conf) {
+                        file << conf.enabled << "\n";
+                        file << conf.color[0] << " " << conf.color[1] << " " << conf.color[2] << " " << conf.color[3] << "\n";
+                    };
+
+                    saveBarConf(barWin->m_confLL);
+                    saveBarConf(barWin->m_confL);
+                    saveBarConf(barWin->m_confNormal);
+                    saveBarConf(barWin->m_confH);
+                    saveBarConf(barWin->m_confHH);
+                }
             } else if (w->getDynamicType() == "Graph") {
                 auto* graphWin = dynamic_cast<Window::Graph*>(w.get());
                 if (graphWin) {
@@ -269,11 +378,11 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
 
         std::string type = "Numeric";
         std::string title;
-        if (line == "Numeric" || line == "Graph") {
+        if (line == "Numeric" || line == "Graph" || line == "Bar") {
             type = line;
             if (!std::getline(file, title)) break;
         } else {
-            // Retrocompatibilidade: se não for "Numeric" ou "Graph", a primeira linha é o título do tipo Numeric
+            // Retrocompatibilidade: se não for "Numeric", "Graph" ou "Bar", a primeira linha é o título do tipo Numeric
             title = line;
         }
 
@@ -373,6 +482,74 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
             }
 
             windows.emplace_back(std::move(numWin));
+        } else if (type == "Bar") {
+            bool hasData = false;
+            file >> hasData;
+            std::getline(file, dummy); // consume newline
+
+            std::string fileType, archive, column;
+            if (hasData) {
+                std::getline(file, fileType);
+                std::getline(file, archive);
+                std::getline(file, column);
+            }
+
+            int metricVal = 0;
+            file >> metricVal;
+            std::getline(file, dummy); // consume newline
+
+            auto barWin = std::make_unique<Window::Bar>(title);
+            if (hasData) {
+                barWin->addColumn(fileType, archive, column);
+            }
+            barWin->setMetricType(static_cast<MetricType>(metricVal));
+
+            // Orientation and scale limits
+            file >> barWin->m_orientation;
+            file >> barWin->m_useManualLimits;
+            file >> barWin->m_minVal;
+            file >> barWin->m_maxVal;
+
+            // Colors
+            file >> barWin->m_barColor[0] >> barWin->m_barColor[1] >> barWin->m_barColor[2] >> barWin->m_barColor[3];
+            file >> barWin->m_bgColor[0] >> barWin->m_bgColor[1] >> barWin->m_bgColor[2] >> barWin->m_bgColor[3];
+            file >> barWin->m_fgColor[0] >> barWin->m_fgColor[1] >> barWin->m_fgColor[2] >> barWin->m_fgColor[3];
+
+            // Text properties
+            file >> barWin->m_fontScale;
+            file >> barWin->m_showPercentage;
+            file >> barWin->m_showValue;
+            file >> barWin->m_showColumnName;
+            std::getline(file, dummy); // consume newline
+
+            std::string stripPattern, prefix, suffix;
+            std::getline(file, stripPattern);
+            strncpy(barWin->m_stripPattern, stripPattern.c_str(), sizeof(barWin->m_stripPattern));
+            std::getline(file, prefix);
+            strncpy(barWin->m_prefix, prefix.c_str(), sizeof(barWin->m_prefix));
+            std::getline(file, suffix);
+            strncpy(barWin->m_suffix, suffix.c_str(), sizeof(barWin->m_suffix));
+
+            // Thresholds
+            file >> barWin->m_useThresholds;
+            file >> barWin->m_threshLL;
+            file >> barWin->m_threshL;
+            file >> barWin->m_threshH;
+            file >> barWin->m_threshHH;
+
+            auto loadBarConf = [&](BarThresholdConfig& conf) {
+                file >> conf.enabled;
+                file >> conf.color[0] >> conf.color[1] >> conf.color[2] >> conf.color[3];
+            };
+
+            loadBarConf(barWin->m_confLL);
+            loadBarConf(barWin->m_confL);
+            loadBarConf(barWin->m_confNormal);
+            loadBarConf(barWin->m_confH);
+            loadBarConf(barWin->m_confHH);
+            std::getline(file, dummy); // consume newline
+
+            windows.emplace_back(std::move(barWin));
         } else if (type == "Graph") {
             auto graphWin = std::make_unique<Window::Graph>(title);
             auto& graph = graphWin->getGraph();
