@@ -56,6 +56,8 @@ void Window::Numeric::render() {
 
     float* targetBg = nullptr;
     float* targetFg = nullptr;
+    float interpolatedBg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
+    float interpolatedFg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
     if (hasVal && m_colorMode > 0) {
         if (m_colorMode == 1) {
@@ -83,6 +85,19 @@ void Window::Numeric::render() {
                     break;
                 }
             }
+        } else if (m_colorMode == 3) {
+            double t = 0.0;
+            if (m_gradMaxVal > m_gradMinVal) {
+                t = (computedVal - m_gradMinVal) / (m_gradMaxVal - m_gradMinVal);
+                if (t < 0.0) t = 0.0;
+                if (t > 1.0) t = 1.0;
+            }
+            interpolatedBg[0] = m_gradMinColor[0] * (1.0f - t) + m_gradMaxColor[0] * t;
+            interpolatedBg[1] = m_gradMinColor[1] * (1.0f - t) + m_gradMaxColor[1] * t;
+            interpolatedBg[2] = m_gradMinColor[2] * (1.0f - t) + m_gradMaxColor[2] * t;
+            interpolatedBg[3] = m_gradMinColor[3] * (1.0f - t) + m_gradMaxColor[3] * t;
+            targetBg = interpolatedBg;
+            targetFg = interpolatedFg;
         }
     }
 
@@ -117,12 +132,12 @@ void Window::Numeric::render() {
             } else {
                 std::string label = m_loadedData.archive + ": " + m_loadedData.column;
                 ImGui::TextUnformatted(label.c_str());
-                if (ImGui::Button("Remover Dados (X)")) {
+                ImGui::SameLine();
+                if (ImGui::SmallButton("X##removeData")) {
                     m_hasData         = false;
                     m_loadedData.data = nullptr;
                     ImGui::CloseCurrentPopup();
                 }
-                
                 ImGui::Separator();
                 ImGui::Text("Exibição:");
                 if (ImGui::RadioButton("Último Valor", m_currentMetric == MetricType::LAST)) {
@@ -212,6 +227,7 @@ void Window::Numeric::render() {
             ImGui::RadioButton("Nenhuma", &m_colorMode, 0);
             ImGui::RadioButton("Por Faixas (L, LL, H, HH)", &m_colorMode, 1);
             ImGui::RadioButton("Valores Específicos", &m_colorMode, 2);
+            ImGui::RadioButton("Gradiente Dinâmico", &m_colorMode, 3);
 
             if (m_colorMode == 1) {
                 ImGui::Separator();
@@ -267,6 +283,18 @@ void Window::Numeric::render() {
                 if (ImGui::Button("Adicionar Regra")) {
                     m_specificRules.push_back({0.0, {0.15f, 0.15f, 0.15f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}});
                 }
+            } else if (m_colorMode == 3) {
+                ImGui::Separator();
+                ImGui::Text("Limites do Gradiente:");
+                ImGui::PushItemWidth(120.0f);
+                ImGui::InputDouble("Valor Mínimo##num", &m_gradMinVal, 0.1, 1.0, "%.2f");
+                ImGui::SameLine();
+                ImGui::ColorEdit4("##gradMinColor_num", m_gradMinColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                
+                ImGui::InputDouble("Valor Máximo##num", &m_gradMaxVal, 0.1, 1.0, "%.2f");
+                ImGui::SameLine();
+                ImGui::ColorEdit4("##gradMaxColor_num", m_gradMaxColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                ImGui::PopItemWidth();
             }
             ImGui::EndMenu();
         }

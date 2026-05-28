@@ -71,7 +71,7 @@ namespace Window {
             bool m_useTranslation = false;
             std::vector<TranslationRule> m_translationRules;
 
-            int m_colorMode = 0; // 0 = Nenhuma, 1 = Por Faixas, 2 = Valores Específicos
+            int m_colorMode = 0; // 0 = Nenhuma, 1 = Por Faixas, 2 = Valores Específicos, 3 = Gradiente Dinâmico
             double m_threshLL = 0.0;
             double m_threshL = 0.0;
             double m_threshH = 0.0;
@@ -82,6 +82,12 @@ namespace Window {
             ColorThresholdConfig m_confH;
             ColorThresholdConfig m_confHH;
             std::vector<SpecificColorRule> m_specificRules;
+
+            // Continuous Gradient Mode properties
+            double m_gradMinVal = 20.0;
+            double m_gradMaxVal = 80.0;
+            float m_gradMinColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // Blue
+            float m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // Red
 
             float m_fontScale = 1.0f;
             bool m_showColumnName = true;

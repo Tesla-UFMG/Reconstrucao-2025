@@ -74,6 +74,14 @@ namespace Window {
             BarThresholdConfig m_confH;
             BarThresholdConfig m_confHH;
 
+            // Continuous Gradient Configs
+            bool   m_useGradient  = false;  // kept for serialization compat
+            int    m_colorBarMode  = 0;     // 0=none, 1=gradient, 2=thresholds (unified)
+            double m_gradMinVal = 0.0;
+            double m_gradMaxVal = 100.0;
+            float m_gradMinColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // Blue/Cyan
+            float m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // Red
+
         private:
             void processColumnDragDrop();
 

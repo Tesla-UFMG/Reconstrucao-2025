@@ -20,6 +20,8 @@
 #include "ui/windows/w_Numeric.hpp"
 #include "ui/windows/w_Graph.hpp"
 #include "ui/windows/w_Bar.hpp"
+#include "ui/windows/w_Warning.hpp"
+#include "ui/windows/w_Matrix.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -46,6 +48,7 @@ struct VisibilityFlags {
         bool showImGuiDemo      = false;
         bool showStatistics     = false;
         bool showTelemetry      = false;
+        bool showWarnings       = false;
 };
 
 namespace Window {
@@ -84,6 +87,7 @@ public:
         void createNumericWindow();
         void createGraphWindow();
         void createBarWindow();
+        void createMatrixWindow();
 };
 
 #endif // WINDOW_HPP

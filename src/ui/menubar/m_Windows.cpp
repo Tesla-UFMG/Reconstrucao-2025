@@ -35,6 +35,7 @@ void MenuBar::Windows() {
 
         MenuBar::changeWindowVisibility("Selecionador de Dados", &vw.visibility.showDataPicker);
         MenuBar::changeWindowVisibility("Telemetria", &vw.visibility.showTelemetry);
+        MenuBar::changeWindowVisibility("Avisos", &vw.visibility.showWarnings);
         MenuBar::changeWindowVisibility("Reconstrução de Pista", &vw.visibility.showReconstruction);
         MenuBar::changeWindowVisibility("Plot", &vw.visibility.showPlot);
         MenuBar::changeWindowVisibility("Estatísticas", &vw.visibility.showStatistics);
@@ -49,6 +50,12 @@ void MenuBar::Windows() {
         if (ImGui::BeginMenu("Barra")) {
             if (ImGui::MenuItem("Criar Nova Janela")) {
                 vw.createBarWindow();
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Matriz de Dados")) {
+            if (ImGui::MenuItem("Criar Nova Janela")) {
+                vw.createMatrixWindow();
             }
             ImGui::EndMenu();
         }

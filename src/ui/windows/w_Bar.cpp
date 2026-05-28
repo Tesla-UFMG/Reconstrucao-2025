@@ -63,19 +63,32 @@ void Window::Bar::render() {
     double pct = (val - minL) / range;
     pct = std::clamp(pct, 0.0, 1.0);
 
-    // Determine bar color from thresholds (if active)
+    // Determine bar color from mode
     float* targetColor = m_barColor;
-    if (hasVal && m_useThresholds) {
-        if (m_confHH.enabled && val > m_threshHH) {
-            targetColor = m_confHH.color;
-        } else if (m_confH.enabled && val > m_threshH) {
-            targetColor = m_confH.color;
-        } else if (m_confLL.enabled && val < m_threshLL) {
-            targetColor = m_confLL.color;
-        } else if (m_confL.enabled && val < m_threshL) {
-            targetColor = m_confL.color;
-        } else if (m_confNormal.enabled) {
-            targetColor = m_confNormal.color;
+    float interpolatedColor[4] = {0.0f, 0.8f, 0.0f, 1.0f};
+
+    if (hasVal) {
+        if (m_colorBarMode == 1) { // Gradient — uses dedicated grad limits
+            double gradRange = m_gradMaxVal - m_gradMinVal;
+            double t = (std::abs(gradRange) > 1e-6) ? (val - m_gradMinVal) / gradRange : 0.0;
+            t = std::clamp(t, 0.0, 1.0);
+            interpolatedColor[0] = m_gradMinColor[0] * (1.0f - t) + m_gradMaxColor[0] * t;
+            interpolatedColor[1] = m_gradMinColor[1] * (1.0f - t) + m_gradMaxColor[1] * t;
+            interpolatedColor[2] = m_gradMinColor[2] * (1.0f - t) + m_gradMaxColor[2] * t;
+            interpolatedColor[3] = m_gradMinColor[3] * (1.0f - t) + m_gradMaxColor[3] * t;
+            targetColor = interpolatedColor;
+        } else if (m_colorBarMode == 2) { // Thresholds
+            if (m_confHH.enabled && val > m_threshHH) {
+                targetColor = m_confHH.color;
+            } else if (m_confH.enabled && val > m_threshH) {
+                targetColor = m_confH.color;
+            } else if (m_confLL.enabled && val < m_threshLL) {
+                targetColor = m_confLL.color;
+            } else if (m_confL.enabled && val < m_threshL) {
+                targetColor = m_confL.color;
+            } else if (m_confNormal.enabled) {
+                targetColor = m_confNormal.color;
+            }
         }
     }
 
@@ -99,12 +112,12 @@ void Window::Bar::render() {
             } else {
                 std::string label = m_loadedData.archive + ": " + m_loadedData.column;
                 ImGui::TextUnformatted(label.c_str());
-                if (ImGui::Button("Remover Dados (X)")) {
+                ImGui::SameLine();
+                if (ImGui::SmallButton("X##removeData")) {
                     m_hasData         = false;
                     m_loadedData.data = nullptr;
                     ImGui::CloseCurrentPopup();
                 }
-                
                 ImGui::Separator();
                 ImGui::Text("Exibição:");
                 if (ImGui::RadioButton("Último Valor", m_currentMetric == MetricType::LAST)) {
@@ -152,25 +165,36 @@ void Window::Bar::render() {
             ImGui::EndMenu();
         }
 
-        // 3. Submenu: Customização de Cores
+        // 3. Submenu: Customização de Cores (unified)
         if (ImGui::BeginMenu("Customização de Cores")) {
-            ImGui::ColorEdit4("Cor da Barra", m_barColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
-            ImGui::ColorEdit4("Cor de Fundo", m_bgColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
-            ImGui::ColorEdit4("Cor do Texto/Borda", m_fgColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
-            ImGui::EndMenu();
-        }
+            ImGui::Text("Modo de Cores:");
+            if (ImGui::RadioButton("Nenhuma", m_colorBarMode == 0)) {
+                m_colorBarMode = 0;
+            }
+            if (ImGui::RadioButton("Gradiente Dinâmico", m_colorBarMode == 1)) {
+                m_colorBarMode = 1;
+            }
+            if (ImGui::RadioButton("Faixas (LL / L / Normal / H / HH)", m_colorBarMode == 2)) {
+                m_colorBarMode = 2;
+            }
 
-        // 4. Submenu: Limites de Cores (Bar Fill Color only)
-        if (ImGui::BeginMenu("Limites de Cores")) {
-            ImGui::Checkbox("Usar Limites de Faixas", &m_useThresholds);
-            if (m_useThresholds) {
+            if (m_colorBarMode == 1) {
                 ImGui::Separator();
-                
+                ImGui::Text("Limites do Gradiente:");
+                ImGui::PushItemWidth(120.0f);
+                ImGui::InputDouble("Valor Mínimo##bar", &m_gradMinVal, 0.1, 1.0, "%.2f");
+                ImGui::SameLine();
+                ImGui::ColorEdit4("##gradMinColor_bar", m_gradMinColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                ImGui::InputDouble("Valor Máximo##bar", &m_gradMaxVal, 0.1, 1.0, "%.2f");
+                ImGui::SameLine();
+                ImGui::ColorEdit4("##gradMaxColor_bar", m_gradMaxColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                ImGui::PopItemWidth();
+            } else if (m_colorBarMode == 2) {
+                ImGui::Separator();
                 auto renderBarThreshConf = [](const char* label, double* thresh, BarThresholdConfig& conf, bool hasThresh = true) {
                     ImGui::PushID(label);
                     ImGui::Checkbox("Habilitar", &conf.enabled);
                     if (conf.enabled) {
-                        // Failsafe alpha rescue
                         if (conf.color[3] < 0.01f) {
                             conf.color[0] = 0.0f; conf.color[1] = 0.8f; conf.color[2] = 0.0f; conf.color[3] = 1.0f;
                         }
@@ -190,15 +214,15 @@ void Window::Bar::render() {
                 };
 
                 renderBarThreshConf("LL (Muito Baixo)", &m_threshLL, m_confLL);
-                renderBarThreshConf("L (Baixo)", &m_threshL, m_confL);
-                renderBarThreshConf("Normal (Seguro)", nullptr, m_confNormal, false);
-                renderBarThreshConf("H (Alto)", &m_threshH, m_confH);
-                renderBarThreshConf("HH (Muito Alto)", &m_threshHH, m_confHH);
+                renderBarThreshConf("L (Baixo)",        &m_threshL,  m_confL);
+                renderBarThreshConf("Normal (Seguro)",  nullptr,     m_confNormal, false);
+                renderBarThreshConf("H (Alto)",         &m_threshH,  m_confH);
+                renderBarThreshConf("HH (Muito Alto)",  &m_threshHH, m_confHH);
             }
             ImGui::EndMenu();
         }
 
-        // 5. Submenu: Texto (Prefixo/Sufixo)
+        // 4. Submenu: Texto (Prefixo/Sufixo)
         if (ImGui::BeginMenu("Texto (Prefixo/Sufixo)")) {
             ImGui::PushItemWidth(120.0f);
             ImGui::InputText("Prefixo", m_prefix, sizeof(m_prefix));
@@ -207,7 +231,7 @@ void Window::Bar::render() {
             ImGui::EndMenu();
         }
 
-        // 6. Submenu: Tamanho do Texto
+        // 5. Submenu: Tamanho do Texto
         if (ImGui::BeginMenu("Tamanho do Texto")) {
             ImGui::PushItemWidth(120.0f);
             ImGui::SliderFloat("Escala do Texto", &m_fontScale, 0.5f, 5.0f, "%.1fx");

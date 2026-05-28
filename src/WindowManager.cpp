@@ -96,6 +96,7 @@ void WindowManager::setup() {
     // windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
     windows.emplace_back(std::make_unique<Window::Statistics>(&visibility.showStatistics));
     windows.emplace_back(std::make_unique<Window::Telemetry>(&visibility.showTelemetry));
+    windows.emplace_back(std::make_unique<Window::Warning>(&visibility.showWarnings));
 }
 
 void WindowManager::homePage() {
@@ -201,6 +202,33 @@ void WindowManager::createBarWindow() {
     LOG("INFO", "Criada nova janela de barra: " + windowTitle);
 }
 
+void WindowManager::createMatrixWindow() {
+    int maxIdx = 0;
+    for (const auto& w : windows) {
+        if (w->isDynamic() && w->getDynamicType() == "Matrix") {
+            auto* matWin = dynamic_cast<Window::Matrix*>(w.get());
+            if (matWin) {
+                std::string wTitle = matWin->getTitle();
+                size_t hashPos = wTitle.find('#');
+                if (hashPos != std::string::npos) {
+                    try {
+                        int idx = std::stoi(wTitle.substr(hashPos + 1));
+                        if (idx > maxIdx) {
+                            maxIdx = idx;
+                        }
+                    } catch (...) {}
+                }
+            }
+        }
+    }
+    std::string windowTitle = "Matriz #" + std::to_string(maxIdx + 1);
+
+    auto matWindow = std::make_unique<Window::Matrix>(windowTitle);
+    windows.emplace_back(std::move(matWindow));
+
+    LOG("INFO", "Criada nova janela de matriz: " + windowTitle);
+}
+
 void WindowManager::saveDynamicWindows(const std::string& filepath) {
     std::ofstream file(filepath);
     if (!file) {
@@ -276,6 +304,12 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     file << numWin->m_fontScale << "\n";
                     file << numWin->m_showColumnName << "\n";
                     file << numWin->m_stripPattern << "\n";
+
+                    // Gradient Configs
+                    file << numWin->m_gradMinVal << "\n";
+                    file << numWin->m_gradMaxVal << "\n";
+                    file << numWin->m_gradMinColor[0] << " " << numWin->m_gradMinColor[1] << " " << numWin->m_gradMinColor[2] << " " << numWin->m_gradMinColor[3] << "\n";
+                    file << numWin->m_gradMaxColor[0] << " " << numWin->m_gradMaxColor[1] << " " << numWin->m_gradMaxColor[2] << " " << numWin->m_gradMaxColor[3] << "\n";
                 }
             } else if (w->getDynamicType() == "Bar") {
                 auto* barWin = dynamic_cast<Window::Bar*>(w.get());
@@ -326,6 +360,16 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     saveBarConf(barWin->m_confNormal);
                     saveBarConf(barWin->m_confH);
                     saveBarConf(barWin->m_confHH);
+
+                    // Bar Gradient Configs
+                    file << barWin->m_useGradient << "\n";
+                    file << barWin->m_gradMinColor[0] << " " << barWin->m_gradMinColor[1] << " " << barWin->m_gradMinColor[2] << " " << barWin->m_gradMinColor[3] << "\n";
+                    file << barWin->m_gradMaxColor[0] << " " << barWin->m_gradMaxColor[1] << " " << barWin->m_gradMaxColor[2] << " " << barWin->m_gradMaxColor[3] << "\n";
+
+                    // Unified color mode + gradient limits
+                    file << barWin->m_colorBarMode << "\n";
+                    file << barWin->m_gradMinVal << "\n";
+                    file << barWin->m_gradMaxVal << "\n";
                 }
             } else if (w->getDynamicType() == "Graph") {
                 auto* graphWin = dynamic_cast<Window::Graph*>(w.get());
@@ -348,6 +392,42 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                         file << gd.fileName << "\n";
                         file << gd.fileType << "\n";
                         file << gd.multiplier << "\n";
+                    }
+                }
+            } else if (w->getDynamicType() == "Matrix") {
+                auto* matWin = dynamic_cast<Window::Matrix*>(w.get());
+                if (matWin) {
+                    file << matWin->getTitle() << "\n";
+                    file << matWin->m_colorMode << "\n";
+                    file << matWin->m_minVal << "\n";
+                    file << matWin->m_maxVal << "\n";
+                    file << matWin->m_minColor[0] << " " << matWin->m_minColor[1] << " " << matWin->m_minColor[2] << " " << matWin->m_minColor[3] << "\n";
+                    file << matWin->m_maxColor[0] << " " << matWin->m_maxColor[1] << " " << matWin->m_maxColor[2] << " " << matWin->m_maxColor[3] << "\n";
+                    file << matWin->m_threshLL << "\n";
+                    file << matWin->m_threshL  << "\n";
+                    file << matWin->m_threshH  << "\n";
+                    file << matWin->m_threshHH << "\n";
+
+                    auto saveMatConf = [&](const ColorThresholdConfig& conf) {
+                        file << conf.enabled << "\n";
+                        file << conf.bg[0] << " " << conf.bg[1] << " " << conf.bg[2] << " " << conf.bg[3] << "\n";
+                        file << conf.fg[0] << " " << conf.fg[1] << " " << conf.fg[2] << " " << conf.fg[3] << "\n";
+                    };
+                    saveMatConf(matWin->m_confLL);
+                    saveMatConf(matWin->m_confL);
+                    saveMatConf(matWin->m_confNormal);
+                    saveMatConf(matWin->m_confH);
+                    saveMatConf(matWin->m_confHH);
+
+                    // Columns
+                    file << matWin->m_columns.size() << "\n";
+                    for (const auto& col : matWin->m_columns) {
+                        file << col.fileType    << "\n";
+                        file << col.archiveName << "\n";
+                        file << col.variables.size() << "\n";
+                        for (const auto& var : col.variables) {
+                            file << var << "\n";
+                        }
                     }
                 }
             }
@@ -378,7 +458,7 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
 
         std::string type = "Numeric";
         std::string title;
-        if (line == "Numeric" || line == "Graph" || line == "Bar") {
+        if (line == "Numeric" || line == "Graph" || line == "Bar" || line == "Matrix") {
             type = line;
             if (!std::getline(file, title)) break;
         } else {
@@ -481,6 +561,16 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                 }
             }
 
+            // Safe check for backward compatibility of Gradient config
+            double gradMinVal = 20.0;
+            if (file >> gradMinVal) {
+                numWin->m_gradMinVal = gradMinVal;
+                file >> numWin->m_gradMaxVal;
+                file >> numWin->m_gradMinColor[0] >> numWin->m_gradMinColor[1] >> numWin->m_gradMinColor[2] >> numWin->m_gradMinColor[3];
+                file >> numWin->m_gradMaxColor[0] >> numWin->m_gradMaxColor[1] >> numWin->m_gradMaxColor[2] >> numWin->m_gradMaxColor[3];
+                std::getline(file, dummy); // consume newline
+            }
+
             windows.emplace_back(std::move(numWin));
         } else if (type == "Bar") {
             bool hasData = false;
@@ -549,6 +639,24 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
             loadBarConf(barWin->m_confHH);
             std::getline(file, dummy); // consume newline
 
+            // Safe check for backward compatibility of Bar gradient config
+            bool useGradient = false;
+            if (file >> useGradient) {
+                barWin->m_useGradient = useGradient;
+                file >> barWin->m_gradMinColor[0] >> barWin->m_gradMinColor[1] >> barWin->m_gradMinColor[2] >> barWin->m_gradMinColor[3];
+                file >> barWin->m_gradMaxColor[0] >> barWin->m_gradMaxColor[1] >> barWin->m_gradMaxColor[2] >> barWin->m_gradMaxColor[3];
+                std::getline(file, dummy); // consume newline
+
+                // Safe check for new unified color mode
+                int colorBarMode = 0;
+                if (file >> colorBarMode) {
+                    barWin->m_colorBarMode = colorBarMode;
+                    file >> barWin->m_gradMinVal;
+                    file >> barWin->m_gradMaxVal;
+                    std::getline(file, dummy);
+                }
+            }
+
             windows.emplace_back(std::move(barWin));
         } else if (type == "Graph") {
             auto graphWin = std::make_unique<Window::Graph>(title);
@@ -590,6 +698,52 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
             }
 
             windows.emplace_back(std::move(graphWin));
+        } else if (type == "Matrix") {
+            auto matWin = std::make_unique<Window::Matrix>(title);
+
+            file >> matWin->m_colorMode;
+            file >> matWin->m_minVal;
+            file >> matWin->m_maxVal;
+            file >> matWin->m_minColor[0] >> matWin->m_minColor[1] >> matWin->m_minColor[2] >> matWin->m_minColor[3];
+            file >> matWin->m_maxColor[0] >> matWin->m_maxColor[1] >> matWin->m_maxColor[2] >> matWin->m_maxColor[3];
+            file >> matWin->m_threshLL;
+            file >> matWin->m_threshL;
+            file >> matWin->m_threshH;
+            file >> matWin->m_threshHH;
+
+            auto loadMatConf = [&](ColorThresholdConfig& conf) {
+                file >> conf.enabled;
+                file >> conf.bg[0] >> conf.bg[1] >> conf.bg[2] >> conf.bg[3];
+                file >> conf.fg[0] >> conf.fg[1] >> conf.fg[2] >> conf.fg[3];
+            };
+            loadMatConf(matWin->m_confLL);
+            loadMatConf(matWin->m_confL);
+            loadMatConf(matWin->m_confNormal);
+            loadMatConf(matWin->m_confH);
+            loadMatConf(matWin->m_confHH);
+
+            size_t numCols = 0;
+            file >> numCols;
+            std::getline(file, dummy); // consume newline
+
+            matWin->m_columns.clear();
+            for (size_t ci = 0; ci < numCols; ci++) {
+                MatrixColumn col;
+                std::getline(file, col.fileType);
+                std::getline(file, col.archiveName);
+                size_t numVars = 0;
+                file >> numVars;
+                std::getline(file, dummy);
+                col.variables.clear();
+                for (size_t vi = 0; vi < numVars; vi++) {
+                    std::string var;
+                    std::getline(file, var);
+                    col.variables.push_back(var);
+                }
+                matWin->m_columns.push_back(col);
+            }
+
+            windows.emplace_back(std::move(matWin));
         }
     }
 }
