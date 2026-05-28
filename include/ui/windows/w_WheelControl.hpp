@@ -10,7 +10,6 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp" 
 #include "ui/windows/iWindow.hpp"
-#include "ui/windows/IPlayable.hpp"
 #include "DB.hpp"
 
 #define VOLANTE_PATH "assets/volantetesla.png"
@@ -25,22 +24,12 @@ struct WheelData {
 };
 
 namespace Window {
-    class WheelControl : public IWindow, public IPlayable {
+    class WheelControl : public IWindow {
         public:
             explicit WheelControl(bool* isOpen = nullptr);
             virtual void render() override;
 
-            // --- Implementação da Interface IPlayable ---
-            void play() override;
-            void pause() override;
-            void seek(double position) override;
-            bool isPlaying() const override;
-            bool isLoaded() const override;
-            double getCurrentTime() const override;
-            double getDuration() const override;
-            const char* getTitle() const override;
-            float getStepSize() const override;
-            void setStepSize(float size) override;
+            bool isLoaded() const;
 
         private:
             // --- Métodos privados para Drag-and-Drop ---

@@ -11,15 +11,13 @@
 #include "ui/windows/w_Demo.hpp"
 #include "ui/windows/w_HomePage.hpp"
 #include "ui/windows/w_Pedal.hpp"
-#include "ui/windows/w_Playback.hpp"
 #include "ui/windows/w_Plot.hpp"
 #include "ui/windows/w_Statistics.hpp"
 #include "ui/windows/w_Telemetry.hpp"
 #include "ui/windows/w_Terminal.hpp"
-#include "ui/windows/w_Video.hpp"
 #include "ui/windows/w_WheelControl.hpp"
-#include "ui/windows/w_Reconstruction.hpp"
-#include "ui/windows/IPlayable.hpp" 
+#include "ui/windows/w_Reconstruction.hpp" 
+#include "ui/windows/w_Numeric.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -34,10 +32,8 @@ struct SDL_Renderer;
 
 struct VisibilityFlags {
     public:
-        bool showPlayback       = false;
         bool showDataPicker     = false;
         bool showReconstruction = false;
-        bool showVideo          = false;
         bool showPlot           = false;
         bool showLog            = false;
         bool showWheelControl   = false;
@@ -63,9 +59,10 @@ class WindowManager {
         SDL_Renderer*                         m_renderer = nullptr;
 
         // Estes ponteiros servem apenas para facilitar a comunicação entre janelas.
-        Window::Video* m_videoWindow = nullptr;
         Window::Reconstruction* m_reconstructionWindow = nullptr;
-        Window::Playback* m_playbackWindow = nullptr;
+        Window::About* m_aboutWindow = nullptr;
+        void saveDynamicWindows(const std::string& filepath);
+        void loadDynamicWindows(const std::string& filepath);
 
 public:
     WindowManager(WindowManager&&)            = delete;
@@ -82,6 +79,7 @@ public:
         void menuBar();
         void homePage();
         void mainPage();
+        void createNumericWindow();
 };
 
 #endif // WINDOW_HPP

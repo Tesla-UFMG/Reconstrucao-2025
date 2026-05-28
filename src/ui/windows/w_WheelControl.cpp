@@ -32,130 +32,99 @@ void DrawRotatedImage(ImTextureID texture, const ImVec2& pos, float size, float 
 
 Window::WheelControl::WheelControl(bool* isOpen) : IWindow(isOpen) {
     this->title = "Controle do Volante";
-    this->flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar;
+    this->flags = ImGuiWindowFlags_NoScrollbar;
 }
 
 void Window::WheelControl::render() {
     if (!this->isOpen || !*this->isOpen) return;
 
-    // Variáveis de estado da UI e do volante
+    // Variáveis de estado do volante
     static float anguloVolante = 0.0f;
-    static float sensibilidade = 1.0f;
-    static int   anguloMaximo  = 900;
 
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
-    // --- BARRA DE MENU ---
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Configurações")) {
-            ImGui::SliderFloat("Sensibilidade (Teclado)", &sensibilidade, 0.1f, 5.0f, "%.1f");
-            ImGui::SliderInt("Ângulo Máximo", &anguloMaximo, 90, 1080);
-            ImGui::SliderFloat("Velocidade Playback", &m_playbackSpeed, 1.0f, 240.0f, "%.1f dados/s");
-            ImGui::Separator();
-            ImGui::Checkbox("Dados da coluna já estão em Graus", &m_dataIsDegrees);
-            ImGui::Separator();
-            ImGui::Text("Ângulo Atual: %.1f°", anguloVolante);
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Fonte de Dados")) {
-            if (!isLoaded()) {
-                ImGui::MenuItem("(Nenhum dado carregado)", nullptr, false, false);
-            } else {
-                ImGui::PushID(0);
-                if (ImGui::SmallButton("X")) {
-                    removeColumn(m_steerIndex);
-                } else {
-                    ImGui::SameLine();
-                    std::string label = m_dataList[m_steerIndex].archive + ": " + m_dataList[m_steerIndex].column;
-                    ImGui::TextUnformatted(label.c_str());
-                }
-                ImGui::PopID();
-            }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-    
-    // --- Lógica de avanço de tempo e modo "ao vivo" ---
-    if (isLoaded()) {
-        if (m_isPlaying) {
-            m_currentTime += ImGui::GetIO().DeltaTime * m_playbackSpeed;
-            if (m_currentTime > getDuration()) {
-                m_currentTime = getDuration();
-                m_isPlaying = false;
-            }
+    // --- Definir a área inteira da janela como Drag and Drop Target (Estratégia idêntica à janela Statistics) ---
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+    ImGui::Dummy(avail);
+    processColumnDragDrop();
+    ImGui::SetCursorScreenPos(ImGui::GetItemRectMin());
+
+    // --- Menu de contexto no clique com o botão direito ---
+    if (ImGui::BeginPopupContextWindow()) {
+        ImGui::Text("Dados Selecionados:");
+        ImGui::Separator();
+        if (!isLoaded()) {
+            ImGui::TextDisabled("(Nenhum dado carregado)");
         } else {
-            m_currentTime = getDuration();
-        }
-    }
-    
-    // --- Lógica de cálculo do ângulo do volante ---
-    if (isLoaded()) {
-        size_t time_idx = static_cast<size_t>(m_currentTime);
-        const auto& wheelData = m_dataList[m_steerIndex];
-        if (time_idx < wheelData.data->size()) {
-            double rawValue = (*wheelData.data)[time_idx];
-            if (m_dataIsDegrees) {
-                anguloVolante = static_cast<float>(rawValue);
+            ImGui::PushID(0);
+            if (ImGui::Button("Remover Dados (X)")) {
+                removeColumn(m_steerIndex);
+                ImGui::CloseCurrentPopup();
             } else {
-                double range = wheelData.maxValue - wheelData.minValue;
-                double normalizedValue = 0.0;
-                if (range > 0) {
-                    normalizedValue = 2.0 * ((rawValue - wheelData.minValue) / range) - 1.0;
-                }
-                anguloVolante = static_cast<float>(normalizedValue * (anguloMaximo / 2.0));
+                ImGui::SameLine();
+                std::string label = m_dataList[m_steerIndex].archive + ": " + m_dataList[m_steerIndex].column;
+                ImGui::TextUnformatted(label.c_str());
             }
+            ImGui::PopID();
         }
-    } else {
-        const Uint8* keystates = SDL_GetKeyboardState(NULL);
-        if (keystates[SDL_SCANCODE_LEFT]) anguloVolante -= 5.0f * sensibilidade;
-        if (keystates[SDL_SCANCODE_RIGHT]) anguloVolante += 5.0f * sensibilidade;
+        ImGui::EndPopup();
     }
 
-    anguloVolante = std::clamp(anguloVolante, -anguloMaximo / 2.0f, anguloMaximo / 2.0f);
+    // --- Lógica de cálculo do ângulo do volante baseada no último valor do vetor continuamente ---
+    if (isLoaded()) {
+        const auto& wheelData = m_dataList[m_steerIndex];
+        if (!wheelData.data->empty()) {
+            double rawValue = wheelData.data->back();
+            anguloVolante = static_cast<float>(rawValue);
+        }
+    } else {
+        anguloVolante = 0.0f;
+    }
 
     // --- Desenho do Volante ---
     SDL_Texture* volanteTexture = AssetManager::getInstance().getTexture(VOLANTE_PATH);
     if (volanteTexture) {
-        ImVec2 avail = ImGui::GetContentRegionAvail();
-        float size = std::min(avail.x, avail.y) * 0.9f;
+        ImVec2 startCursorPos = ImGui::GetCursorPos();
+        float textHeight = ImGui::GetTextLineHeightWithSpacing();
+        float size = std::min(avail.x, avail.y - textHeight - 15.0f) * 0.9f;
+        if (size < 0) size = 0;
+
         ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-        cursorPos.x += (avail.x - size) * 0.5f;
-        cursorPos.y += (avail.y - size) * 0.5f;
+        float startX = cursorPos.x + (avail.x - size) * 0.5f;
+        float startY = cursorPos.y + (avail.y - textHeight - size) * 0.5f;
 
-        DrawRotatedImage((ImTextureID)volanteTexture, cursorPos, size, anguloVolante);
-        ImGui::Dummy(ImVec2(avail.x, size)); 
+        DrawRotatedImage((ImTextureID)volanteTexture, ImVec2(startX, startY), size, anguloVolante);
+        
+        // Formatar apenas o valor numérico com o símbolo "°"
+        double valorExibido = 0.0;
+        if (isLoaded()) {
+            const auto& wheelData = m_dataList[m_steerIndex];
+            if (!wheelData.data->empty()) {
+                valorExibido = wheelData.data->back();
+            }
+        }
+        char formattedText[32];
+        snprintf(formattedText, sizeof(formattedText), "%.2f°", valorExibido);
+
+        // Obter tamanho do texto para centralizar
+        float textWidth = ImGui::CalcTextSize(formattedText).x;
+
+        // Calcular posições locais e setar cursor localmente para desenhar o texto
+        float localStartY = startCursorPos.y + (avail.y - textHeight - size) * 0.5f;
+        float localTextX = startCursorPos.x + (avail.x - textWidth) * 0.5f;
+        float localTextY = localStartY + size + 8.0f;
+
+        ImGui::SetCursorPos(ImVec2(localTextX, localTextY));
+        ImGui::TextUnformatted(formattedText);
+
+        // Resetar o cursor da janela para o final da janela
+        ImGui::SetCursorPos(ImVec2(startCursorPos.x, startCursorPos.y + avail.y));
     }
-
-    processColumnDragDrop();
 
     ImGui::End();
 }
 
-// --- Implementação da Interface IPlayable para w_WheelControl ---
-void Window::WheelControl::play() { m_isPlaying = true; }
-void Window::WheelControl::pause() { m_isPlaying = false; }
-
-void Window::WheelControl::seek(double position) {
-    if (isLoaded()) {
-        m_currentTime = std::max(0.0, std::min(position, getDuration()));
-    }
-}
-
-bool Window::WheelControl::isPlaying() const { return m_isPlaying; }
 bool Window::WheelControl::isLoaded() const { return m_steerIndex != -1; }
-double Window::WheelControl::getCurrentTime() const { return m_currentTime; }
-
-double Window::WheelControl::getDuration() const {
-    if (isLoaded()) {
-        return static_cast<double>(m_dataList[m_steerIndex].data->size() - 1);
-    }
-    return 0.0;
-}
-
-const char* Window::WheelControl::getTitle() const { return this->title.c_str(); }
-float Window::WheelControl::getStepSize() const { return m_stepSize; }
-void Window::WheelControl::setStepSize(float size) { m_stepSize = size; }
 
 void Window::WheelControl::processColumnDragDrop() {
     if (ImGui::BeginDragDropTarget()) {
@@ -169,27 +138,23 @@ void Window::WheelControl::processColumnDragDrop() {
 }
 
 void Window::WheelControl::addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
-    // Verifica se a coluna já não foi adicionada
-    for (const auto& data : m_dataList) {
-        if (data.archive == fileName && data.column == columnName) {
-            LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já foi adicionada ao Volante.");
-            return;
-        }
-    }
+    // Limpa colunas anteriores (o volante utiliza apenas uma coluna ativa por vez)
+    m_dataList.clear();
+    m_steerIndex = -1;
     
     WheelData wd;
     wd.archive = fileName;
     wd.column = columnName;
 
-    // Lógica para carregar dados de diferentes fontes
+    // Carregar dados dependendo da fonte (CSV ou Telemetria)
     if (fileType == "CSV") {
-        wd.data = &DB::getInstance().getCSVData(fileName, columnName); // <-- ALTERADO: '&'
+        wd.data = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        wd.data = &DB::getInstance().getTelemetryData(fileName, columnName); // <-- ALTERADO: '&'
+        wd.data = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (wd.data->empty()) {
-        LOG("ERROR", "Não foi possível carregar os dados para a coluna " + columnName);
+    if (!wd.data || wd.data->empty()) {
+        LOG("ERROR", "[Volante] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "' (Vetor vazio ou inexistente).");
         return;
     }
 
@@ -200,21 +165,13 @@ void Window::WheelControl::addColumn(const std::string& fileType, const std::str
     }
 
     m_dataList.push_back(wd);
-    int newIndex = m_dataList.size() - 1;
+    m_steerIndex = 0; // Vincula imediatamente como a coluna ativa do volante
 
-    std::string lowerColumn = columnName;
-    std::transform(lowerColumn.begin(), lowerColumn.end(), lowerColumn.begin(), ::tolower);
-
-    if (lowerColumn.find("steer") != std::string::npos || 
-        lowerColumn.find("steering") != std::string::npos ||
-        lowerColumn.find("volante") != std::string::npos) {
-        m_steerIndex = newIndex;
-        LOG("INFO", "Coluna de Volante (" + fileType + ") adicionada.");
-    }
+    LOG("INFO", "[Volante] Dados carregados com sucesso! Coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(wd.data->size()));
 }
 
 void Window::WheelControl::removeColumn(int index) {
-    if (index >= m_dataList.size()) return;
+    if (index < 0 || static_cast<size_t>(index) >= m_dataList.size()) return;
     if (index == m_steerIndex) m_steerIndex = -1;
     m_dataList.erase(m_dataList.begin() + index);
     if (m_steerIndex > index) m_steerIndex--;

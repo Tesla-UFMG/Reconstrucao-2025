@@ -8,45 +8,9 @@
 #include <vector>
 #include <sstream>
 
-void Window::Reconstruction::play() {
-    m_isSimulating = true;
-}
-
-void Window::Reconstruction::pause() {
-    m_isSimulating = false;
-}
-
-void Window::Reconstruction::seek(double position) {
-    if (!m_track.empty()) {
-        LOG("DEBUG", "[Reconstruction::seek] Função chamada com a posição: " + std::to_string(position));
-        LOG("DEBUG", "[Reconstruction::seek] m_kartPosition ANTES: " + std::to_string(m_kartPosition));
-
-        m_kartPosition = static_cast<float>(std::max(0.0, std::min(position, (double)m_track.size() - 1.0)));
-        m_seekJustOccurred = true;
-
-        LOG("DEBUG", "[Reconstruction::seek] m_kartPosition DEPOIS: " + std::to_string(m_kartPosition));
-        LOG("DEBUG", "[Reconstruction::seek] Flag m_seekJustOccurred definida como TRUE.");
-    } else {
-        LOG("WARN", "[Reconstruction::seek] Chamada ignorada pois a pista (m_track) está vazia.");
-    }
-}
-
-bool Window::Reconstruction::isPlaying() const {
-    return m_isSimulating;
-}
-
 bool Window::Reconstruction::isLoaded() const {
     return m_latIndex != -1 && m_lonIndex != -1;
 }
-
-double Window::Reconstruction::getCurrentTime() const {
-    return static_cast<double>(m_kartPosition);
-}
-
-double Window::Reconstruction::getDuration() const {
-    return m_track.empty() ? 0.0 : static_cast<double>(m_track.size() - 1.0);
-}
-
 
 void Window::Reconstruction::ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY) {
     // Converte lat/lon em coordenadas planas (equiretangular projection)
@@ -888,12 +852,4 @@ void Window::Reconstruction::DrawTrackAndKartAt(const std::vector<ImVec2>& scree
         // 4. Usa a cor escolhida para desenhar o círculo
         draw_list->AddCircleFilled(kartP, 8.0f * scale, kartColor);
     }
-}
-
-float Window::Reconstruction::getStepSize() const {
-    return m_stepSize;
-}
-
-void Window::Reconstruction::setStepSize(float size) {
-    m_stepSize = size;
 }

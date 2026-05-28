@@ -11,7 +11,6 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 #include "ui/windows/iWindow.hpp"
-#include "ui/windows/IPlayable.hpp"
 #include "DB.hpp"
 
 // Estrutura para os dados das colunas, similar a de outras janelas
@@ -23,22 +22,13 @@ struct PedalData {
 };
 
 namespace Window {
-    class Pedal : public IWindow, public IPlayable {
+    class Pedal : public IWindow {
         public:
             explicit Pedal(bool* isOpen = nullptr);
             virtual void render() override;
 
-            // --- Implementação da Interface IPlayable ---
-            void play() override;
-            void pause() override;
-            void seek(double position) override;
-            bool isPlaying() const override;
-            bool isLoaded() const override;
-            double getCurrentTime() const override;
-            double getDuration() const override;
-            const char* getTitle() const override;
-            float getStepSize() const override;
-            void setStepSize(float size) override;
+            bool isLoaded() const;
+            double getDuration() const;
 
         private:
             // --- Variáveis de estado movidas para consistência ---
@@ -59,8 +49,7 @@ namespace Window {
             float m_stepSize = 30.0f;
 
             // --- Texturas e Fontes ---
-            ImTextureID redPedalTexture;
-            ImTextureID greenPedalTexture;
+            bool m_showPedalImages = false;
     };
 
 } // namespace Window

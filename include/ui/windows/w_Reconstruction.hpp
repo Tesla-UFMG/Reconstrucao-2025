@@ -15,7 +15,6 @@
 #include "SDLWrapper.hpp"
 #include "ui/menubar/m_Utils.hpp"
 #include "ui/windows/iWindow.hpp"
-#include "ui/windows/IPlayable.hpp"
 
 #define MIN_COORD_SIZE 50.0
 #define MAX_COORD_SIZE 1600.0
@@ -71,22 +70,12 @@ struct RaceData {
 
 
 namespace Window {
-    class Reconstruction : public IWindow, public IPlayable {
+    class Reconstruction : public IWindow {
         public:
             explicit Reconstruction(bool* isOpen = nullptr);
             virtual void render() override;
 
-            // --- Interface IPlayable ---
-            void play() override;
-            void pause() override;
-            void seek(double position) override;
-            bool isPlaying() const override;
-            bool isLoaded() const override;
-            double getCurrentTime() const override;
-            double getDuration() const override;
-            const char* getTitle() const override { return this->title.c_str(); }
-            float getStepSize() const override; // -> Adicionado
-            void setStepSize(float size) override; // -> Adicionado
+            bool isLoaded() const;
 
 
         private:

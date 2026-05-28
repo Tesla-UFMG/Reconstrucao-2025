@@ -1,4 +1,4 @@
-WINDOWS := 1
+WINDOWS := 0
 CARD_VIDEO_RENDEREING := 1
 
 PROJECT := app
@@ -23,18 +23,17 @@ INCLUDES := -I./include \
 	-I./lib/rapidcsv\
 	-I./lib/implot3d\
 	-I./src/ui/windows\
-	-I./lib/ffmpeg/include\
 	-I./lib/serialib
 
 ifeq ($(WINDOWS), 1)
 	CXX := x86_64-w64-mingw32-g++
-	LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -Wl,--start-group -lavformat -lavcodec -lswscale -lavutil -Wl,--end-group -lbcrypt -mconsole -static-libgcc -static-libstdc++ -lcomdlg32 -lole32
-	LDFLAGS := -Llib/SDL2 -Llib/ffmpeg/lib
+	LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lbcrypt -mconsole -static-libgcc -static-libstdc++ -lcomdlg32 -lole32
+	LDFLAGS := -Llib/SDL2
 	OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
 else
 	CXX := g++
-	LINKFLAGS := -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -Wl,--start-group -lavformat -lavcodec -lswscale -lavutil -Wl,--end-group -lz -lpthread -lm -static-libgcc -static-libstdc++
-	LDFLAGS := -Llib/ffmpeg/lib
+	LINKFLAGS := -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lz -lpthread -lm -static-libgcc -static-libstdc++
+	LDFLAGS := 
 	OUTPUT := $(BUILD_FOLDER)/$(PROJECT)
 endif
 
