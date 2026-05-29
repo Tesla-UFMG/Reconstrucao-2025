@@ -124,7 +124,7 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
     for (const TelemetryFile& file : this->getProject().telemetryFiles) {
         const std::string                      packetName  = file.getName();
         const std::string                      packetId    = file.getPacketId();
-        const std::vector<std::vector<double>> data        = file.getData();
+        std::vector<std::vector<double>>       data        = file.getData();
         const std::vector<std::string>         date        = file.getDate();
         const std::vector<std::string>         columnNames = file.getColumnNames();
 
@@ -139,11 +139,16 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
             return false;
         }
 
-        // cabeçalho
+        // cabeçalho (only non-empty column names)
         ofs << "index,date,";
-        for (size_t i = 0; i < columnNames.size(); ++i) {
-            ofs << columnNames[i];
-            if (i + 1 < columnNames.size())
+        std::vector<std::string> validNames;
+        for (const auto &colName : columnNames) {
+            if (!colName.empty())
+                validNames.push_back(colName);
+        }
+        for (size_t i = 0; i < validNames.size(); ++i) {
+            ofs << validNames[i];
+            if (i + 1 < validNames.size())
                 ofs << ',';
         }
         ofs << '\n';
@@ -151,10 +156,29 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         // dados
         size_t numRows = data.empty() ? 0 : data[0].size();
         size_t numCols = data.size();
+        // Verify column count matches number of valid column names
+        size_t validColCount = 0;
+        for (const auto &colName : columnNames) {
+            if (!colName.empty())
+                ++validColCount;
+        }
+        if (numCols != validColCount) {
+            LOG("WARNING", "Mismatch between defined column names (" + std::to_string(validColCount) + ") and data columns (" + std::to_string(numCols) + "). Adjusting.");
+            if (numCols > validColCount) {
+                numCols = validColCount;
+            } else {
+                for (size_t i = numCols; i < validColCount; ++i) {
+                    data.push_back(std::vector<double>());
+                }
+                numCols = validColCount;
+            }
+        }
         for (size_t row = 0; row < numRows; ++row) {
             ofs << row << "," << date[row] << ",";
             for (size_t col = 0; col < numCols; ++col) {
-                ofs << data[col][row];
+                // If data for this column is missing for this row, write empty
+                if (row < data[col].size())
+                    ofs << data[col][row];
                 if (col + 1 < numCols)
                     ofs << ',';
             }

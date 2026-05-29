@@ -135,7 +135,7 @@ Janela dinâmica de barra - OK
 
 Janela/gráfico de força/aceleração
 
-Reformular janela do GNSS (ou criar gráfico XY?)
+Reformular janela do GNSS (ou criar gráfico XY?) - Ok
 
 Janela fazer anotações dos testes - mudar nome do teste facilmente e de piloto
 

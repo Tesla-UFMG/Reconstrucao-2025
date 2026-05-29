@@ -69,10 +69,16 @@ $(BUILD_FOLDER):
 	@mkdir -p $@ $@/assets
 	cp lib/SDL2/*.dll $(BUILD_FOLDER)
 	cp assets/* $(BUILD_FOLDER)/assets/ 
+
+	@mkdir -p $@ $@/maps
+	cp maps/* $(BUILD_FOLDER)/maps/
 else 
 $(BUILD_FOLDER):
 	@mkdir -p $@ $@/assets
 	cp assets/* $(BUILD_FOLDER)/assets/
+
+	@mkdir -p $@ $@/maps
+	cp maps/* $(BUILD_FOLDER)/maps/
 endif
 
 $(OBJ_FOLDER):
