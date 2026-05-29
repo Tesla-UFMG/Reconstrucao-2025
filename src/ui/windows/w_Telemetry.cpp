@@ -220,7 +220,8 @@ void Window::Telemetry::renderConfigMenu() {
 }
 
 void Window::Telemetry::renderPacketConfigMenu() {
-    ImGui::SeparatorText("Configuração dos Pacotes");
+    std::string configTitle = m_editMode ? "Configuração dos Pacotes (Modo Edição)" : "Configuração dos Pacotes";
+    ImGui::SeparatorText(configTitle.c_str());
     ImGui::BeginGroup();
     if (ImGui::BeginTable("##packetCfg", 2, ImGuiTableFlags_SizingFixedFit)) {
         ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
@@ -240,7 +241,11 @@ void Window::Telemetry::renderPacketConfigMenu() {
         ImGui::Text("ID do Pacote");
         ImGui::TableSetColumnIndex(1);
         ImGui::SetNextItemWidth(150.0f);
-        ImGui::InputText("##packet_id", this->packetId.data(), COLUMN_NAME_SIZE, ImGuiInputTextFlags_CharsNoBlank);
+        if (m_editMode) {
+            ImGui::TextDisabled("%s (Chave Única)", m_editPacketId.c_str());
+        } else {
+            ImGui::InputText("##packet_id", this->packetId.data(), COLUMN_NAME_SIZE, ImGuiInputTextFlags_CharsNoBlank);
+        }
         ImGui::EndTable();
     }
 
@@ -268,74 +273,98 @@ void Window::Telemetry::renderPacketConfigMenu() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    if (ImGui::Button("Salvar Configuração")) {
+    std::string buttonLabel = m_editMode ? "Salvar Alterações" : "Salvar Configuração";
+    if (ImGui::Button(buttonLabel.c_str())) {
         // Verifica o nome do pacote
-        if (std::string(this->packetName.data()).empty()) {
+        std::string packetName_ = stripNulls(this->packetName);
+        if (packetName_.empty()) {
             Dialogs::showErrorDialog("O nome do pacote não pode ser vazio.");
             ImGui::EndGroup();
             return;
         }
 
         // Verifica o id do pacote
-        if (std::string(this->packetId.data()).empty()) {
+        std::string packetId_ = m_editMode ? m_editPacketId : stripNulls(this->packetId);
+        if (packetId_.empty()) {
             Dialogs::showErrorDialog("O ID do pacote não pode ser vazio.");
             ImGui::EndGroup();
             return;
         }
 
-        // Verifica se o nome das colunas estão vazios
-        for (const auto& colName : this->packetColumnNames) {
-            if (std::string(colName.data()).empty()) {
-                Dialogs::showErrorDialog("Os nomes das colunas não podem ser vazios.");
-                ImGui::EndGroup();
-                return;
+        // Filtra colunas preenchidas
+        std::vector<std::string> packetColumnNames_;
+        for (size_t i = 0; i < this->packetColumnNames.size(); ++i) {
+            std::string colName = stripNulls(this->packetColumnNames[i]);
+            if (!colName.empty()) {
+                packetColumnNames_.push_back(colName);
             }
         }
 
-        // Verifica se os nomes das colunas são únicos
-        std::set<std::string> uniq;
-        for (auto& colBuf : packetColumnNames) {
-            uniq.insert(colBuf.data());
+        // Verifica se há pelo menos 1 coluna preenchida
+        if (packetColumnNames_.empty()) {
+            Dialogs::showErrorDialog("Você deve preencher pelo menos 1 coluna.");
+            ImGui::EndGroup();
+            return;
         }
-        if (uniq.size() != packetColumnNames.size()) {
+
+        // Verifica se os nomes das colunas preenchidas são únicos
+        std::set<std::string> uniq;
+        for (const auto& colName : packetColumnNames_) {
+            uniq.insert(colName);
+        }
+        if (uniq.size() != packetColumnNames_.size()) {
             Dialogs::showErrorDialog("Os nomes das colunas não podem se repetir.");
             ImGui::EndGroup();
             return;
         }
 
-        std::string              packetName_ = stripNulls(this->packetName);
-        std::string              packetId_   = stripNulls(this->packetId);
-        std::vector<std::string> packetColumnNames_(this->packetColumnNames.size());
-        for (size_t i = 0; i < this->packetColumnNames.size(); ++i) {
-            packetColumnNames_[i] = stripNulls(this->packetColumnNames[i]);
-        }
-
-        // Tenta salvar
-        if (DB::getInstance().getProject().loadPacket(packetName_, packetId_, packetColumnNames_)) {
-            this->clearAndResizeInputBuffers();
-            LOG("INFO", "Pacote salvo: " + packetName_);
+        // Tenta salvar ou atualizar
+        if (m_editMode) {
+            if (DB::getInstance().getProject().updatePacket(m_editPacketId, packetName_, packetColumnNames_)) {
+                this->clearAndResizeInputBuffers();
+                m_editMode = false;
+                m_editPacketId = "";
+                LOG("INFO", "Pacote atualizado: " + packetName_);
+            } else {
+                Dialogs::showErrorDialog("Erro ao atualizar o pacote.");
+            }
         } else {
-            std::string msg = "Pacote com o ID já existe. ID: " + packetId_;
-            Dialogs::showErrorDialog(msg);
-            LOG("ERROR", msg);
+            if (DB::getInstance().getProject().loadPacket(packetName_, packetId_, packetColumnNames_)) {
+                this->clearAndResizeInputBuffers();
+                LOG("INFO", "Pacote salvo: " + packetName_);
+            } else {
+                std::string msg = "Pacote com o ID já existe. ID: " + packetId_;
+                Dialogs::showErrorDialog(msg);
+                LOG("ERROR", msg);
+            }
         }
     }
+
+    if (m_editMode) {
+        ImGui::SameLine();
+        if (ImGui::Button("Cancelar")) {
+            this->clearAndResizeInputBuffers();
+            m_editMode = false;
+            m_editPacketId = "";
+        }
+    }
+
     ImGui::EndGroup();
 
     ImGui::BeginGroup();
     ImGui::SeparatorText("Pacotes Salvos:");
 
-    ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
-                            ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoHostExtendY | ImGuiTableFlags_Resizable |
-                            ImGuiTableFlags_HighlightHoveredColumn;
-    if (ImGui::BeginTable("##TelemetryTable", 11, flags)) {
+    ImGuiTableFlags tblFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
+                              ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoHostExtendY | ImGuiTableFlags_Resizable |
+                              ImGuiTableFlags_HighlightHoveredColumn;
+    if (ImGui::BeginTable("##TelemetryTable", 11, tblFlags)) {
         // Define cabeçalhos
         ImGui::TableSetupColumn("Nome do Pacote", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthStretch);
         for (int i = 0; i < 8; ++i) {
             ImGui::TableSetupColumn(("Col. " + std::to_string(i + 1)).c_str(), ImGuiTableColumnFlags_WidthStretch);
         }
-        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Ações", ImGuiTableColumnFlags_WidthFixed, 60.0f);
         ImGui::TableHeadersRow();
 
         const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
@@ -360,12 +389,41 @@ void Window::Telemetry::renderPacketConfigMenu() {
                 }
             }
 
-            // Coluna 3: Botão Remover
+            // Coluna 10: Botões Ações
             ImGui::TableSetColumnIndex(10);
             ImGui::PushID(telemetryFile.getPacketId().c_str());
+            if (ImGui::Button("E")) {
+                m_editMode = true;
+                m_editPacketId = telemetryFile.getPacketId();
+
+                // Carrega nome
+                this->packetName.clear();
+                this->packetName.resize(FILE_NAME_SIZE);
+                std::strncpy(this->packetName.data(), telemetryFile.getName().c_str(), FILE_NAME_SIZE);
+
+                // Carrega ID
+                this->packetId.clear();
+                this->packetId.resize(COLUMN_NAME_SIZE);
+                std::strncpy(this->packetId.data(), telemetryFile.getPacketId().c_str(), COLUMN_NAME_SIZE);
+
+                // Carrega colunas
+                for (int i = 0; i < 8; ++i) {
+                    this->packetColumnNames[i].clear();
+                    this->packetColumnNames[i].resize(COLUMN_NAME_SIZE);
+                }
+                for (size_t i = 0; i < telemetryFile.getColumnNames().size() && i < 8; ++i) {
+                    std::strncpy(this->packetColumnNames[i].data(), telemetryFile.getColumnNames()[i].c_str(), COLUMN_NAME_SIZE);
+                }
+            }
+            ImGui::SameLine();
             if (ImGui::Button("X")) {
                 if (Dialogs::showConfirmationDialog("Tem certeza que deseja remover o pacote " +
                                                     telemetryFile.getName() + "?")) {
+                    if (m_editMode && m_editPacketId == telemetryFile.getPacketId()) {
+                        m_editMode = false;
+                        m_editPacketId = "";
+                        this->clearAndResizeInputBuffers();
+                    }
                     DB::getInstance().getProject().removePacket(telemetryFile.getPacketId());
                 }
             }

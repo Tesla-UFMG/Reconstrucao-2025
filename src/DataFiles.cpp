@@ -43,12 +43,17 @@ TelemetryFile::TelemetryFile(const std::string& packetName, const std::string& p
 }
 
 bool TelemetryFile::insertData(const std::vector<double>& newData) {
-    if (newData.size() != this->columnNames.size()) {
+    if (this->columnNames.empty()) {
         return false;
     }
 
-    for (size_t i = 0; i < newData.size(); ++i) {
-        this->data[i].push_back(newData[i]);
+    size_t limit = std::min(newData.size(), this->columnNames.size());
+    for (size_t i = 0; i < this->columnNames.size(); ++i) {
+        if (i < limit) {
+            this->data[i].push_back(newData[i]);
+        } else {
+            this->data[i].push_back(0.0);
+        }
     }
 
     return true;
@@ -74,4 +79,17 @@ const std::vector<double>& TelemetryFile::getColumnData(const std::string& colum
         }
     }
     return emptyVec;
+}
+
+void TelemetryFile::setName(const std::string& newName) {
+    this->name = newName;
+}
+
+void TelemetryFile::setColumnNames(const std::vector<std::string>& newCols) {
+    size_t oldSize = this->columnNames.size();
+    this->columnNames = newCols;
+    this->data.resize(newCols.size());
+    for (size_t i = oldSize; i < newCols.size(); ++i) {
+        this->data[i].resize(this->date.size(), 0.0);
+    }
 }

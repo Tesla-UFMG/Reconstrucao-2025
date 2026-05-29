@@ -62,6 +62,20 @@ void ProjectData::removePacket(const std::string& packetId) {
     LOG("ERROR", "Pacote não encontrado para remoção: " + packetId);
 }
 
+bool ProjectData::updatePacket(const std::string& packetId, const std::string& newName,
+                               const std::vector<std::string>& newCols) {
+    for (auto& f : this->telemetryFiles) {
+        if (f.getPacketId() == packetId) {
+            f.setName(newName);
+            f.setColumnNames(newCols);
+            LOG("INFO", "Pacote atualizado: " + newName + " (" + packetId + ")");
+            return true;
+        }
+    }
+    LOG("ERROR", "Pacote não encontrado para atualização: " + packetId);
+    return false;
+}
+
 const std::vector<CSVFile>& ProjectData::getCSVFiles() { return this->csvFiles; }
 
 const std::vector<TelemetryFile>& ProjectData::getTelemetryFiles() { return this->telemetryFiles; }

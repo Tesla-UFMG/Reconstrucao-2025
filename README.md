@@ -122,27 +122,19 @@ Race: https://www.kaggle.com/datasets/alexhexan/fm7-rio-de-janeiro-race-telemetr
 
 ## Ideias Futuras
 
-Janela numérica - OK
-- Mudar de cor em uma faixa de valor;
-- Adicionar unidade de medida;
-- Adicionar fórmula;
-- Converter valor para texto?;
-
-Janela de logs de avisos - OK
-- Poder assinalar cor do aviso;
-
-Janela dinâmica de barra - OK
-
-Janela/gráfico de força/aceleração
-
-Reformular janela do GNSS (ou criar gráfico XY?) - Ok
 
 Janela fazer anotações dos testes - mudar nome do teste facilmente e de piloto
-
-Matriz de Dados - O único bloco capaz de lidar com componentes massivamente paralelos, especificamente o BMS - OK
 
 Salvar as assinalações nos layouts, quando salvar ou mudar de aba
 
 Ver questão de marcar tempo e voltas na pista.
 
 Tela boas vindas iniciante.
+
+Resolver diferença de tamanho dos vetores nos gráficos e reconstrucao
+
+Mudar cor dos pontos com base em oturo dado na reconstrucao
+
+Colocar anotações de texto na reconstrucao
+
+Salvar os dados dos warnings no selecionador de dados

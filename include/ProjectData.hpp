@@ -53,6 +53,8 @@ class ProjectData {
         bool loadPacket(const std::string& packetName, const std::string& packetId,
                         const std::vector<std::string>& columnNames);
         void removePacket(const std::string& packetId);
+        bool updatePacket(const std::string& packetId, const std::string& newName,
+                          const std::vector<std::string>& newCols);
 
         void clear(); // Limpa os dados armazenados
 

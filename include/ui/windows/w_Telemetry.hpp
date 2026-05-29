@@ -47,6 +47,8 @@ namespace Window {
             std::string              packetId;
             std::vector<std::string> packetColumnNames;
             bool                     processingStatus;
+            bool                     m_editMode = false;
+            std::string              m_editPacketId;
 
             // Thread
             std::thread             readerThread;

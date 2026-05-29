@@ -60,6 +60,8 @@ class TelemetryFile : public GenericFile {
         const std::vector<std::string>&         getDate() const;
         bool                                    insertData(const std::vector<double>& newData);
         bool insertDate(const std::string& newDate);
+        void                                    setName(const std::string& newName);
+        void                                    setColumnNames(const std::vector<std::string>& newCols);
     };
 
 struct ArchivePayload {

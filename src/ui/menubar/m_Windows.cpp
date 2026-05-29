@@ -31,39 +31,30 @@ void MenuBar::Windows() {
             ImGui::EndMenu();
         }
 
-        ImGui::Separator();
+        ImGui::SeparatorText("Janelas Estáticas");
 
         MenuBar::changeWindowVisibility("Selecionador de Dados", &vw.visibility.showDataPicker);
         MenuBar::changeWindowVisibility("Telemetria", &vw.visibility.showTelemetry);
         MenuBar::changeWindowVisibility("Avisos", &vw.visibility.showWarnings);
         MenuBar::changeWindowVisibility("Reconstrução de Pista", &vw.visibility.showReconstruction);
-        MenuBar::changeWindowVisibility("Plot", &vw.visibility.showPlot);
+        //MenuBar::changeWindowVisibility("Plot", &vw.visibility.showPlot);
         MenuBar::changeWindowVisibility("Estatísticas", &vw.visibility.showStatistics);
         MenuBar::changeWindowVisibility("Volante", &vw.visibility.showWheelControl);
         MenuBar::changeWindowVisibility("Pedais", &vw.visibility.showPedal);
-        if (ImGui::BeginMenu("Numérico")) {
-            if (ImGui::MenuItem("Criar Nova Janela")) {
-                vw.createNumericWindow();
-            }
-            ImGui::EndMenu();
+        
+        
+        ImGui::SeparatorText("Janelas Dinâmicas");
+        if (ImGui::MenuItem("Gráfico")) {
+            vw.createGraphWindow();
         }
-        if (ImGui::BeginMenu("Barra")) {
-            if (ImGui::MenuItem("Criar Nova Janela")) {
-                vw.createBarWindow();
-            }
-            ImGui::EndMenu();
+        if (ImGui::MenuItem("Numérico")) {
+            vw.createNumericWindow();
         }
-        if (ImGui::BeginMenu("Matriz de Dados")) {
-            if (ImGui::MenuItem("Criar Nova Janela")) {
-                vw.createMatrixWindow();
-            }
-            ImGui::EndMenu();
+        if (ImGui::MenuItem("Barra")) {
+            vw.createBarWindow();
         }
-        if (ImGui::BeginMenu("Gráficos")) {
-            if (ImGui::MenuItem("Criar Nova Janela")) {
-                vw.createGraphWindow();
-            }
-            ImGui::EndMenu();
+        if (ImGui::MenuItem("Matriz de Confusão")) {
+            vw.createMatrixWindow();
         }
 
         ImGui::Separator();
