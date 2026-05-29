@@ -1,855 +1,394 @@
 #include "ui/windows/w_Reconstruction.hpp"
 #include "ImGuiWrapper.hpp"
+#include "Log.hpp"
 #include <algorithm>
 #include <cmath>
-#include <cstring>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <sstream>
 
-bool Window::Reconstruction::isLoaded() const {
-    return m_latIndex != -1 && m_lonIndex != -1;
-}
-
-void Window::Reconstruction::ConvertLatLonToXY(std::vector<float>& outX, std::vector<float>& outY) {
-    // Converte lat/lon em coordenadas planas (equiretangular projection)
-    size_t      n         = outX.size();
-    float       originLat = outY.empty() ? 0.0f : outY[0];
-    float       originLon = outX.empty() ? 0.0f : outX[0];
-    const float R         = 6371000.0f; // raio da Terra em metros
-    for (size_t i = 0; i < n; ++i) {
-        float dLat = (outY[i] - originLat) * M_PI / 180.0f;
-        float dLon = (outX[i] - originLon) * M_PI / 180.0f;
-        outX[i]    = R * dLon * std::cos(originLat * M_PI / 180.0f);
-        outY[i]    = R * dLat;
-    }
-}
-
-// Chamado depois das colunas de latitude e longitude serem adicionadas
-void Window::Reconstruction::BuildTrackFromLatLon() {
-    if (m_latIndex >= m_coordDataList.size() || m_lonIndex >= m_coordDataList.size()) return;
-
-    // Extrai Lat/Lon
-    const auto& latData = m_coordDataList[m_latIndex].data;
-    const auto& lonData = m_coordDataList[m_lonIndex].data;
-    size_t n = std::min(latData.size(), lonData.size());
-
-    // Converte para X/Y
-    std::vector<float> xs(n), ys(n);
-    for (size_t i = 0; i < n; ++i) {
-        xs[i] = static_cast<float>(lonData[i]);
-        ys[i] = static_cast<float>(latData[i]);
-    }
-    ConvertLatLonToXY(xs, ys);
-
-    // Rebuilda o m_track
-    m_track.clear();
-    m_track.reserve(n+1);
-    for (size_t i = 0; i < n; ++i) {
-        TrackPoint pt;
-        pt.x = xs[i];
-        pt.y = ys[i];
-        pt.referenceSpeed = DEFAULT_SPEED;
-        m_track.push_back(pt);
-    }
-    // fecha loop
-    if (n > 1) m_track.push_back(m_track.front());
-}
-
-// --- Implementação das funções de drag & drop e manipulação de coordenadas ---
-
-void Window::Reconstruction::processColumnDragDrop() {
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-            const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-            this->addColumnToMap(columnPayload->fileType, columnPayload->fileName, columnPayload->columnName);
-        }
-        ImGui::EndDragDropTarget();
-    }
-}
-
-void Window::Reconstruction::addColumnToMap(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
-    for (COORDData& coordData : m_coordDataList) {
-        if (coordData.archive == fileName && coordData.column == columnName) {
-            LOG("WARN", "Reconstrução: A coluna " + columnName + " já existe.");
-            return;
+static std::string stripMapExtension(const std::string& name) {
+    std::string result = name;
+    for (const std::string ext : {".mbtiles", ".mptiles"}) {
+        if (result.size() >= ext.size() && result.compare(result.size() - ext.size(), ext.size(), ext) == 0) {
+            result = result.substr(0, result.size() - ext.size());
         }
     }
-
-    std::vector<double> data;
-    if (fileType == "CSV") {
-        data = DB::getInstance().getCSVData(fileName, columnName);
-    } else if (fileType == "Telemetry") {
-        data = DB::getInstance().getTelemetryData(fileName, columnName);
-    }
-
-    if (data.empty()) {
-        LOG("ERROR", "Não foi possível carregar dados para " + columnName);
-        return;
-    }
-
-    COORDData coordData;
-    coordData.data       = data;
-    coordData.column     = columnName;
-    coordData.archive    = fileName;
-    coordData.multiplier = 1.0;
-    m_coordDataList.push_back(coordData);
-
-    int newIndex = static_cast<int>(m_coordDataList.size()) - 1;
-    std::string lower = columnName;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-
-    if (lower.find("lat") != std::string::npos) {
-        m_latIndex = newIndex;
-    } else if (lower.find("lon") != std::string::npos || lower.find("lng") != std::string::npos) {
-        m_lonIndex = newIndex;
-    }
-
-    if (m_latIndex != -1 && m_lonIndex != -1) {
-        LOG("INFO", "Detectados dados de latitude e longitude. Construindo a pista...");
-        this->BuildTrackFromLatLon();
-    }
+    return result;
 }
-
-// Função para SALVAR o estado atual da simulação em um slot
-void Window::Reconstruction::SalvarCorrida(int slotIndex) {
-    if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS) return;
-
-    RaceData& race = m_savedRaces[slotIndex];
-
-    // Copia as configurações da simulação
-    race.cartHeight        = this->m_cartHeight;
-    race.cartZoom          = this->m_cartZoom;
-    race.speedMultiplier   = this->m_speedMultiplier;
-    race.HighSpeedThreshold = this->m_HighSpeedThreshold;
-    race.LowSpeedThreshold  = this->m_LowSpeedThreshold;
-
-    // Copia os dados resultantes da simulação
-    race.markedPositionsGreen = this->m_markedPositionsGreen;
-    race.markedPositionsRed   = this->m_markedPositionsRed;
-    race.highSpeedSegments    = this->m_highSpeedSegments;
-    race.lowSpeedSegments     = this->m_lowSpeedSegments;
-    race.comments             = this->m_comments;
-    
-    // Salva os índices dos dados de pista
-    race.latIndex = this->m_latIndex;
-    race.lonIndex = this->m_lonIndex;
-
-    // Marca o slot como salvo
-    race.isSaved = true;
-}
-
-// Função para CARREGAR o estado de um slot para a simulação ativa
-void Window::Reconstruction::CarregarCorrida(int slotIndex) {
-    if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS || !m_savedRaces[slotIndex].isSaved) return;
-
-    const RaceData& race = m_savedRaces[slotIndex];
-
-    // Restaura as configurações da simulação
-    m_cartHeight        = race.cartHeight;
-    m_cartZoom          = race.cartZoom;
-    m_speedMultiplier   = race.speedMultiplier;
-    m_HighSpeedThreshold = race.HighSpeedThreshold;
-    m_LowSpeedThreshold  = race.LowSpeedThreshold;
-
-    // Restaura os dados da simulação
-    m_markedPositionsGreen = race.markedPositionsGreen;
-    m_markedPositionsRed   = race.markedPositionsRed;
-    m_highSpeedSegments    = race.highSpeedSegments;
-    m_lowSpeedSegments     = race.lowSpeedSegments;
-    m_comments             = race.comments;
-
-    // Restaura os índices dos dados de pista
-    m_latIndex = race.latIndex;
-    m_lonIndex = race.lonIndex;
-
-    // Opcional: Resetar a posição do kart para o início
-    m_kartPosition = 0.0f;
-}
-
-// Função para LIMPAR um slot de corrida
-void Window::Reconstruction::LimparCorrida(int slotIndex) {
-    if (slotIndex < 0 || slotIndex >= NUM_RACE_SLOTS) return;
-
-    // Reseta o slot para o estado inicial, criando um novo objeto RaceData vazio
-    m_savedRaces[slotIndex] = RaceData(); 
-}
-
-//---------------------------------------------------------
-// Implementação da janela de reconstrução
-//---------------------------------------------------------
 
 Window::Reconstruction::Reconstruction(bool* isOpen) : IWindow(isOpen) {
-    this->title = "Reconstrução de Pista";
+    this->title = "Reconstrução de Pista (Grade MBTiles)";
+    
+    m_zoomScale = 0.5f;
 
-}
+    // Escanear mapas na pasta maps
+    scanAvailableMaps();
 
-void Window::Reconstruction::removeColumnFromMap(size_t index) {
-    if (index >= m_coordDataList.size()) {
-        LOG("ERROR", "Não foi possível remover o gráfico, índice inválido.");
+    if (m_availableMaps.empty()) {
+        m_statusMessage = "Nenhum arquivo .mbtiles encontrado na pasta 'maps'!";
+        LOG("ERROR", "MBTiles: " + m_statusMessage);
         return;
     }
 
-    // Verifica se a coluna a ser removida é a de latitude ou longitude
-    bool wasLatitude = (static_cast<int>(index) == m_latIndex);
-    bool wasLongitude = (static_cast<int>(index) == m_lonIndex);
-
-    std::string columnName = m_coordDataList[index].column;
-    m_coordDataList.erase(m_coordDataList.begin() + index);
-    LOG("DEBUG", "Coluna '" + columnName + "' removida da reconstrução.");
-
-    // Se removemos uma das colunas essenciais, precisamos invalidar os índices e limpar a pista.
-    if (wasLatitude || wasLongitude) {
-        if (wasLatitude) m_latIndex = -1;
-        if (wasLongitude) m_lonIndex = -1;
-        
-        m_track.clear(); // Limpa os dados da pista
-        m_kartPosition = 0.0f; // Reseta a posição do kart
-        LOG("INFO", "Pista (m_track) limpa pois um componente essencial (lat/lon) foi removido.");
+    // Tentar carregar pampulha.mbtiles como padrão, senão o primeiro da lista
+    m_currentMapName = m_availableMaps[0];
+    for (const auto& mapName : m_availableMaps) {
+        if (mapName == "pampulha.mbtiles") {
+            m_currentMapName = mapName;
+            break;
+        }
     }
 
-    // Reajustar os índices restantes
-    if (m_latIndex > static_cast<int>(index)) m_latIndex--;
-    if (m_lonIndex > static_cast<int>(index)) m_lonIndex--;
+    std::string path = "maps/" + m_currentMapName;
+    int rc = sqlite3_open(path.c_str(), &m_db);
+    if (rc != SQLITE_OK) {
+        m_statusMessage = "Falha ao abrir banco: " + path + " (Erro: " + std::to_string(rc) + ")";
+        m_db = nullptr;
+        LOG("ERROR", "MBTiles: " + m_statusMessage);
+        return;
+    }
+
+    findFirstAvailableTile();
 }
 
-// ===================================================================
-// PASSO 1: A FUNÇÃO render() 
-// ===================================================================
+Window::Reconstruction::~Reconstruction() {
+    clearCache();
+    if (m_db) {
+        sqlite3_close(m_db);
+        m_db = nullptr;
+    }
+}
+
+bool Window::Reconstruction::isLoaded() const {
+    return m_loaded;
+}
+
+void Window::Reconstruction::scanAvailableMaps() {
+    m_availableMaps.clear();
+    const std::string mapsFolder = "maps";
+    
+    try {
+        if (std::filesystem::exists(mapsFolder) && std::filesystem::is_directory(mapsFolder)) {
+            for (const auto& entry : std::filesystem::directory_iterator(mapsFolder)) {
+                if (entry.is_regular_file() && (entry.path().extension() == ".mbtiles" || entry.path().extension() == ".mptiles")) {
+                    m_availableMaps.push_back(entry.path().filename().string());
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG("ERROR", "Erro ao escanear pasta maps: " + std::string(e.what()));
+    }
+
+    std::sort(m_availableMaps.begin(), m_availableMaps.end());
+}
+
+void Window::Reconstruction::findFirstAvailableTile() {
+    if (!m_db) return;
+
+    // Busca o centro geográfico do mapa no nível de zoom mais próximo de 18
+    const char* sql = "SELECT zoom_level, MIN(tile_column), MAX(tile_column), MIN(tile_row), MAX(tile_row) "
+                      "FROM tiles WHERE zoom_level = (SELECT zoom_level FROM tiles ORDER BY abs(zoom_level - 18) ASC LIMIT 1);";
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr);
+    if (rc == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW && sqlite3_column_type(stmt, 1) != SQLITE_NULL) {
+            m_testZ = sqlite3_column_int(stmt, 0);
+            int minX = sqlite3_column_int(stmt, 1);
+            int maxX = sqlite3_column_int(stmt, 2);
+            int minY = sqlite3_column_int(stmt, 3);
+            int maxY = sqlite3_column_int(stmt, 4);
+
+            m_testX = minX + (maxX - minX) / 2;
+            m_testY = minY + (maxY - minY) / 2;
+            m_loaded = true;
+            m_statusMessage = "Mapa " + m_currentMapName + " carregado em Z=" + std::to_string(m_testZ);
+            LOG("INFO", "MBTiles: " + m_statusMessage);
+        } else {
+            m_statusMessage = "Nenhum bloco encontrado na tabela 'tiles'.";
+            LOG("WARN", "MBTiles: " + m_statusMessage);
+        }
+        sqlite3_finalize(stmt);
+    } else {
+        m_statusMessage = "Erro ao preparar query de inicialização: " + std::string(sqlite3_errmsg(m_db));
+        LOG("ERROR", "MBTiles: " + m_statusMessage);
+    }
+}
+
+SDL_Texture* Window::Reconstruction::getTileTexture(int z, int x, int y) {
+    if (!m_db) return nullptr;
+
+    // 1. Buscar no cache de texturas
+    for (const auto& cached : m_tileCache) {
+        if (cached.z == z && cached.x == x && cached.y == y) {
+            return cached.texture;
+        }
+    }
+
+    // 2. Não encontrado no cache, buscar no SQLite
+    const char* sql = "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?;";
+    sqlite3_stmt* stmt = nullptr;
+    int rc = sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        return nullptr;
+    }
+
+    sqlite3_bind_int(stmt, 1, z);
+    sqlite3_bind_int(stmt, 2, x);
+    sqlite3_bind_int(stmt, 3, y);
+
+    SDL_Texture* texture = nullptr;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        const void* blob = sqlite3_column_blob(stmt, 0);
+        int size = sqlite3_column_bytes(stmt, 0);
+
+        if (blob && size > 0) {
+            SDL_RWops* rw = SDL_RWFromMem(const_cast<void*>(blob), size);
+            if (rw) {
+                SDL_Surface* surface = IMG_Load_RW(rw, 1);
+                if (surface) {
+                    texture = SDL_CreateTextureFromSurface(SDLWrapper::renderer, surface);
+                    SDL_FreeSurface(surface);
+                }
+            }
+        }
+    }
+    sqlite3_finalize(stmt);
+
+    // Salva no cache de texturas
+    CachedTile cached;
+    cached.z = z;
+    cached.x = x;
+    cached.y = y;
+    cached.texture = texture;
+    m_tileCache.push_back(cached);
+
+    return texture;
+}
+
+void Window::Reconstruction::clearCache() {
+    for (auto& cached : m_tileCache) {
+        if (cached.texture) {
+            SDL_DestroyTexture(cached.texture);
+        }
+    }
+    m_tileCache.clear();
+}
 
 void Window::Reconstruction::render() {
-    if (!isOpen || !*isOpen) {
-        return;
-    }
+    if (!isOpen || !*isOpen) return;
 
-    ImGui::Begin(this->title.c_str(), this->isOpen, ImGuiWindowFlags_MenuBar);
+    // Define margem interna zero para um canvas geográfico contínuo premium
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::Begin(this->title.c_str(), this->isOpen, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    ImGui::PopStyleVar();
 
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Configurações")) {
-            ImGui::SliderFloat("Altura do Gráfico", &m_cartHeight, 100.0f, 800.0f, "%.0f px");
-            ImGui::SliderFloat("Zoom (escala)", &m_cartZoom, 0.1f, 5.0f, "%.2fx");
-            ImGui::SliderFloat("Fator Velocidade", &m_speedMultiplier, 0.1f, 100.0f, "%.1fx");
-            ImGui::Separator();
-            ImGui::Text("Ajuste de Traçado");
-            ImGui::SliderFloat("Traçado Verde", &m_HighSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
-            ImGui::SliderFloat("Traçado Vermelho", &m_LowSpeedThreshold, 0.0f, 200.0f, "%.0f km/h");
-            ImGui::EndMenu();
-        }
+    if (m_loaded) {
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-        if (ImGui::BeginMenu("Dados")) {
-            ImGui::MenuItem("Gerenciar Colunas", nullptr, &m_showCoordinatesTable);
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Visualizar")) {
-
-            if (ImGui::MenuItem("Simulação")) { m_activeTab = 0; }
-            if (ImGui::MenuItem("Gerenciar Corridas")) { m_activeTab = 1; }
-            if (ImGui::MenuItem("Coordenadas")) { m_activeTab = 2; }
-            ImGui::Separator();
-            ImGui::MenuItem("Mostrar/Ocultar Informações", nullptr, &m_showTrackInfo);
-            if (ImGui::MenuItem("Limpar Análise Atual")) {
-                m_markedPositionsGreen.clear();
-                m_markedPositionsRed.clear();
-                m_comments.clear();
-                m_highSpeedSegments.clear();
-                m_lowSpeedSegments.clear();
-            }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-
-    static int prevTab = -1;
-
-    if (m_activeTab != prevTab) {
-        m_simLastTime = SDL_GetTicks();
-        prevTab     = m_activeTab;
-    }
-    Uint32 now = SDL_GetTicks();
-    float  dt  = (now - m_simLastTime) * 0.001f;
-    m_simLastTime = now;
-
-    if (m_showCoordinatesTable) {
-        RenderCoordinatesTable();
-        ImGui::Separator();
-    }
-
-    ImGui::BeginChild("DragAndDropArea");
-    RenderActiveTab(m_activeTab, dt);
-    ImGui::EndChild();
-
-    processColumnDragDrop();
-    ImGui::End();
-}
-
-// ===================================================================
-// PASSO 2: AS FUNÇÕES AUXILIARES
-// (Cada uma com sua responsabilidade específica)
-// ===================================================================
-
-void Window::Reconstruction::RenderCoordinatesTable() {
-    if (ImGui::BeginTable("TabelaColunas", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-        ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Coluna", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Multiplicador", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableHeadersRow();
-        for (size_t i = 0; i < m_coordDataList.size(); i++) {
-            COORDData& coordData = m_coordDataList[i]; // Pegar referência para modificar
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            std::string btnLabel = "X##" + std::to_string(i);
-            if (ImGui::Button(btnLabel.c_str())) {
-                this->removeColumnFromMap(i);
-                break;
-            }
-            ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(coordData.archive.c_str());
-
-            ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted(coordData.column.c_str());
-
-            ImGui::TableSetColumnIndex(3);
-            ImGui::PushItemWidth(120.0f);
-            ImGui::InputDouble(("##mult" + std::to_string(i)).c_str(), &coordData.multiplier, 0.001, 100.0,
-                               "%.15gx");
-            ImGui::PopItemWidth();
-        }
-        ImGui::EndTable();
-    }
-}
-
-void Window::Reconstruction::RenderActiveTab(int activeTab, float deltaTime) {
-    switch (activeTab) {
-        case 0:
-            RenderSimulationTab(deltaTime);
-            break;
-        case 1:
-            RenderRaceManagementTab();
-            break;
-        case 2:
-            RenderCoordinatesDataTab();
-            break;
-    }
-}
-
-void Window::Reconstruction::RenderSimulationTab(float dt) {
-
-    static ImVec2 panOffset = ImVec2(0, 0);
-    ImVec2        avail     = ImGui::GetContentRegionAvail();
-    float         childWidth = std::max(1.0f, avail.x);
-    ImVec2        childSize(childWidth, m_cartHeight);
-
-    if (childSize.y > 0.0f) {
-        ImGui::BeginChild("Sim_Cartesiano", childSize, true);
-        ImDrawList* draw   = ImGui::GetWindowDrawList();
-        ImVec2      origin = ImGui::GetCursorScreenPos();
-        ImVec2      size   = ImGui::GetContentRegionAvail();
-        ImVec2      maxPt(origin.x + size.x, origin.y + size.y);
-
-        // 1. Pega as cores do tema atual do ImGui
-        ImU32 bgColor = ImGui::GetColorU32(ImGuiCol_ChildBg); // Cor de fundo de janelas filhas
-        ImU32 gridColor = ImGui::GetColorU32(ImGuiCol_Border);   // Cor das bordas
-
-        // 2. Usa as cores do tema em vez de cores fixas
-        draw->AddRectFilled(origin, maxPt, bgColor); // Usa a cor de fundo do tema
-        ImVec2 mid((origin.x + maxPt.x) * 0.5f, (origin.y + maxPt.y) * 0.5f);
-        draw->AddLine({origin.x, mid.y}, {maxPt.x, mid.y}, gridColor); // Usa a cor de borda do tema
-        draw->AddLine({mid.x, origin.y}, {mid.x, maxPt.y}, gridColor); // Usa a cor de borda do tema
- 
-        // Captura drag com guarda de segurança
-        if (size.x > 0 && size.y > 0) {
-            ImGui::InvisibleButton("canvas_drag", size);
-            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-                panOffset.x += ImGui::GetIO().MouseDelta.x;
-                panOffset.y += ImGui::GetIO().MouseDelta.y;
-            }
-        }
-
-        // 5) Geração de screenPts
-        std::vector<ImVec2> screenPts;
-        if (m_latIndex >= 0 && m_lonIndex >= 0) {
-            const auto& lat = m_coordDataList[m_latIndex].data;
-            const auto& lon = m_coordDataList[m_lonIndex].data;
-            size_t n = std::min(lat.size(), lon.size());
-            if (n > 1) {
-                double minX = lon[0], maxX = lon[0],
-                       minY = lat[0], maxY = lat[0];
-                for (size_t i = 1; i < n; ++i) {
-                    minX = std::min(minX, lon[i]);
-                    maxX = std::max(maxX, lon[i]);
-                    minY = std::min(minY, lat[i]);
-                    maxY = std::max(maxY, lat[i]);
+        // 1. Adicionar o MenuBar com todas as informações e seletores de Mapa
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("Opções")) {
+                // 1. Botão de reset
+                if (ImGui::MenuItem("Resetar Posição")) {
+                    m_panX = 0.0f;
+                    m_panY = 0.0f;
+                    m_zoomScale = 0.5f;
+                    findFirstAvailableTile();
                 }
-                ImVec2 inner(size.x * m_cartZoom, size.y * m_cartZoom);
-                screenPts.reserve(n);
-                for (size_t i = 0; i < n; ++i) {
-                    float nx = (maxX > minX) ? (lon[i] - minX) / float(maxX - minX) : 0.5f;
-                    float ny = (maxY > minY) ? (lat[i] - minY) / float(maxY - minY) : 0.5f;
-                    screenPts.push_back({
-                        origin.x + panOffset.x + nx * inner.x,
-                        origin.y + panOffset.y + (1.0f - ny) * inner.y
-                    });
+
+                ImGui::Separator();
+
+                // 2. Seletor de Mapa/Circuito
+                ImGui::Text("Mapa:");
+                ImGui::SetNextItemWidth(160.0f);
+                if (ImGui::BeginCombo("##MapaSelector", stripMapExtension(m_currentMapName).c_str())) {
+                    for (const auto& mapName : m_availableMaps) {
+                        bool isSelected = (m_currentMapName == mapName);
+                        std::string cleanName = stripMapExtension(mapName);
+                        if (ImGui::Selectable(cleanName.c_str(), isSelected)) {
+                            m_currentMapName = mapName;
+                            std::string fullPath = "maps/" + mapName;
+                            
+                            clearCache();
+                            if (m_db) {
+                                sqlite3_close(m_db);
+                                m_db = nullptr;
+                            }
+                            m_loaded = false;
+
+                            int rc = sqlite3_open(fullPath.c_str(), &m_db);
+                            if (rc == SQLITE_OK) {
+                                m_zoomScale = 0.5f;
+                                m_panX = 0.0f;
+                                m_panY = 0.0f;
+                                findFirstAvailableTile();
+                            } else {
+                                m_statusMessage = "Falha ao abrir banco: " + fullPath + " (Erro: " + std::to_string(rc) + ")";
+                                m_db = nullptr;
+                            }
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ImGui::Separator();
+
+                // 3. Seletor de Zoom
+                ImGui::Text("Zoom (Z):");
+                ImGui::SetNextItemWidth(80.0f);
+                std::string currentZoomStr = std::to_string(m_testZ);
+                if (ImGui::BeginCombo("##ZoomSelector", currentZoomStr.c_str())) {
+                    for (int z = 12; z <= 18; ++z) {
+                        bool isSelected = (m_testZ == z);
+                        std::string zStr = std::to_string(z);
+                        if (ImGui::Selectable(zStr.c_str(), isSelected)) {
+                            if (z != m_testZ) {
+                                float ratio = std::pow(2.0f, static_cast<float>(z - m_testZ));
+                                m_testX = static_cast<int>(std::round(m_testX * ratio));
+                                m_testY = static_cast<int>(std::round(m_testY * ratio));
+                                m_panX *= ratio;
+                                m_panY *= ratio;
+                                m_testZ = z;
+                            }
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ImGui::Separator();
+
+                // 4. Slider de tamanho de blocos
+                ImGui::Text("Tamanho Blocos:");
+                ImGui::SetNextItemWidth(160.0f);
+                ImGui::SliderFloat("##BlockScale", &m_zoomScale, 0.5f, 2.0f, "%.1fx");
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenuBar();
+        }
+
+        // 2. Capturar cliques e arraste com o mouse em qualquer parte da janela
+        ImGui::InvisibleButton("MapCanvas", windowSize);
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            m_panX += ImGui::GetIO().MouseDelta.x;
+            m_panY += ImGui::GetIO().MouseDelta.y;
+        }
+
+        // 3. Capturar zoom com o Scroll do Mouse quando pairado sobre a janela (Limitado a Z de 12 a 18)
+        if (ImGui::IsItemHovered()) {
+            float scroll = ImGui::GetIO().MouseWheel;
+            if (scroll > 0.0f && m_testZ < 18) {
+                m_testZ++;
+                m_testX *= 2;
+                m_testY *= 2;
+                m_panX *= 2.0f;
+                m_panY *= 2.0f; // Mantém a visualização centrada no zoom!
+                m_statusMessage = "Zoom In (Z=" + std::to_string(m_testZ) + ")";
+            } else if (scroll < 0.0f && m_testZ > 12) {
+                m_testZ--;
+                m_testX /= 2;
+                m_testY /= 2;
+                m_panX /= 2.0f;
+                m_panY /= 2.0f; // Mantém a visualização centrada no zoom!
+                m_statusMessage = "Zoom Out (Z=" + std::to_string(m_testZ) + ")";
+            }
+        }
+
+        // 4. Capturar comandos do teclado (movimentação por setas e escala por +/-)
+        if (ImGui::IsWindowFocused()) {
+            // Tecla "+" ou "=" (Aumenta escala dos blocos)
+            if (ImGui::IsKeyDown(ImGuiKey_Equal) || ImGui::IsKeyDown(ImGuiKey_KeypadAdd)) {
+                m_zoomScale = std::min(m_zoomScale + 0.01f, 2.0f);
+            }
+            // Tecla "-" (Diminui escala dos blocos)
+            if (ImGui::IsKeyDown(ImGuiKey_Minus) || ImGui::IsKeyDown(ImGuiKey_KeypadSubtract)) {
+                m_zoomScale = std::max(m_zoomScale - 0.01f, 0.5f);
+            }
+
+            // Movimentação suave contínua com todas as setas do teclado (Hold keys)
+            float arrowPanSpeed = 10.0f;
+            if (ImGui::IsKeyDown(ImGuiKey_UpArrow)) {
+                m_panY += arrowPanSpeed; // Move o mapa para baixo (Câmera vai para o Norte)
+            }
+            if (ImGui::IsKeyDown(ImGuiKey_DownArrow)) {
+                m_panY -= arrowPanSpeed; // Move o mapa para cima (Câmera vai para o Sul)
+            }
+            if (ImGui::IsKeyDown(ImGuiKey_LeftArrow)) {
+                m_panX += arrowPanSpeed; // Move o mapa para a direita (Câmera vai para o Oeste)
+            }
+            if (ImGui::IsKeyDown(ImGuiKey_RightArrow)) {
+                m_panX -= arrowPanSpeed; // Move o mapa para a esquerda (Câmera vai para o Leste)
+            }
+        }
+
+        // 5. Atualizar índices geográficos com base no arraste infinito (Corrigido o Y georreferenciado)
+        float tileSize = 256.0f * m_zoomScale;
+        while (m_panX > tileSize) {
+            m_testX -= 1;
+            m_panX -= tileSize;
+        }
+        while (m_panX < -tileSize) {
+            m_testX += 1;
+            m_panX += tileSize;
+        }
+        while (m_panY > tileSize) {
+            m_testY += 1; // Corrigido: arrastar para baixo (m_panY aumenta) expõe blocos ao Norte (Y maior)
+            m_panY -= tileSize;
+        }
+        while (m_panY < -tileSize) {
+            m_testY -= 1; // Corrigido: arrastar para cima (m_panY diminui) expõe blocos ao Sul (Y menor)
+            m_panY += tileSize;
+        }
+
+        // 6. Determinar dinamicamente a grade de tiles necessária para cobrir 100% da janela
+        int halfTilesX = static_cast<int>(std::ceil(windowSize.x * 0.5f / tileSize)) + 1;
+        int halfTilesY = static_cast<int>(std::ceil(windowSize.y * 0.5f / tileSize)) + 1;
+
+        ImVec2 centerScreen(windowPos.x + windowSize.x * 0.5f + m_panX, windowPos.y + windowSize.y * 0.5f + m_panY);
+        ImVec2 centerTileTopLeft(centerScreen.x - tileSize * 0.5f, centerScreen.y - tileSize * 0.5f);
+
+        // Varredura da grade dinâmica calculada para preenchimento total
+        for (int dy = halfTilesY; dy >= -halfTilesY; --dy) {
+            for (int dx = -halfTilesX; dx <= halfTilesX; ++dx) {
+                int targetX = m_testX + dx;
+                int targetY = m_testY + dy;
+
+                SDL_Texture* tex = getTileTexture(m_testZ, targetX, targetY);
+
+                float tileX = centerTileTopLeft.x + dx * tileSize;
+                float tileY = centerTileTopLeft.y - dy * tileSize; // Y geográfico aumenta para cima, tela aumenta para baixo
+
+                ImVec2 p_min(tileX, tileY);
+                ImVec2 p_max(tileX + tileSize, tileY + tileSize);
+
+                if (tex) {
+                    drawList->AddImage(reinterpret_cast<ImTextureID>(tex), p_min, p_max);
+                } else {
+                    // Preenchimento preto sólido para áreas fora de cobertura geocartográfica
+                    drawList->AddRectFilled(p_min, p_max, IM_COL32(0, 0, 0, 255));
                 }
             }
         }
 
-        // 6) Desenha a pista
-        if (!screenPts.empty()) {
-            draw->AddPolyline(screenPts.data(), screenPts.size(),
-                              IM_COL32(255,255,255,255), false, 2.0f);
-        }
-
-        // 7) Entrada e simulação do kart
-        const Uint8* keys = SDL_GetKeyboardState(NULL);
-        static float prevSpeed    = 30.0f;
-        static float currentAccel = 0.0f;
-        const float accelRate     = 30.0f;    // km/h por segundo
-        const float recoverRate   = 5.0f;     // taxa de retorno ao padrão
-        const float defaultSpeed  = 30.0f;    // km/h
-
-        if (keys[SDL_SCANCODE_W]) {
-            currentAccel = +accelRate;
-        } else if (keys[SDL_SCANCODE_S]) {
-            currentAccel = -accelRate;
-        } else {
-            // retorna gradativamente ao padrão
-            currentAccel = (defaultSpeed - m_kartSpeed) * recoverRate;
-        }
-
-        // atualiza velocidade
-        m_kartSpeed += currentAccel * dt;
-        m_kartSpeed = ImMax(0.0f, ImMin(m_kartSpeed, 200.0f));
-
-        // detecta crossings e armazena MarkerInfo
-        if (!screenPts.empty()) {
-            size_t idx = (size_t)(m_kartPosition + 0.5f);
-            if (idx >= screenPts.size()) idx = screenPts.size() - 1;
-            ImVec2 kartPosOnTrack = screenPts[idx];
-            if (prevSpeed < m_HighSpeedThreshold && m_kartSpeed >= m_HighSpeedThreshold) {
-                m_markedPositionsGreen.push_back({idx, kartPosOnTrack,
-                                                   m_kartSpeed,
-                                                   currentAccel,
-                                                   m_kartPosition,
-                                                   m_lapCount });
-            }
-            if (prevSpeed > m_LowSpeedThreshold && m_kartSpeed <= m_LowSpeedThreshold) {
-                m_markedPositionsRed.push_back({ idx, kartPosOnTrack,
-                                                 m_kartSpeed,
-                                                 currentAccel,
-                                                 m_kartPosition,
-                                                 m_lapCount });
-            }
-        }
-        prevSpeed = m_kartSpeed;
-
-        // 8) Lógica de movimento do kart
-        // LOG("DEBUG", "[Render] Início do frame. Valor de m_seekJustOccurred: " + std::to_string(m_seekJustOccurred));
-        if (m_seekJustOccurred) {
-            LOG("DEBUG", "[Render] CONDIÇÃO 1: 'seek' ocorreu. Ignorando simulação e resetando a flag.");
-            // Um seek manual acabou de acontecer.
-            // Ignoramos a atualização da simulação neste frame para que o pulo seja visível.
-            m_seekJustOccurred = false; // Resetamos a flag para o próximo frame.
-        } 
-        else if (m_isSimulating && !screenPts.empty()) {
-            LOG("DEBUG", "[Render] CONDIÇÃO 2: 'play' ativo. Atualizando posição do kart.");
-            // Se nenhum seek ocorreu e estamos em "play", atualiza a posição normalmente.
-            float speed_mps = m_kartSpeed / 3.6f;
-            m_kartPosition += speed_mps * dt * m_speedMultiplier;
-            size_t N    = screenPts.size();
-            float  maxP = float(N) - 1e-3f;
-            if (m_kartPosition >= maxP) {
-                m_kartPosition = fmodf(m_kartPosition, maxP);
-                m_lapCount++;
-            }
-        } 
-
-        if (!screenPts.empty()) {
-            DrawTrackAndKartAt(screenPts, origin, m_cartZoom);
-        }
-
-        // 8) Lógica de high-speed trace
-    if (!screenPts.empty()) {
-        size_t idx = (size_t)(m_kartPosition + 0.5f);
-        if (idx >= screenPts.size()) idx = screenPts.size() - 1;
-        ImVec2 kartPos = screenPts[idx];
-        bool nowHigh = (m_kartSpeed > m_HighSpeedThreshold);
-        if (nowHigh) {
-            m_currentHighSpeed.push_back(idx);
-        }
-        if (m_prevHighSpeed && !nowHigh) {
-            // finaliza trecho
-            if (!m_currentHighSpeed.empty()) {
-                m_highSpeedSegments.push_back(m_currentHighSpeed);
-                m_currentHighSpeed.clear();
-            }
-        }
-        m_prevHighSpeed = nowHigh;
-
-        // baixa velocidade
-        bool nowLow = (m_kartSpeed < m_LowSpeedThreshold);
-        if (nowLow) {
-            m_currentLowSpeed.push_back(idx);
-        }
-        if (m_prevLowSpeed && !nowLow) {
-            if (!m_currentLowSpeed.empty()) {
-                m_lowSpeedSegments.push_back(m_currentLowSpeed);
-                m_currentLowSpeed.clear();
-            }
-        }
-        m_prevLowSpeed = nowLow;
-    }
-
-// Desenha trace fixo adaptado a zoom/pan (screenPts atualizado toda frame)
-// Desenha trechos de alta velocidade (verde)
-// HIGH-SPEED (verde)
-for (auto &segIdx : m_highSpeedSegments) {
-    if (segIdx.size() > 1) {
-        std::vector<ImVec2> pts;
-        pts.reserve(segIdx.size());
-        for (size_t i : segIdx) {
-            if (i < screenPts.size())
-                pts.push_back(screenPts[i]);
-        }
-        if (pts.size() > 1)
-            draw->AddPolyline(pts.data(), pts.size(), IM_COL32(0,255,0,255), false, 3.0f);
-    }
-}
-if (m_currentHighSpeed.size() > 1) {
-    std::vector<ImVec2> pts;
-    pts.reserve(m_currentHighSpeed.size());
-    for (size_t i : m_currentHighSpeed) {
-        if (i < screenPts.size())
-            pts.push_back(screenPts[i]);
-    }
-    if (pts.size() > 1)
-        draw->AddPolyline(pts.data(), pts.size(), IM_COL32(0,255,0,255), false, 3.0f);
-}
-
-// LOW-SPEED (vermelho)
-for (auto &segIdx : m_lowSpeedSegments) {
-    if (segIdx.size() > 1) {
-        std::vector<ImVec2> pts;
-        pts.reserve(segIdx.size());
-        for (size_t i : segIdx) {
-            if (i < screenPts.size())
-                pts.push_back(screenPts[i]);
-        }
-        if (pts.size() > 1)
-            draw->AddPolyline(pts.data(), pts.size(), IM_COL32(255,0,0,255), false, 3.0f);
-    }
-}
-if (m_currentLowSpeed.size() > 1) {
-    std::vector<ImVec2> pts;
-    pts.reserve(m_currentLowSpeed.size());
-    for (size_t i : m_currentLowSpeed) {
-        if (i < screenPts.size())
-            pts.push_back(screenPts[i]);
-    }
-    if (pts.size() > 1)
-        draw->AddPolyline(pts.data(), pts.size(), IM_COL32(255,0,0,255), false, 3.0f);
-}
-
-
- if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-    ImVec2 mouse = ImGui::GetIO().MousePos;
-    size_t bestIdx = 0;
-    float  bestDist = FLT_MAX;
-    for (size_t i = 0; i < screenPts.size(); ++i) {
-        float dx = mouse.x - screenPts[i].x;
-        float dy = mouse.y - screenPts[i].y;
-        float d2 = dx*dx + dy*dy;
-        if (d2 < bestDist) { bestDist = d2; bestIdx = i; }
-    }
-    CommentInfo c;
-    c.idx       = bestIdx;
-    c.triOffset = ImVec2(0, -10);
-    c.visible   = true;
-    c.text[0]   = '\0';
-    m_comments.push_back(c);
-}
-
-// Desenha triângulos e janelas de comentário
-for (size_t i = 0; i < m_comments.size(); ++i) {
-    auto& cm = m_comments[i];
-    if (cm.idx >= screenPts.size()) continue;
-    ImVec2 pt   = screenPts[cm.idx];
-    ImVec2 base = ImVec2(pt.x + cm.triOffset.x, pt.y + cm.triOffset.y);
-    float  s    = 8.0f * m_cartZoom;
-    ImVec2 p1{ base.x,       base.y - s };
-    ImVec2 p2{ base.x - s,   base.y + s };
-    ImVec2 p3{ base.x + s,   base.y + s };
-    draw->AddTriangleFilled(p1, p2, p3, IM_COL32(255,165,0,255));
-
-    // Define retângulo de interação cobrindo todo o triângulo
-    ImVec2 triMin{ base.x - s, base.y - s };
-    ImVec2 triMax{ base.x + s, base.y + s };
-
-    // clique esquerdo no triângulo alterna visibilidade
-    if (ImGui::IsMouseHoveringRect(triMin, triMax) \
-        && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-        cm.visible = !cm.visible;
-    }
-
-    if (cm.visible) {
-        // força janela sobre o triângulo toda vez que reaparecer
-        ImGui::SetNextWindowPos(ImVec2(base.x + 10, base.y - 10), ImGuiCond_Always);
-        char title[32]; sprintf(title, "Comentário %zu", i);
-        ImGui::Begin(title, nullptr,
-                     ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoTitleBar);
-        ImGui::SetWindowFocus();  // garante foco e topo
-
-        // área de texto com ID único
-        char inputId[32]; sprintf(inputId, "##comment_input_%zu", i);
-        ImGui::InputTextMultiline(inputId, cm.text, sizeof(cm.text), ImVec2(200,100));
-
-        // botão para remover comentário
-        if (ImGui::Button("Remover")) {
-            m_comments.erase(m_comments.begin() + i);
-            ImGui::End();
-            break;
-        }
-        ImGui::End();
-    }
-}
-
-
-        // 9) Interação com marcadores (clicar para info/remover)
-// assegura vetores de visibilidade
-static std::vector<bool> visG, visR;
-if (visG.size() != m_markedPositionsGreen.size())
-    visG.assign(m_markedPositionsGreen.size(), false);
-if (visR.size() != m_markedPositionsRed.size())
-    visR.assign(m_markedPositionsRed.size(), false);
-
-// loop verde
-for (size_t i = 0; i < m_markedPositionsGreen.size(); ++i) {
-    auto& m = m_markedPositionsGreen[i];
-    if (m.idx >= screenPts.size()) continue;
-    ImVec2 pos = screenPts[m.idx];
-    float  s   = 6.0f * m_cartZoom;            // tamanho escala com zoom
-    ImVec2 a{ pos.x - s, pos.y - s };
-    ImVec2 b{ pos.x + s, pos.y + s };
-    draw->AddRectFilled(a, b, IM_COL32(0,255,0,255));
-    if (ImGui::IsMouseHoveringRect(a, b)
-        && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        visG[i] = !visG[i];
-
-    if (visG[i]) {
-        ImGui::SetNextWindowPos({ pos.x + 10, pos.y - 10 }, ImGuiCond_Always);
-        ImGui::Begin("Info Verde", nullptr,
-                     ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoTitleBar);
-        ImGui::Text("Índice: %zu",      m.idx);
-        ImGui::Text("Vel.: %.1f km/h", m.speed);
-        ImGui::Text("Acel.: %.1f km/h²", m.acceleration);
-        ImGui::SameLine();
-        if (ImGui::Button("X")) {
-            m_markedPositionsGreen.erase(
-                m_markedPositionsGreen.begin() + i
-            );
-            visG.erase(visG.begin() + i);
-            ImGui::End();
-            break;
-        }
-        ImGui::End();
-    }
-}
-
-// loop vermelho (mesma lógica, cor e vector diferente)
-for (size_t i = 0; i < m_markedPositionsRed.size(); ++i) {
-    auto& m = m_markedPositionsRed[i];
-    if (m.idx >= screenPts.size()) continue;
-    ImVec2 pos = screenPts[m.idx];
-    float  s   = 6.0f * m_cartZoom;
-    ImVec2 a{ pos.x - s, pos.y - s };
-    ImVec2 b{ pos.x + s, pos.y + s };
-    draw->AddRectFilled(a, b, IM_COL32(255,0,0,255));
-    if (ImGui::IsMouseHoveringRect(a, b)
-        && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-        visR[i] = !visR[i];
-
-    if (visR[i]) {
-        ImGui::SetNextWindowPos({ pos.x + 10, pos.y - 10 }, ImGuiCond_Always);
-        ImGui::Begin("Info Vermelho", nullptr,
-                     ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoTitleBar);
-        ImGui::Text("Índice: %zu",      m.idx);
-        ImGui::Text("Vel.: %.1f km/h", m.speed);
-        ImGui::Text("Acel.: %.1f km/h²", m.acceleration);
-        ImGui::SameLine();
-        if (ImGui::Button("X")) {
-            m_markedPositionsRed.erase(
-                m_markedPositionsRed.begin() + i
-            );
-            visR.erase(visR.begin() + i);
-            ImGui::End();
-            break;
-        }
-        ImGui::End();
-    }
-}
-
-        // 10) Info extra
-        if (m_showTrackInfo) {
-            ImGui::SetNextWindowPos(
-                ImVec2(origin.x + size.x - 10, origin.y + 10),
-                ImGuiCond_Always,
-                ImVec2(1.0f, 0.0f)
-            );
-            ImGui::Begin("Info Pista", nullptr,
-                         ImGuiWindowFlags_NoDecoration |
-                         ImGuiWindowFlags_AlwaysAutoResize |
-                         ImGuiWindowFlags_NoMove);
-            ImGui::Text("Velocidade: %.1f km/h",    m_kartSpeed);
-            ImGui::Text("Aceleração: %.1f km/h²",   currentAccel);
-            ImGui::Text("Multiplicador: %.1fx",     m_speedMultiplier);
-            ImGui::Text("Posição (índice): %.1f",   m_kartPosition);
-            ImGui::Text("Markers G: %zu",           m_markedPositionsGreen.size());
-            ImGui::Text("Markers R: %zu",           m_markedPositionsRed.size());
-            ImGui::End();
-        }
-
-    ImGui::EndChild();
-    }
-}
-
-void Window::Reconstruction::RenderRaceManagementTab() {
-    // O código desta função é todo o conteúdo que estava dentro de 'else if (activeTab == 1)'
-    ImGui::Text("Gerencie até %d corridas salvas.", NUM_RACE_SLOTS);
-    ImGui::Text("Salve o estado atual da simulação ou carregue um estado anterior.");
-    ImGui::Separator();
-
-    for (int i = 0; i < NUM_RACE_SLOTS; ++i) {
-        ImGui::PushID(i);
-        char headerName[32];
-        sprintf(headerName, "Slot de Corrida %d", i + 1);
-        if (ImGui::CollapsingHeader(headerName)) {
-            ImGui::InputText("Nome", m_savedRaces[i].name, sizeof(m_savedRaces[i].name));
-            const char* status = m_savedRaces[i].isSaved ? "Salvo" : "Vazio";
-            ImGui::Text("Status: %s", status);
-
-            if (ImGui::Button("Salvar Estado Atual Neste Slot")) {
-                this->SalvarCorrida(i);
-            }
-            ImGui::SameLine();
-
-            if (!m_savedRaces[i].isSaved) {
-                ImGui::BeginDisabled();
-            }
-            if (ImGui::Button("Carregar Este Slot")) {
-                this->CarregarCorrida(i);
-                ImGui::SetWindowFocus(NULL);
-            }
-            if (!m_savedRaces[i].isSaved) {
-                ImGui::EndDisabled();
-            }
-            ImGui::SameLine();
-
-            if (ImGui::Button("Limpar Slot")) {
-                this->LimparCorrida(i);
-            }
-        }
-        ImGui::PopID();
-    }
-}
-
-void Window::Reconstruction::RenderCoordinatesDataTab() {
-    // O código desta função é todo o conteúdo que estava dentro de 'else if (activeTab == 2)'
-    ImGui::Separator();
-    ImGui::Text("Coordenadas carregadas:");
-    if (m_latIndex < 0 || m_lonIndex < 0) {
-        ImGui::TextDisabled("Arraste colunas de latitude e longitude primeiro.");
-    } else {
-        const auto& latData = m_coordDataList[m_latIndex].data;
-        const auto& lonData = m_coordDataList[m_lonIndex].data;
-        size_t n = std::min(latData.size(), lonData.size());
-
-        if (ImGui::BeginTable("TabelaCoordenadas", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Latitude", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Longitude", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableHeadersRow();
-            for (size_t i = 0; i < n; ++i) {
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%.6f", latData[i]);
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%.6f", lonData[i]);
-            }
-            ImGui::EndTable();
-        }
-    }
-}
-
-//---------------------------------------------------------
-// Função para mapear a velocidade a uma cor
-//---------------------------------------------------------
-ImU32 Window::Reconstruction::GetColorForSpeed(float speed) {
-    const float minSpeed = 20.0f;
-    const float maxSpeed = 120.0f;
-    float       t        = (speed - minSpeed) / (maxSpeed - minSpeed);
-    t                    = std::clamp(t, 0.0f, 1.0f);
-    int c                = static_cast<int>(50 + t * (220 - 50));
-    return IM_COL32(c, c, c, 255);
-}
-
-//---------------------------------------------------------
-// Desenha a pista, marcadores e o kart
-//---------------------------------------------------------
-void Window::Reconstruction::DrawTrackAndKartAt(const std::vector<ImVec2>& screenPts,
-                                                const ImVec2& origin,
-                                                float scale)
-{
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    
-    // Desenha a linha da pista
-    if (!screenPts.empty()) {
-        ImU32 trackColor = GetColorForSpeed(m_kartSpeed);
-        draw_list->AddPolyline(screenPts.data(),
-                               (int)screenPts.size(),
-                               trackColor,
-                               false,
-                               4.0f * scale);
-    }
-
-    // Desenha marcadores (verde/vermelho) na posição interpolada em screenPts
-    auto drawMarkers = [&](const std::vector<MarkerInfo>& markers, ImU32 col) {
-        if (screenPts.size() < 2) return;
-        for (const auto& m : markers) {
-            int idx = std::clamp(m.trackIndex, 0, (int)screenPts.size() - 2);
-            float f = std::clamp(m.trackFrac, 0.0f, 1.0f);
-            ImVec2 p = ImLerp(screenPts[idx], screenPts[idx + 1], f);
-            draw_list->AddRectFilled({p.x - 5, p.y - 5}, {p.x + 5, p.y + 5}, col);
-        }
-    };
-
-    // Desenha o kart com cor dinâmica
-    if (screenPts.size() >= 2) {
-        int idx = (int)std::floor(m_kartPosition);
-        idx = std::clamp(idx, 0, (int)screenPts.size() - 2);
-        float frac = m_kartPosition - (float)idx;
-        frac = std::clamp(frac, 0.0f, 1.0f);
-        ImVec2 kartP = ImLerp(screenPts[idx], screenPts[idx + 1], frac);
+        // 7. Barra de Status no Rodapé (Bottom Bar) para Coordenadas
+        float bottomBarHeight = ImGui::GetFrameHeight();
+        ImGui::SetCursorPos(ImVec2(0.0f, windowSize.y - bottomBarHeight));
         
-        // --- LÓGICA DE COR DINÂMICA DO KART ---
-
-        // 1. Pega a cor de fundo do tema atual
-        ImVec4 bgColor = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
-
-        // 2. Calcula a "luminosidade" da cor 
-        float luminance = (bgColor.x * 0.299f + bgColor.y * 0.587f + bgColor.z * 0.114f);
-
-        // 3. Decide a cor do kart com base na luminosidade
-        ImU32 kartColor;
-        if (luminance > 0.5f) {
-            kartColor = IM_COL32(0, 0, 255, 255);
-        } else {
-            kartColor = IM_COL32(255, 255, 0, 255);
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyle().Colors[ImGuiCol_MenuBarBg]);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 4.0f));
+        
+        if (ImGui::BeginChild("##BottomBar", ImVec2(windowSize.x, bottomBarHeight), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+            ImGui::Text("X: %d | Y: %d", m_testX, m_testY);
         }
+        ImGui::EndChild();
+        
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
 
-        // 4. Usa a cor escolhida para desenhar o círculo
-        draw_list->AddCircleFilled(kartP, 8.0f * scale, kartColor);
+    } else {
+        ImGui::TextDisabled("Nenhum mapa disponível.");
     }
+
+    ImGui::End();
 }

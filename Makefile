@@ -1,4 +1,4 @@
-WINDOWS := 1
+WINDOWS := 0
 CARD_VIDEO_RENDEREING := 1
 
 PROJECT := app
@@ -23,7 +23,8 @@ INCLUDES := -I./include \
 	-I./lib/rapidcsv\
 	-I./lib/implot3d\
 	-I./src/ui/windows\
-	-I./lib/serialib
+	-I./lib/serialib\
+	-I./lib/sqlite3
 
 ifeq ($(WINDOWS), 1)
 	CXX := x86_64-w64-mingw32-g++
