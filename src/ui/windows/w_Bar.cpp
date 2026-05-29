@@ -481,6 +481,10 @@ void Window::Bar::processColumnDragDrop() {
 }
 
 void Window::Bar::addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
+    if (fileType == "Text") {
+        return;
+    }
+
     m_loadedData.archive  = fileName;
     m_loadedData.column   = columnName;
     m_loadedData.fileType = fileType;
@@ -500,3 +504,7 @@ void Window::Bar::addColumn(const std::string& fileType, const std::string& file
         LOG("ERROR", "[Barra] Falha ao carregar dados da coluna '" + columnName + "' de '" + fileName + "'.");
     }
 }
+
+
+
+

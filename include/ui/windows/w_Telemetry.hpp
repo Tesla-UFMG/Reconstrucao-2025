@@ -49,8 +49,25 @@ namespace Window {
             bool                     processingStatus;
             bool                     m_editMode = false;
             std::string              m_editPacketId;
+            bool                     m_showRecentMessages = true;
 
-            // Thread
+            // Pilotos e Testes
+            std::vector<std::string> m_pilots;
+            std::vector<std::string> m_testTypes;
+            int                      m_selectedPilotIndex = 0;
+            int                      m_selectedTestTypeIndex = 0;
+
+            // Rastreamento do tempo do último salvamento
+            std::chrono::steady_clock::time_point m_lastSaveTime;
+            bool                     m_hasSaved = false;
+
+
+
+            // Comentários da Sessão Ativa
+            std::vector<std::string> m_activeCommentDates;
+            std::vector<std::string> m_activeComments;
+            char                     m_currentCommentBuf[256];
+            int                      m_commentOffsetSec = 30;
             std::thread             readerThread;
             std::mutex              queueMutex;
             std::queue<std::string> messageQueue;
@@ -68,6 +85,7 @@ namespace Window {
             void renderConfigMenu();
             void renderPacketConfigMenu();
             void renderRecentMessages();
+            void renderSavingMenu();
 
             void savePacketsToFile(const std::string& outputFolder);
 

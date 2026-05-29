@@ -1,10 +1,18 @@
 #include "ProjectData.hpp"
 
+ProjectData::ProjectData() {
+    this->textFiles.emplace_back("Comentários", std::vector<std::string>{"Comentários"});
+    this->textFiles.emplace_back("Avisos", std::vector<std::string>{"Igual a", "Fora da Faixa", "Dentro da Faixa", "Maior que", "Menor que"});
+}
+
 void ProjectData::clear() {
     this->currentProjectName.clear();
     this->csvFiles.clear();
     this->videoFiles.clear();
     this->telemetryFiles.clear();
+    this->textFiles.clear();
+    this->textFiles.emplace_back("Comentários", std::vector<std::string>{"Comentários"});
+    this->textFiles.emplace_back("Avisos", std::vector<std::string>{"Igual a", "Fora da Faixa", "Dentro da Faixa", "Maior que", "Menor que"});
 }
 
 void ProjectData::loadCSV(const std::filesystem::path& filepath) {
@@ -76,13 +84,41 @@ bool ProjectData::updatePacket(const std::string& packetId, const std::string& n
     return false;
 }
 
+void ProjectData::clearAllTelemetryData() {
+    for (auto& f : this->telemetryFiles) {
+        f.clearData();
+    }
+    for (auto& f : this->textFiles) {
+        f.clear();
+    }
+}
+
+const std::vector<TextFile>& ProjectData::getTextFiles() { return this->textFiles; }
+
+void ProjectData::addTextFile(const std::filesystem::path& filepath, const std::vector<std::string>& columnNames, const std::vector<std::string>& dates, const std::vector<std::vector<std::string>>& data) {
+    std::string name = filepath.filename().string();
+    for (auto& tf : this->textFiles) {
+        if (tf.getName() == name) {
+            tf = TextFile(filepath, columnNames, dates, data);
+            return;
+        }
+    }
+    this->textFiles.emplace_back(filepath, columnNames, dates, data);
+}
+
+void ProjectData::removeTextFile(const std::filesystem::path& /*filepath*/) {
+    for (auto& f : this->textFiles) {
+        f.clear();
+    }
+}
+
 const std::vector<CSVFile>& ProjectData::getCSVFiles() { return this->csvFiles; }
 
 const std::vector<TelemetryFile>& ProjectData::getTelemetryFiles() { return this->telemetryFiles; }
 
-bool ProjectData::getTelemetryStatus() { return this->telemetryStatus; }
+int ProjectData::getTelemetryStatus() { return this->telemetryStatus; }
 
-void ProjectData::setTelemetryStatus(bool status) { this->telemetryStatus = status; }
+void ProjectData::setTelemetryStatus(int status) { this->telemetryStatus = status; }
 
 bool ProjectData::getProcessingStatus() { return this->processingStatus; }
 
@@ -134,6 +170,52 @@ bool ProjectData::serialize(const std::filesystem::path& filepath) const {
             size_t columnNameSize = columnName.size();
             file.write(reinterpret_cast<const char*>(&columnNameSize), sizeof(columnNameSize));
             file.write(columnName.data(), columnNameSize);
+        }
+    }
+
+
+
+    // Serializa os arquivos de texto
+    size_t numTextFiles = this->textFiles.size();
+    file.write(reinterpret_cast<const char*>(&numTextFiles), sizeof(numTextFiles));
+    for (const auto& textFile : this->textFiles) {
+        const std::string& pathStr = textFile.getPath().string();
+        size_t             pathStrSize = pathStr.size();
+        file.write(reinterpret_cast<const char*>(&pathStrSize), sizeof(pathStrSize));
+        file.write(pathStr.data(), pathStrSize);
+
+        // Nomes das colunas
+        const auto& colNames = textFile.getColumnNames();
+        size_t      colNamesSize = colNames.size();
+        file.write(reinterpret_cast<const char*>(&colNamesSize), sizeof(colNamesSize));
+        for (const auto& colName : colNames) {
+            size_t len = colName.size();
+            file.write(reinterpret_cast<const char*>(&len), sizeof(len));
+            file.write(colName.data(), len);
+        }
+
+        // Dates
+        const auto& dates = textFile.getDates();
+        size_t      datesSize = dates.size();
+        file.write(reinterpret_cast<const char*>(&datesSize), sizeof(datesSize));
+        for (const auto& dateStr : dates) {
+            size_t dateStrSize = dateStr.size();
+            file.write(reinterpret_cast<const char*>(&dateStrSize), sizeof(dateStrSize));
+            file.write(dateStr.data(), dateStrSize);
+        }
+
+        // Data (matriz de strings)
+        const auto& data = textFile.getData();
+        size_t      dataSize = data.size();
+        file.write(reinterpret_cast<const char*>(&dataSize), sizeof(dataSize));
+        for (const auto& colData : data) {
+            size_t colDataSize = colData.size();
+            file.write(reinterpret_cast<const char*>(&colDataSize), sizeof(colDataSize));
+            for (const auto& valStr : colData) {
+                size_t len = valStr.size();
+                file.write(reinterpret_cast<const char*>(&len), sizeof(len));
+                file.write(valStr.data(), len);
+            }
         }
     }
 
@@ -195,5 +277,58 @@ bool ProjectData::deserialize(const std::filesystem::path& filepath) {
 
         this->loadPacket(packetName, packetId, columnNames);
     }
+
+
+    // Desserializa os arquivos de texto de forma genérica
+    size_t numTextFiles = 0;
+    if (file.read(reinterpret_cast<char*>(&numTextFiles), sizeof(numTextFiles))) {
+        for (size_t i = 0; i < numTextFiles; ++i) {
+            size_t pathStrSize = 0;
+            if (!file.read(reinterpret_cast<char*>(&pathStrSize), sizeof(pathStrSize))) break;
+            std::string pathStr(pathStrSize, '\0');
+            if (!file.read(&pathStr[0], pathStrSize)) break;
+
+            // Nomes das colunas
+            size_t colNamesSize = 0;
+            if (!file.read(reinterpret_cast<char*>(&colNamesSize), sizeof(colNamesSize))) break;
+            std::vector<std::string> colNames(colNamesSize);
+            for (size_t j = 0; j < colNamesSize; ++j) {
+                size_t len = 0;
+                if (!file.read(reinterpret_cast<char*>(&len), sizeof(len))) break;
+                colNames[j].resize(len);
+                if (!file.read(&colNames[j][0], len)) break;
+            }
+
+            // Dates
+            size_t datesSize = 0;
+            if (!file.read(reinterpret_cast<char*>(&datesSize), sizeof(datesSize))) break;
+            std::vector<std::string> dates(datesSize);
+            for (size_t j = 0; j < datesSize; ++j) {
+                size_t len = 0;
+                if (!file.read(reinterpret_cast<char*>(&len), sizeof(len))) break;
+                dates[j].resize(len);
+                if (!file.read(&dates[j][0], len)) break;
+            }
+
+            // Data (matriz de strings)
+            size_t dataSize = 0;
+            if (!file.read(reinterpret_cast<char*>(&dataSize), sizeof(dataSize))) break;
+            std::vector<std::vector<std::string>> data(dataSize);
+            for (size_t col = 0; col < dataSize; ++col) {
+                size_t colDataSize = 0;
+                if (!file.read(reinterpret_cast<char*>(&colDataSize), sizeof(colDataSize))) break;
+                data[col].resize(colDataSize);
+                for (size_t row = 0; row < colDataSize; ++row) {
+                    size_t len = 0;
+                    if (!file.read(reinterpret_cast<char*>(&len), sizeof(len))) break;
+                    data[col][row].resize(len);
+                    if (!file.read(&data[col][row][0], len)) break;
+                }
+            }
+
+            this->addTextFile(pathStr, colNames, dates, data);
+        }
+    }
+
     return true;
 }

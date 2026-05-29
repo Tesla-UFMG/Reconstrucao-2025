@@ -53,6 +53,7 @@ class DB {
 
         const std::vector<double>& getCSVData(const std::string& filepath, const std::string& columnName) const;
         const std::vector<double>& getTelemetryData(const std::string& packetId, const std::string& columnName) const;
+        const std::vector<double>& getTextData(const std::string& filename, const std::string& columnName) const;
 
         bool processTelemetryPacket(const std::string& packetId, const std::vector<double>& data, const std::string& date);
 

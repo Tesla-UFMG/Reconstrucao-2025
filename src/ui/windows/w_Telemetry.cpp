@@ -1,4 +1,5 @@
 #include "ui/windows/w_Telemetry.hpp"
+#include "ui/windows/w_Warning.hpp"
 
 static std::string stripNulls(const std::string& s) {
     auto pos = s.find('\0');
@@ -19,9 +20,20 @@ Window::Telemetry::Telemetry(bool* isOpen) : IWindow(isOpen) {
     this->saveToFile        = false;
     this->outputPacketFolder.resize(COLUMN_NAME_SIZE);
 
+    // Pilotos e Testes
+    this->m_pilots = { "Mike", "Miguel", "Pedro", "Outro" };
+    this->m_testTypes = { "Aceleração", "Skidpad", "Autocross", "Endurance", "Calibração", "Outro" };
+    this->m_selectedPilotIndex = 0;
+    this->m_selectedTestTypeIndex = 0;
+    this->m_hasSaved = false;
+    this->m_activeCommentDates.clear();
+    this->m_activeComments.clear();
+    std::memset(this->m_currentCommentBuf, 0, sizeof(this->m_currentCommentBuf));
+
     // Packet configuration
     this->clearAndResizeInputBuffers();
     this->processingStatus = false;
+    this->m_showRecentMessages = true;
 }
 
 void Window::Telemetry::clearAndResizeInputBuffers() {
@@ -58,7 +70,7 @@ void Window::Telemetry::openDevice(const char* port, int baud) {
         LOG("ERROR", errorMsg);
     }
 
-    DB::getInstance().getProject().setTelemetryStatus(this->device.isDeviceOpen());
+    DB::getInstance().getProject().setTelemetryStatus(this->device.isDeviceOpen() ? 1 : 0);
 }
 
 void Window::Telemetry::closeDevice() {
@@ -71,7 +83,7 @@ void Window::Telemetry::closeDevice() {
         this->device.closeDevice();
         LOG("INFO", "Dispositivo fechado: " + this->serialPort);
     }
-    DB::getInstance().getProject().setTelemetryStatus(this->device.isDeviceOpen());
+    DB::getInstance().getProject().setTelemetryStatus(0);
 }
 
 void Window::Telemetry::getAvailablePorts() {
@@ -104,6 +116,25 @@ void Window::Telemetry::readMessages() {
             buf[n] = '\0';
             std::lock_guard lk(queueMutex);
             messageQueue.push(std::string(buf));
+        } else if (n < 0) {
+            // Conexão perdida!
+            LOG("WARN", "Conexão serial perdida na porta: " + serialPort + ". Tentando reconectar...");
+            DB::getInstance().getProject().setTelemetryStatus(2); // Reconectando
+            device.closeDevice();
+
+            // Loop de reconexão periódico e responsivo
+            while (keepReading) {
+                if (device.openDevice(serialPort.c_str(), baudrate) == 1) {
+                    LOG("INFO", "Reconectado com sucesso na porta: " + serialPort);
+                    DB::getInstance().getProject().setTelemetryStatus(1); // Conectado
+                    break;
+                }
+                
+                // Sleep de 1.5 segundos com checagem a cada 100ms
+                for (int i = 0; i < 15 && keepReading; ++i) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+            }
         }
     }
 }
@@ -161,21 +192,13 @@ void Window::Telemetry::renderConfigMenu() {
             }
         }
 
-        // pasta output
+        // Mostrar Dados checkbox
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Salvar na Pasta");
+        ImGui::Text("Mostrar Dados");
         ImGui::TableSetColumnIndex(1);
-        ImGui::SetNextItemWidth(150.0f);
-        ImGui::InputText("##outputPacketFolder", outputPacketFolder.data(), COLUMN_NAME_SIZE,
-                         ImGuiInputTextFlags_CharsNoBlank);
+        ImGui::Checkbox("##showRecentMessages", &this->m_showRecentMessages);
 
-        // salvar automaticamente
-        ImGui::TableNextRow();
-        ImGui::TableSetColumnIndex(0);
-        ImGui::Text("Salvar Automat.");
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Checkbox("##saveInFile", &this->saveToFile);
         ImGui::EndTable();
     }
 
@@ -185,8 +208,17 @@ void Window::Telemetry::renderConfigMenu() {
 
     ImGui::Text("Status:");
     ImGui::SameLine();
-    std::string status = this->device.isDeviceOpen() ? "Conectado" : "Desconectado";
-    ImGui::TextColored(this->device.isDeviceOpen() ? HI(1) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), status.c_str());
+    int telemetryStatus = DB::getInstance().getProject().getTelemetryStatus();
+    std::string status = "Desconectado";
+    ImVec4 statusColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Vermelho
+    if (telemetryStatus == 1) {
+        status = "Conectado";
+        statusColor = HI(1); // Verde
+    } else if (telemetryStatus == 2) {
+        status = "Reconectando...";
+        statusColor = ImVec4(1.0f, 0.6f, 0.0f, 1.0f); // Laranja
+    }
+    ImGui::TextColored(statusColor, status.c_str());
 
     ImGui::SameLine();
     ImGui::Text("Processamento:");
@@ -207,13 +239,25 @@ void Window::Telemetry::renderConfigMenu() {
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Atualizar Portas")) {
-        this->getAvailablePorts();
+    if (ImGui::Button("Limpar Dados")) {
+        if (Dialogs::showConfirmationDialog("Tem certeza que deseja limpar todos os dados recebidos dos pacotes de telemetria e comentários?")) {
+            DB::getInstance().getProject().clearAllTelemetryData();
+            this->m_activeCommentDates.clear();
+            this->m_activeComments.clear();
+            std::memset(this->m_currentCommentBuf, 0, sizeof(this->m_currentCommentBuf));
+            
+            // Limpa a tela de avisos integrada
+            if (Window::Warning* warningWin = Window::Warning::getInstance()) {
+                warningWin->clearLogs();
+            }
+            
+            LOG("INFO", "Todos os dados telemétricos e comentários foram limpos.");
+        }
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Salvar Pacotes")) {
-        this->savePacketsToFile(this->outputPacketFolder);
+    if (ImGui::Button("Atualizar Portas")) {
+        this->getAvailablePorts();
     }
 
     ImGui::EndGroup();
@@ -453,6 +497,197 @@ void Window::Telemetry::renderRecentMessages() {
     }
 }
 
+// Auxiliar para formatação no cabeçalho
+static std::string formatEpochToTimeLocal(const std::string& epochStr) {
+    try {
+        long long ms = std::stoll(epochStr);
+        std::time_t t = ms / 1000;
+        int milliseconds = ms % 1000;
+        std::tm* local = std::localtime(&t);
+        char buf[64];
+        std::strftime(buf, sizeof(buf), "%H:%M:%S", local);
+        std::stringstream ss;
+        ss << "[" << buf << "." << std::setw(3) << std::setfill('0') << milliseconds << "]";
+        return ss.str();
+    } catch (...) {
+        return "[" + epochStr + "]";
+    }
+}
+
+void Window::Telemetry::renderSavingMenu() {
+    // Sincroniza comentários do ProjectData (carregados via deserialização) com o estado da janela de telemetria
+    const auto& pTextFiles = DB::getInstance().getProject().getTextFiles();
+    if (!pTextFiles.empty()) {
+        const auto& pDates = pTextFiles[0].getDates();
+        const auto& pComments = pTextFiles[0].getComments();
+        if (m_activeComments.size() < pComments.size()) {
+            m_activeCommentDates = pDates;
+            m_activeComments = pComments;
+        }
+    }
+
+    ImGui::SeparatorText("Gravação e Salvamento do Projeto");
+    ImGui::BeginGroup();
+
+    if (ImGui::BeginTable("##savingCfg", 2, ImGuiTableFlags_SizingFixedFit)) {
+        ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+        ImGui::TableSetupColumn("Widget", ImGuiTableColumnFlags_WidthStretch);
+
+        // Piloto
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Piloto");
+        ImGui::TableSetColumnIndex(1);
+        {
+            std::vector<const char*> items;
+            items.reserve(m_pilots.size());
+            for (auto& s : m_pilots)
+                items.push_back(s.c_str());
+            ImGui::SetNextItemWidth(200.0f);
+            ImGui::Combo("##ComboPilotos", &this->m_selectedPilotIndex, items.data(), (int)items.size());
+        }
+
+        // Tipo de Teste
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Tipo de Teste");
+        ImGui::TableSetColumnIndex(1);
+        {
+            std::vector<const char*> items;
+            items.reserve(m_testTypes.size());
+            for (auto& s : m_testTypes)
+                items.push_back(s.c_str());
+            ImGui::SetNextItemWidth(200.0f);
+            ImGui::Combo("##ComboTestes", &this->m_selectedTestTypeIndex, items.data(), (int)items.size());
+        }
+
+        // Nome do Projeto
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Nome do Projeto");
+        ImGui::TableSetColumnIndex(1);
+        {
+            std::string pilotName = m_pilots[m_selectedPilotIndex];
+            std::string testType = m_testTypes[m_selectedTestTypeIndex];
+            std::string baseProjName = pilotName + "_" + testType;
+            ImGui::TextDisabled("%s", baseProjName.c_str());
+        }
+
+        // Salvar Automaticamente
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text("Salvar Automat.");
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Checkbox("##saveInFile", &this->saveToFile);
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::SeparatorText("Comentários da Sessão");
+
+    ImGui::Text("Adicionar Comentário:");
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("##comments_input", m_currentCommentBuf, sizeof(m_currentCommentBuf));
+
+    ImGui::Spacing();
+    ImGui::AlignTextToFramePadding();
+    ImGui::Text("Atraso a subtrair (s):");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(100.0f);
+    ImGui::InputInt("##comment_offset", &m_commentOffsetSec);
+    if (m_commentOffsetSec < 0) m_commentOffsetSec = 0;
+
+    ImGui::Spacing();
+    if (ImGui::Button("Adicionar", ImVec2(100.0f, 25.0f)) && std::strlen(m_currentCommentBuf) > 0) {
+        auto now = std::chrono::system_clock::now();
+        auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        
+        // Subtrai o atraso especificado pelo usuário
+        timestamp_ms -= static_cast<long long>(m_commentOffsetSec) * 1000;
+        
+        std::string dateStr = std::to_string(timestamp_ms);
+
+        m_activeCommentDates.push_back(dateStr);
+        m_activeComments.push_back(std::string(m_currentCommentBuf));
+
+        // Envia imediatamente para o arquivo "Comentários" no ProjectData
+        std::vector<std::vector<std::string>> textData(1, m_activeComments);
+        DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, m_activeCommentDates, textData);
+
+        LOG("INFO", "Comentário adicionado: " + m_activeComments.back());
+        std::memset(m_currentCommentBuf, 0, sizeof(m_currentCommentBuf));
+    }    ImGui::Spacing();
+    ImGui::Text("Comentários Registrados (%d):", (int)m_activeComments.size());
+    ImVec2 childSize = ImVec2(-1, 100.0f);
+    if (ImGui::BeginChild("##activeCommentsScroll", childSize, true)) {
+        for (size_t j = 0; j < m_activeComments.size(); ++j) {
+            std::string formattedTime = formatEpochToTimeLocal(m_activeCommentDates[j]);
+            ImGui::TextWrapped("%s %s", formattedTime.c_str(), m_activeComments[j].c_str());
+        }
+        ImGui::EndChild();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Relação com o tempo do último salvamento
+    if (this->m_hasSaved) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - this->m_lastSaveTime).count();
+        if (elapsed < 60) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: %llds atrás", elapsed);
+        } else {
+            long long minutes = elapsed / 60;
+            long long seconds = elapsed % 60;
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: %lldm %llds atrás", minutes, seconds);
+        }
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: Nunca");
+    }
+
+    ImGui::Spacing();
+
+    // Botão de Salvar
+    if (ImGui::Button("Salvar", ImVec2(120.0f, 30.0f))) {
+        // Pega data e hora atual no formato YYYY-MM-DD_HH-MM-SS
+        auto now = std::chrono::system_clock::now();
+        auto in_time_t = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d_%H-%M-%S");
+        std::string dateTimeStr = ss.str();
+
+        std::string pilotName = m_pilots[m_selectedPilotIndex];
+        std::string testType = m_testTypes[m_selectedTestTypeIndex];
+
+        // Cria o nome do projeto adicionando a data no início
+        std::string generatedProjName = dateTimeStr + "_" + pilotName + "_" + testType;
+
+        // Atualiza o nome do projeto
+        DB::getInstance().getProject().currentProjectName = generatedProjName;
+
+        // Limpa e atualiza outputPacketFolder
+        this->outputPacketFolder.clear();
+        this->outputPacketFolder.resize(COLUMN_NAME_SIZE);
+        std::strncpy(this->outputPacketFolder.data(), generatedProjName.c_str(), COLUMN_NAME_SIZE - 1);
+
+        // Salva os pacotes
+        this->savePacketsToFile(generatedProjName);
+
+        std::vector<std::vector<std::string>> textData(1, m_activeComments);
+        DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, m_activeCommentDates, textData);
+
+        // Atualiza controle de tempo
+        this->m_lastSaveTime = std::chrono::steady_clock::now();
+        this->m_hasSaved = true;
+
+        LOG("INFO", "Projeto salvo como: " + generatedProjName);
+    }
+
+    ImGui::EndGroup();
+}
+
 void Window::Telemetry::render() {
     this->drainQueueIntoRecent();
 
@@ -462,11 +697,17 @@ void Window::Telemetry::render() {
                                ImGuiTabBarFlags_NoCloseWithMiddleMouseButton | ImGuiTabBarFlags_FittingPolicyScroll)) {
             if (ImGui::BeginTabItem("UART")) {
                 this->renderConfigMenu();
-                this->renderRecentMessages();
+                if (this->m_showRecentMessages) {
+                    this->renderRecentMessages();
+                }
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Pacotes")) {
                 this->renderPacketConfigMenu();
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Salvamento")) {
+                this->renderSavingMenu();
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();

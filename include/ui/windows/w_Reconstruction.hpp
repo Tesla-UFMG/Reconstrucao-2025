@@ -21,6 +21,11 @@ struct CachedTile {
     SDL_Texture* texture;
 };
 
+struct TrackTextAnnotation {
+    std::string archiveName;
+    std::string columnName;
+};
+
 namespace Window {
     class Reconstruction : public IWindow {
         public:
@@ -74,6 +79,7 @@ namespace Window {
             float                   m_colorLastPoint[4] = {0.7f, 1.0f, 0.0f, 1.0f};  // Neon lime green
 
             void centerOnTrack();
+            std::vector<TrackTextAnnotation> m_textAnnotations;
     };
 } // namespace Window
 

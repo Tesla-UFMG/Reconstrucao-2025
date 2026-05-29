@@ -101,6 +101,25 @@ const std::vector<double>& DB::getTelemetryData(const std::string& packetId, con
     return emptyVec;
 }
 
+const std::vector<double>& DB::getTextData(const std::string& filename, const std::string& columnName) const {
+    static const std::vector<double> emptyVec{};
+    for (const auto& textFile : this->projectData.textFiles) {
+        if (textFile.getName() == filename) {
+            static std::vector<double> tsVec;
+            tsVec.clear();
+            for (const auto& dateStr : textFile.getDates()) {
+                try {
+                    tsVec.push_back(std::stod(dateStr));
+                } catch (...) {
+                    tsVec.push_back(0.0);
+                }
+            }
+            return tsVec;
+        }
+    }
+    return emptyVec;
+}
+
 bool DB::processTelemetryPacket(const std::string& packetId, const std::vector<double>& data, const std::string& date) {
     for (TelemetryFile& telemetryFile : this->projectData.telemetryFiles) {
         if (telemetryFile.getPacketId() == packetId) {
@@ -189,5 +208,41 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         LOG("INFO", "Salvo CSV: " + outPath.string());
     }
 
+    // Save TextFiles as CSVs!
+    for (const TextFile& textFile : this->getProject().getTextFiles()) {
+        std::string filename = (textFile.getName() == "Comentários") ? "comentarios.csv" : "avisos.csv";
+        std::filesystem::path outPath = baseDir / filename;
+        std::ofstream ofs(outPath, std::ios::trunc);
+        if (ofs.is_open()) {
+            // Write BOM for Excel UTF-8 compatibility
+            ofs << "\xEF\xBB\xBF";
+            
+            // Header: index,date,col1,col2,...
+            ofs << "index,date";
+            for (const auto& col : textFile.getColumnNames()) {
+                ofs << "," << col;
+            }
+            ofs << "\n";
+            
+            const auto& dates = textFile.getDates();
+            const auto& data = textFile.getData();
+            size_t numRows = dates.size();
+            for (size_t row = 0; row < numRows; ++row) {
+                ofs << row << "," << dates[row];
+                for (size_t col = 0; col < textFile.getColumnNames().size(); ++col) {
+                    if (col < data.size() && row < data[col].size()) {
+                        ofs << "," << data[col][row];
+                    } else {
+                        ofs << ",";
+                    }
+                }
+                ofs << "\n";
+            }
+            ofs.close();
+            LOG("INFO", "Salvo CSV de texto: " + outPath.string());
+        }
+    }
+
     return true;
 }
+

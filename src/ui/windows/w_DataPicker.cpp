@@ -1,4 +1,5 @@
 #include "ui/windows/w_DataPicker.hpp"
+#include "DataFiles.hpp"
 
 Window::DataPicker::DataPicker(bool* isOpen) : IWindow(isOpen) {
     title = "Selecionador de Dados";
@@ -63,6 +64,8 @@ void Window::DataPicker::renderArchiveContextPopup(const GenericFile& file, int 
                 else if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
                     DB::getInstance().getProject().removePacket(telemetryFile->getPacketId());
                 }
+
+
             }
         }
         ImGui::EndPopup();
@@ -88,7 +91,14 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
         const std::string& packetId = telemetryFile->getPacketId();
         std::string        msg      = "[" + packetId + "] " + fileName;
 
-        ImGui::PushStyleColor(ImGuiCol_Text, HI(1));
+        bool isComments = (packetId == "Comentários");
+        if (isComments) {
+            msg = fileName; // Exibe apenas "Comentários" (sem colchetes com ID)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Amarelo
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Text, HI(1));
+        }
+
         if (ImGui::TreeNode(msg.c_str())) {
             this->sendArchivePayload(fileType, packetId);
             for (const std::string& colName : telemetryFile->getColumnNames()) {
@@ -100,6 +110,18 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
     }
 
     else if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
+    }
+    
+    else if (auto textFile = dynamic_cast<const TextFile*>(&file)) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Amarelo
+        if (ImGui::TreeNode(fileName.c_str())) {
+            this->sendArchivePayload(fileType, fileName);
+            for (const std::string& colName : textFile->getColumnNames()) {
+                this->renderColumnItem(fileType, fileName, colName);
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopStyleColor();
     }
 }
 
@@ -129,6 +151,15 @@ void Window::DataPicker::render() {
             this->renderArchiveContextPopup(csvFile, i);
             i++;
         }
+
+        const std::vector<TextFile>& textFiles = DB::getInstance().getProject().getTextFiles();
+        for (auto& textFile : textFiles) {
+            this->renderArchiveNode(textFile);
+            this->renderArchiveContextPopup(textFile, i);
+            i++;
+        }
+
+
 
         ImGui::EndChild();
         ImGui::End();

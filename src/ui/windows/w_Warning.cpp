@@ -1,9 +1,22 @@
 #include "ui/windows/w_Warning.hpp"
 #include "Dialogs.hpp"
 
+Window::Warning* Window::Warning::s_instance = nullptr;
+
 Window::Warning::Warning(bool* isOpen) : IWindow(isOpen) {
     this->title = "Avisos";
     this->flags = ImGuiWindowFlags_MenuBar;
+    s_instance = this;
+}
+
+Window::Warning::~Warning() {
+    if (s_instance == this) {
+        s_instance = nullptr;
+    }
+}
+
+Window::Warning* Window::Warning::getInstance() {
+    return s_instance;
 }
 
 void Window::Warning::render() {
@@ -399,9 +412,28 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
     } else if (rule.conditionType == 4) {
         logEntry.conditionText = "Menor que " + std::to_string(rule.targetValue);
     }
-    
     m_logs.push_back(logEntry);
     
+    // Registra o aviso disparado no TextFile "Avisos"
+    {
+        auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        std::string epochStr = std::to_string(timestamp_ms);
+
+        std::vector<std::string> rowData(5, "");
+        std::string warnText = rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value) + " (" + logEntry.conditionText + ")";
+        if (rule.conditionType >= 0 && rule.conditionType < 5) {
+            rowData[rule.conditionType] = warnText;
+        }
+
+        for (auto& tf : DB::getInstance().getProject().textFiles) {
+            if (tf.getName() == "Avisos") {
+                tf.addRow(epochStr, rowData);
+                break;
+            }
+        }
+    }
+
     LOG("WARN", "[Aviso] " + rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value) + " (" + logEntry.conditionText + ")");
     
     // Automatic CSV Export if toggled

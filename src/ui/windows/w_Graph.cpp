@@ -17,7 +17,7 @@ void Window::Graph::render() {
 
     ImVec2 avail = ImGui::GetContentRegionAvail();
 
-    if (m_graph.data.empty()) {
+    if (m_graph.data.empty() && m_graph.textAnnotations.empty()) {
         // Drag and drop target fills the whole empty window
         ImGui::Dummy(avail);
         processColumnDragDrop();
@@ -46,11 +46,30 @@ void Window::Graph::processColumnDragDrop() {
         ImGui::EndDragDropTarget();
     }
 }
-
 void Window::Graph::addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
+    if (fileType == "Text") {
+        GraphTextAnnotation ann;
+        ann.archiveName = fileName;
+        ann.columnName = columnName;
+        
+        bool exists = false;
+        for (const auto& a : m_graph.textAnnotations) {
+            if (a.archiveName == fileName && a.columnName == columnName) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            m_graph.textAnnotations.push_back(ann);
+            LOG("INFO", "Anotação de texto '" + columnName + "' de '" + fileName + "' adicionada ao gráfico dinâmico.");
+        }
+        return;
+    }
+
+    // Verifica se a coluna já está no gráfico
     for (const GraphData& graphData : m_graph.data) {
         if (graphData.fileName == fileName && graphData.columnName == columnName) {
-            LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já está no gráfico.");
+            LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já está no gráfico dinâmico.");
             return;
         }
     }
@@ -239,6 +258,83 @@ void Window::Graph::renderGraphPlot() {
 
                     ImPlot::TagY(cursorY, HI(1), fmt, cursorY);
                     ImPlot::TagX(cursorX, HI(1), fmt, cursorX);
+                }
+            }
+        }
+
+        // Renderizar anotações textuais (Comentários e Avisos)
+        if (!m_graph.textAnnotations.empty()) {
+            // Localizar datas para sincronização temporal
+            const std::vector<std::string>* plotDates = nullptr;
+            for (const auto& tf : DB::getInstance().getProject().getTelemetryFiles()) {
+                if (!tf.getDate().empty()) {
+                    plotDates = &tf.getDate();
+                    break;
+                }
+            }
+            
+            if (plotDates && !plotDates->empty()) {
+                ImPlotRect limits = ImPlot::GetPlotLimits();
+                
+                for (const auto& ann : m_graph.textAnnotations) {
+                    const TextFile* targetTF = nullptr;
+                    for (const auto& tf : DB::getInstance().getProject().getTextFiles()) {
+                        if (tf.getName() == ann.archiveName) {
+                            targetTF = &tf;
+                            break;
+                        }
+                    }
+                    
+                    if (targetTF) {
+                        const auto& dates = targetTF->getDates();
+                        const auto& data = targetTF->getData();
+                        
+                        // Localizar o índice da coluna
+                        int colIdx = -1;
+                        for (size_t c = 0; c < targetTF->getColumnNames().size(); ++c) {
+                            if (targetTF->getColumnNames()[c] == ann.columnName) {
+                                colIdx = static_cast<int>(c);
+                                break;
+                            }
+                        }
+                        
+                        if (colIdx != -1 && colIdx < static_cast<int>(data.size())) {
+                            const auto& colData = data[colIdx];
+                            
+                            for (size_t row = 0; row < dates.size(); ++row) {
+                                if (row < colData.size() && !colData[row].empty()) {
+                                    std::string text = colData[row];
+                                    try {
+                                        double commentTime = std::stod(dates[row]);
+                                        
+                                        // Achar o índice numérico mais próximo no traçado do gráfico
+                                        int closestIdx = -1;
+                                        double minDiff = std::numeric_limits<double>::max();
+                                        for (size_t i = 0; i < plotDates->size(); ++i) {
+                                            double t = std::stod((*plotDates)[i]);
+                                            double diff = std::abs(t - commentTime);
+                                            if (diff < minDiff) {
+                                                minDiff = diff;
+                                                closestIdx = static_cast<int>(i);
+                                            }
+                                        }
+                                        
+                                        if (closestIdx != -1) {
+                                            // Desenhar linha vertical e caixa de texto correspondente
+                                            double xVal = static_cast<double>(closestIdx);
+                                            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 1.0f, 0.0f, 0.6f)); // Amarelo translúcido
+                                            ImPlot::PlotInfLines("##vLineAnn", &xVal, 1);
+                                            ImPlot::PopStyleColor();
+                                            
+                                            double yVal = limits.Y.Max - (limits.Y.Max - limits.Y.Min) * 0.12 - (row % 3) * (limits.Y.Max - limits.Y.Min) * 0.08; // Distribuir no topo
+                                            
+                                            ImPlot::PlotText(text.c_str(), xVal, yVal, ImVec2(0, 0));
+                                        }
+                                    } catch (...) {}
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -44,7 +44,10 @@ namespace Window {
     class Warning : public IWindow {
         public:
             explicit Warning(bool* isOpen = nullptr);
+            virtual ~Warning();
             virtual void render() override;
+
+            static Warning* getInstance();
 
             void addRule(const WarningRule& rule);
             void removeRule(size_t index);
@@ -54,6 +57,8 @@ namespace Window {
         private:
             void evaluateRules();
             void triggerWarning(const WarningRule& rule, double value);
+
+            static Warning* s_instance;
 
             std::vector<WarningRule> m_rules;
             std::vector<LoggedWarning> m_logs;

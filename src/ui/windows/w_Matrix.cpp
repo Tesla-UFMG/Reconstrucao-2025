@@ -124,6 +124,11 @@ void Window::Matrix::processDragDrop() {
         std::string ft   = ap->fileType;
         std::string name = ap->fileName;
 
+        if (ft == "Text") {
+            ImGui::EndDragDropTarget();
+            return;
+        }
+
         bool colExists = std::any_of(m_columns.begin(), m_columns.end(),
             [&](const MatrixColumn& c){ return c.archiveName == name; });
 
@@ -159,6 +164,11 @@ void Window::Matrix::processDragDrop() {
         std::string ft   = cp->fileType;
         std::string name = cp->fileName;
         std::string var  = cp->columnName;
+
+        if (ft == "Text") {
+            ImGui::EndDragDropTarget();
+            return;
+        }
 
         bool colExists = std::any_of(m_columns.begin(), m_columns.end(),
             [&](const MatrixColumn& c){ return c.archiveName == name; });

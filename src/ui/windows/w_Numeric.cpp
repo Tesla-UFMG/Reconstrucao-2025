@@ -552,6 +552,10 @@ void Window::Numeric::processColumnDragDrop() {
 
 void Window::Numeric::addColumn(const std::string& fileType, const std::string& fileName,
                                 const std::string& columnName) {
+    if (fileType == "Text") {
+        return;
+    }
+
     NumericData colData;
     colData.archive  = fileName;
     colData.column   = columnName;
@@ -572,3 +576,5 @@ void Window::Numeric::addColumn(const std::string& fileType, const std::string& 
         LOG("ERROR", "[Numérico] Falha ao carregar dados da coluna '" + columnName + "' de '" + fileName + "'.");
     }
 }
+
+

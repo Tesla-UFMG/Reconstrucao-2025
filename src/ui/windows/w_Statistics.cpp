@@ -33,7 +33,6 @@ void Window::Statistics::renderMenuBar() {
     }
 }
 
-
 void Window::Statistics::processColumnDragDrop() {
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
@@ -43,12 +42,18 @@ void Window::Statistics::processColumnDragDrop() {
             std::string fileName   = columnPayload->fileName;
             std::string columnName = columnPayload->columnName;
 
+            if (fileType == "Text") {
+                ImGui::EndDragDropTarget();
+                return;
+            }
+
             Metric new_metric;
             new_metric.display_name = columnName;
             new_metric.unique_id    = fileName + ":" + columnName;
             for (const auto& metric : metrics) {
                 if (metric.unique_id == new_metric.unique_id) {
                     LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já está nas estatísticas.");
+                    ImGui::EndDragDropTarget();
                     return;
                 }
             }

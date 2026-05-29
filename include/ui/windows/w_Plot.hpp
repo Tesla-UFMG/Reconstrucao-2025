@@ -38,7 +38,7 @@ struct GraphData {
             } else if (oldSize > newSize) {
                 x.resize(newSize);
             }
-        };
+        }
 };
 
 struct GraphConfig {
@@ -52,12 +52,18 @@ struct GraphConfig {
         bool        autoFit          = true;       // Ajustar automaticamente os eixos
         bool        showValueOnYAxis = true;       // Mostra os valores no nome da coluna
         bool        showCursorOnYAxis = true;      // Mostra o cursor no eixo Y
-        std::string xColumn;                       // Coluna selecionada como eixo X
+        std::string xColumn;
+};
+
+struct GraphTextAnnotation {
+    std::string archiveName;
+    std::string columnName;
 };
 
 struct Graph {
         GraphConfig            config; // Configurações do gráfico
         std::vector<GraphData> data;   // Dados do gráfico
+        std::vector<GraphTextAnnotation> textAnnotations; // Anotações textuais do gráfico
 
         std::vector<std::string> getColumnNames() const {
             std::vector<std::string> columnNames;
@@ -67,6 +73,8 @@ struct Graph {
             return columnNames;
         }
 };
+
+
 
 namespace Window {
 

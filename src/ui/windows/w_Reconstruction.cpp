@@ -572,37 +572,57 @@ void Window::Reconstruction::render() {
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
                 const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-                m_selectedFileType                 = columnPayload->fileType;
-                m_selectedFileName                 = columnPayload->fileName;
-
-                std::string colName  = columnPayload->columnName;
-                std::string colLower = colName;
-                std::transform(colLower.begin(), colLower.end(), colLower.begin(), ::tolower);
-
-                if (colLower.find("lat") != std::string::npos) {
-                    m_selectedLatCol = colName;
-                    LOG("INFO", "MBTiles: Latitude definida por Drag & Drop para '" + colName + "' (" +
-                                    m_selectedFileType + ")");
-                } else if (colLower.find("lon") != std::string::npos || colLower.find("lng") != std::string::npos) {
-                    m_selectedLonCol = colName;
-                    LOG("INFO", "MBTiles: Longitude definida por Drag & Drop para '" + colName + "' (" +
-                                    m_selectedFileType + ")");
+                
+                if (std::string(columnPayload->fileType) == "Text") {
+                    TrackTextAnnotation ann;
+                    ann.archiveName = columnPayload->fileName;
+                    ann.columnName = columnPayload->columnName;
+                    
+                    bool exists = false;
+                    for (const auto& a : m_textAnnotations) {
+                        if (a.archiveName == ann.archiveName && a.columnName == ann.columnName) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        m_textAnnotations.push_back(ann);
+                        LOG("INFO", "Anotação de texto '" + ann.columnName + "' de '" + ann.archiveName + "' adicionada à reconstrução de pista.");
+                    }
                 } else {
-                    if (m_selectedLatCol.empty()) {
+                    m_selectedFileType                 = columnPayload->fileType;
+                    m_selectedFileName                 = columnPayload->fileName;
+
+                    std::string colName  = columnPayload->columnName;
+                    std::string colLower = colName;
+                    std::transform(colLower.begin(), colLower.end(), colLower.begin(), ::tolower);
+
+                    if (colLower.find("lat") != std::string::npos) {
                         m_selectedLatCol = colName;
-                        LOG("INFO", "MBTiles: Latitude atribuída sequencialmente para '" + colName + "' (" +
+                        LOG("INFO", "MBTiles: Latitude definida por Drag & Drop para '" + colName + "' (" +
+                                        m_selectedFileType + ")");
+                    } else if (colLower.find("lon") != std::string::npos || colLower.find("lng") != std::string::npos) {
+                        m_selectedLonCol = colName;
+                        LOG("INFO", "MBTiles: Longitude definida por Drag & Drop para '" + colName + "' (" +
                                         m_selectedFileType + ")");
                     } else {
-                        m_selectedLonCol = colName;
-                        LOG("INFO", "MBTiles: Longitude atribuída sequencialmente para '" + colName + "' (" +
-                                        m_selectedFileType + ")");
+                        if (m_selectedLatCol.empty()) {
+                            m_selectedLatCol = colName;
+                            LOG("INFO", "MBTiles: Latitude atribuída sequencialmente para '" + colName + "' (" +
+                                            m_selectedFileType + ")");
+                        } else {
+                            m_selectedLonCol = colName;
+                            LOG("INFO", "MBTiles: Longitude atribuída sequencialmente para '" + colName + "' (" +
+                                            m_selectedFileType + ")");
+                        }
                     }
+                    centerOnTrack();
                 }
-                centerOnTrack();
             }
             ImGui::EndDragDropTarget();
         }
 
+        /*
         // 3. Capturar zoom com o Scroll do Mouse quando pairado sobre a janela (Limitado a Z de 12 a 18)
         if (ImGui::IsItemHovered()) {
             float scroll = ImGui::GetIO().MouseWheel;
@@ -612,6 +632,16 @@ void Window::Reconstruction::render() {
             } else if (scroll < 0.0f && m_testZ > 12) {
                 m_testZ--;
                 m_statusMessage = "Zoom Out (Z=" + std::to_string(m_testZ) + ")";
+            }
+        }
+        */
+
+        if (ImGui::IsItemHovered()) {
+            float scroll = ImGui::GetIO().MouseWheel;
+            if (scroll > 0.0f && m_zoomScale < 2.0f) {
+                m_zoomScale = std::min(m_zoomScale + 0.01f, 2.0f);
+            } else if (scroll < 0.0f && m_zoomScale > 0.5f) {
+                m_zoomScale = std::max(m_zoomScale - 0.01f, 0.5f);
             }
         }
 
@@ -767,6 +797,92 @@ void Window::Reconstruction::render() {
                                 drawList->AddCircle(screenPoints[i], 8.0f, IM_COL32(255, 255, 255, 200), 0, 1.5f);
                             } else {
                                 drawList->AddCircleFilled(screenPoints[i], 3.5f, colorPoint);
+                            }
+                        }
+
+                        // Renderizar anotações textuais georreferenciadas sincronizadas pelo tempo mais próximo
+                        if (!m_textAnnotations.empty()) {
+                            const std::vector<std::string>* trackDates = nullptr;
+                            if (m_selectedFileType == "Telemetry") {
+                                for (const auto& tf : DB::getInstance().getProject().getTelemetryFiles()) {
+                                    if (tf.getPacketId() == m_selectedFileName) {
+                                        trackDates = &tf.getDate();
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (trackDates && !trackDates->empty()) {
+                                int annotationCount = 0;
+                                for (const auto& ann : m_textAnnotations) {
+                                    const TextFile* targetTF = nullptr;
+                                    for (const auto& tf : DB::getInstance().getProject().getTextFiles()) {
+                                        if (tf.getName() == ann.archiveName) {
+                                            targetTF = &tf;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (targetTF) {
+                                        const auto& dates = targetTF->getDates();
+                                        const auto& data = targetTF->getData();
+                                        
+                                        int colIdx = -1;
+                                        for (size_t c = 0; c < targetTF->getColumnNames().size(); ++c) {
+                                            if (targetTF->getColumnNames()[c] == ann.columnName) {
+                                                colIdx = static_cast<int>(c);
+                                                break;
+                                            }
+                                        }
+                                        
+                                        if (colIdx != -1 && colIdx < static_cast<int>(data.size())) {
+                                            const auto& colData = data[colIdx];
+                                            
+                                            for (size_t row = 0; row < dates.size(); ++row) {
+                                                if (row < colData.size() && !colData[row].empty()) {
+                                                    std::string text = colData[row];
+                                                    try {
+                                                        double commentTime = std::stod(dates[row]);
+                                                        
+                                                        // Achar o índice numérico mais próximo no traçado do GPS
+                                                        int closestIdx = -1;
+                                                        double minDiff = std::numeric_limits<double>::max();
+                                                        for (size_t i = 0; i < trackDates->size(); ++i) {
+                                                            double t = std::stod((*trackDates)[i]);
+                                                            double diff = std::abs(t - commentTime);
+                                                            if (diff < minDiff) {
+                                                                minDiff = diff;
+                                                                closestIdx = static_cast<int>(i);
+                                                            }
+                                                        }
+                                                        
+                                                        if (closestIdx != -1 && closestIdx < static_cast<int>(screenPoints.size())) {
+                                                            ImVec2 p_track = screenPoints[closestIdx];
+                                                            
+                                                            // Offset da caixa de texto para evitar sobreposição
+                                                            ImVec2 p_text(p_track.x + 40.0f, p_track.y - 30.0f - (annotationCount % 4) * 28.0f);
+                                                            annotationCount++;
+                                                            
+                                                            ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+                                                            ImVec2 boxMin(p_text.x - 6.0f, p_text.y - 4.0f);
+                                                            ImVec2 boxMax(p_text.x + textSize.x + 6.0f, p_text.y + textSize.y + 4.0f);
+                                                            
+                                                            // Linha conectora amarela
+                                                            drawList->AddLine(p_track, ImVec2(boxMin.x, (boxMin.y + boxMax.y) * 0.5f), IM_COL32(255, 255, 0, 180), 1.5f);
+                                                            
+                                                            // Fundo escuro premium semi-transparente
+                                                            drawList->AddRectFilled(boxMin, boxMax, IM_COL32(15, 15, 15, 220), 4.0f);
+                                                            // Borda amarela premium para destacar o comentário
+                                                            drawList->AddRect(boxMin, boxMax, IM_COL32(255, 255, 0, 255), 4.0f, 0, 1.2f);
+                                                            // Texto em amarelo brilhante
+                                                            drawList->AddText(p_text, IM_COL32(255, 255, 0, 255), text.c_str());
+                                                        }
+                                                    } catch (...) {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

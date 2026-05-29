@@ -138,15 +138,17 @@ void Window::WheelControl::processColumnDragDrop() {
 }
 
 void Window::WheelControl::addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
-    // Limpa colunas anteriores (o volante utiliza apenas uma coluna ativa por vez)
+    if (fileType == "Text") {
+        return;
+    }
+
     m_dataList.clear();
     m_steerIndex = -1;
-    
+
     WheelData wd;
     wd.archive = fileName;
     wd.column = columnName;
 
-    // Carregar dados dependendo da fonte (CSV ou Telemetria)
     if (fileType == "CSV") {
         wd.data = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {

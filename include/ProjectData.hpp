@@ -23,11 +23,11 @@ Para salvar informações globais do projeto. Por exemplo, csv's
 
 class ProjectData {
     private:
-        bool telemetryStatus  = false;
+        int telemetryStatus   = 0;
         bool processingStatus = false;
 
     public:
-        ProjectData()                              = default;
+        ProjectData();
         ProjectData(const ProjectData&)            = delete;
         ProjectData& operator=(const ProjectData&) = delete;
         ProjectData(ProjectData&&)                 = default;
@@ -37,9 +37,10 @@ class ProjectData {
         std::vector<CSVFile>       csvFiles;
         std::vector<VideoFile>     videoFiles;
         std::vector<TelemetryFile> telemetryFiles;
+        std::vector<TextFile>      textFiles;
 
-        bool getTelemetryStatus();
-        void setTelemetryStatus(bool status);
+        int getTelemetryStatus();
+        void setTelemetryStatus(int status);
 
         bool getProcessingStatus();
         void setProcessingStatus(bool status);
@@ -49,12 +50,16 @@ class ProjectData {
 
         const std::vector<CSVFile>&       getCSVFiles();
         const std::vector<TelemetryFile>& getTelemetryFiles();
+        const std::vector<TextFile>&      getTextFiles();
 
         bool loadPacket(const std::string& packetName, const std::string& packetId,
                         const std::vector<std::string>& columnNames);
         void removePacket(const std::string& packetId);
         bool updatePacket(const std::string& packetId, const std::string& newName,
                           const std::vector<std::string>& newCols);
+        void clearAllTelemetryData();
+        void addTextFile(const std::filesystem::path& filepath, const std::vector<std::string>& columnNames, const std::vector<std::string>& dates, const std::vector<std::vector<std::string>>& data);
+        void removeTextFile(const std::filesystem::path& filepath);
 
         void clear(); // Limpa os dados armazenados
 

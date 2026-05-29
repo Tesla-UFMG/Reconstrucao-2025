@@ -210,13 +210,10 @@ double Window::Pedal::getDuration() const {
     return 0.0;
 }
 
-// --- Implementação do Drag-and-Drop para w_Pedal ---
-
 void Window::Pedal::processColumnDragDrop() {
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-
             this->addColumn(columnPayload->fileType, columnPayload->fileName, columnPayload->columnName);
         }
         ImGui::EndDragDropTarget();
@@ -224,6 +221,10 @@ void Window::Pedal::processColumnDragDrop() {
 }
 
 void Window::Pedal::addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
+    if (fileType == "Text") {
+        return;
+    }
+
     PedalData pd;
     pd.archive = fileName;
     pd.column = columnName;
@@ -280,3 +281,5 @@ void Window::Pedal::removeColumn(int index) {
     if (m_throttleIndex > index) m_throttleIndex--;
     if (m_brakeIndex > index) m_brakeIndex--;
 }
+
+

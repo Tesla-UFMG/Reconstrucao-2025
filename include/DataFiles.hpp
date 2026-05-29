@@ -62,7 +62,27 @@ class TelemetryFile : public GenericFile {
         bool insertDate(const std::string& newDate);
         void                                    setName(const std::string& newName);
         void                                    setColumnNames(const std::vector<std::string>& newCols);
+        void                                    clearData();
     };
+
+class TextFile : public GenericFile {
+    private:
+        std::vector<std::string> dates;
+        std::vector<std::vector<std::string>> data;
+        std::vector<std::string> columnNames;
+
+    public:
+        TextFile(std::filesystem::path filepath);
+        TextFile(std::filesystem::path filepath, const std::vector<std::string>& columnNames);
+        TextFile(std::filesystem::path filepath, const std::vector<std::string>& columnNames, const std::vector<std::string>& dates, const std::vector<std::vector<std::string>>& data);
+        const std::vector<std::string>& getDates() const;
+        const std::vector<std::vector<std::string>>& getData() const;
+        const std::vector<std::string>& getComments() const;
+        const std::vector<std::string>& getColumnNames() const;
+        void addRow(const std::string& date, const std::vector<std::string>& rowData);
+        void addComment(const std::string& date, const std::string& comment);
+        void clear();
+};
 
 struct ArchivePayload {
         char fileType[FILE_TYPE_SIZE];

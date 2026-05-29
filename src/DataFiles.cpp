@@ -93,3 +93,64 @@ void TelemetryFile::setColumnNames(const std::vector<std::string>& newCols) {
         this->data[i].resize(this->date.size(), 0.0);
     }
 }
+
+void TelemetryFile::clearData() {
+    this->data.clear();
+    this->data.resize(this->columnNames.size());
+    this->date.clear();
+}
+
+// TEXT FILE
+TextFile::TextFile(std::filesystem::path filepath)
+    : GenericFile(std::move(filepath)) {
+    this->fileType = "Text";
+    this->name     = this->filepath.filename().string();
+    this->columnNames = { "Comentários" };
+    this->data.resize(1);
+}
+
+TextFile::TextFile(std::filesystem::path filepath, const std::vector<std::string>& columnNames)
+    : GenericFile(std::move(filepath)), columnNames(columnNames) {
+    this->fileType = "Text";
+    this->name     = this->filepath.filename().string();
+    this->data.resize(columnNames.size());
+}
+
+TextFile::TextFile(std::filesystem::path filepath, const std::vector<std::string>& columnNames, const std::vector<std::string>& dates, const std::vector<std::vector<std::string>>& data)
+    : GenericFile(std::move(filepath)), dates(dates), data(data), columnNames(columnNames) {
+    this->fileType = "Text";
+    this->name     = this->filepath.filename().string();
+}
+
+const std::vector<std::string>& TextFile::getDates() const { return this->dates; }
+const std::vector<std::vector<std::string>>& TextFile::getData() const { return this->data; }
+
+const std::vector<std::string>& TextFile::getComments() const {
+    static const std::vector<std::string> emptyVec{};
+    if (this->data.empty()) return emptyVec;
+    return this->data[0];
+}
+
+const std::vector<std::string>& TextFile::getColumnNames() const { return this->columnNames; }
+
+void TextFile::addRow(const std::string& date, const std::vector<std::string>& rowData) {
+    this->dates.push_back(date);
+    for (size_t i = 0; i < this->columnNames.size(); ++i) {
+        if (i < rowData.size()) {
+            this->data[i].push_back(rowData[i]);
+        } else {
+            this->data[i].push_back("");
+        }
+    }
+}
+
+void TextFile::addComment(const std::string& date, const std::string& comment) {
+    this->addRow(date, { comment });
+}
+
+void TextFile::clear() {
+    this->dates.clear();
+    for (auto& col : this->data) {
+        col.clear();
+    }
+}

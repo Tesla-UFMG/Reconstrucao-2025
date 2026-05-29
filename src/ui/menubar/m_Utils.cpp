@@ -18,12 +18,18 @@ void MenuBar::renderStatus() {
     std::string text;
 
     // Telemetry Status
-    bool telemetryStatus  = DB::getInstance().getProject().getTelemetryStatus();
-    text                 += telemetryStatus ? "Conectado  " : "Desconectado  ";
+    int telemetryStatus  = DB::getInstance().getProject().getTelemetryStatus();
+    if (telemetryStatus == 1) {
+        text += "Conectado  ";
+    } else if (telemetryStatus == 2) {
+        text += "Reconectando...  ";
+    } else {
+        text += "Desconectado  ";
+    }
 
     // Telemetry Status
     bool processingStatus = DB::getInstance().getProject().getProcessingStatus();
-    if (telemetryStatus) {
+    if (telemetryStatus == 1) {
         text += processingStatus ? "Ok  " : "Erro  ";
     }
 
