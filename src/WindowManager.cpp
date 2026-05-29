@@ -28,6 +28,14 @@ void WindowManager::init(SDL_Renderer* renderer) {
     this->setup();
 }
 
+void WindowManager::cleanup() {
+    windows.clear();
+    home.reset();
+    m_reconstructionWindow = nullptr;
+    m_aboutWindow = nullptr;
+    m_renderer = nullptr;
+}
+
 void WindowManager::saveWindowVisibility(const std::filesystem::path& filepath) {
     std::filesystem::path parentPath = filepath.parent_path();
     if (!parentPath.empty() && !std::filesystem::exists(parentPath)) {

@@ -14,6 +14,7 @@ void App::init(const std::string& windowTitle, int windowWidth, int windowHeight
 }
 
 void App::close() {
+    WindowManager::getInstance().cleanup();
     ImGuiWrapper::closeSubystem();
     SDLWrapper::closeSubystem();
 }

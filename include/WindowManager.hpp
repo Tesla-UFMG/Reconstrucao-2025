@@ -76,6 +76,7 @@ public:
     static WindowManager& getInstance();
 
         void init(SDL_Renderer* renderer);
+        void cleanup();
 
         VisibilityFlags visibility;
         void            saveWindowVisibility(const std::filesystem::path& filepath);

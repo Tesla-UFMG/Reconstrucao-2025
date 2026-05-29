@@ -69,9 +69,11 @@ const std::vector<double>& DB::getCSVData(const std::string& filepath, const std
         if (csvFile.getName() != filepath)
             continue;
 
-        const std::vector<double>& data = csvFile.getColumnData(columnName);
-        if (!data.empty()) {
-            return data;
+        const std::vector<std::string>& cols = csvFile.getColumnNames();
+        for (const auto& col : cols) {
+            if (col == columnName) {
+                return csvFile.getColumnData(columnName);
+            }
         }
     }
     LOG("ERROR",
@@ -86,9 +88,11 @@ const std::vector<double>& DB::getTelemetryData(const std::string& packetId, con
         if (telemetryFile.getPacketId() != packetId)
             continue;
 
-        const std::vector<double>& data = telemetryFile.getColumnData(columnName);
-        if (!data.empty()) {
-            return data;
+        const std::vector<std::string>& cols = telemetryFile.getColumnNames();
+        for (const auto& col : cols) {
+            if (col == columnName) {
+                return telemetryFile.getColumnData(columnName);
+            }
         }
     }
 
