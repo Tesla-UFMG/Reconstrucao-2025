@@ -12,6 +12,7 @@
 #include "ui/windows/w_Terminal.hpp"
 #include "ui/windows/w_WheelControl.hpp"
 #include "ui/windows/w_Reconstruction.hpp" 
+#include "ui/windows/w_Updates.hpp"
 
 WindowManager& WindowManager::getInstance() {
     static WindowManager instance;
@@ -25,6 +26,13 @@ WindowManager::~WindowManager() { LOG("TRACE", "Window Manager encerrado."); }
 void WindowManager::init(SDL_Renderer* renderer) {
     this->m_renderer = renderer;
     this->setup();
+    
+    // Abre a janela de atualizações se o arquivo oculto local não existir
+    if (!std::filesystem::exists(std::filesystem::current_path() / ".tesla_updates_seen")) {
+        this->showUpdates = true;
+    } else {
+        this->showUpdates = false;
+    }
 }
 
 void WindowManager::cleanup() {
@@ -32,6 +40,7 @@ void WindowManager::cleanup() {
     home.reset();
     m_reconstructionWindow = nullptr;
     m_aboutWindow = nullptr;
+    m_updatesWindow = nullptr;
     m_renderer = nullptr;
 }
 
@@ -94,6 +103,10 @@ void WindowManager::setup() {
     m_aboutWindow = temp_about_ptr.get();
     windows.emplace_back(std::move(temp_about_ptr));
 
+    auto temp_updates_ptr = std::make_unique<Window::Updates>(&showUpdates);
+    m_updatesWindow = temp_updates_ptr.get();
+    windows.emplace_back(std::move(temp_updates_ptr));
+
     windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
     windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
     windows.emplace_back(std::make_unique<Window::ImGuiDemo>(&visibility.showImGuiDemo));
@@ -108,6 +121,9 @@ void WindowManager::homePage() {
     MenuBar::render();
     if (m_aboutWindow) {
         m_aboutWindow->render();
+    }
+    if (m_updatesWindow) {
+        m_updatesWindow->render();
     }
     home->render();       // Home page
 }

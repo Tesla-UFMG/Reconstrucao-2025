@@ -21,6 +21,7 @@
 #include "ui/windows/w_Bar.hpp"
 #include "ui/windows/w_Warning.hpp"
 #include "ui/windows/w_Matrix.hpp"
+#include "ui/windows/w_Updates.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -63,6 +64,7 @@ class WindowManager {
         // Estes ponteiros servem apenas para facilitar a comunicação entre janelas.
         Window::Reconstruction* m_reconstructionWindow = nullptr;
         Window::About* m_aboutWindow = nullptr;
+        Window::Updates* m_updatesWindow = nullptr;
         void saveWindowCustomStates(const std::string& filepath);
         void loadWindowCustomStates(const std::string& filepath);
 
@@ -76,6 +78,7 @@ public:
         void cleanup();
 
         VisibilityFlags visibility;
+        bool            showUpdates = false;
         void            saveWindowVisibility(const std::filesystem::path& filepath);
         void            loadWindowVisibility(const std::filesystem::path& filepath);
 
