@@ -155,7 +155,7 @@ void Window::Reconstruction::findFirstAvailableTile() {
             // Inicializar a câmera georreferenciada contínua no centro exato do mapa
             double cx     = m_testX + 0.5;
             double cy_tms = m_testY + 0.5;
-            double cy_osm = (1 << m_testZ) - 1.0 - cy_tms;
+            double cy_osm = (1 << m_testZ) - cy_tms;
             double pi     = 3.14159265358979323846;
 
             m_centerLon = cx * 360.0 / (1 << m_testZ) - 180.0;
@@ -244,12 +244,12 @@ static ImVec2 getScreenPosFromLatLon(double lat, double lon, double centerLat, d
 
     double latRad = lat * pi / 180.0;
     double y_osm  = (1.0 - std::log(std::tan(latRad) + 1.0 / std::cos(latRad)) / pi) / 2.0 * (1 << z);
-    double y_tms  = (1 << z) - 1.0 - y_osm;
+    double y_tms  = (1 << z) - y_osm;
 
     double cx_osm  = (centerLon + 180.0) / 360.0 * (1 << z);
     double clatRad = centerLat * pi / 180.0;
     double cy_osm  = (1.0 - std::log(std::tan(clatRad) + 1.0 / std::cos(clatRad)) / pi) / 2.0 * (1 << z);
-    double cy_tms  = (1 << z) - 1.0 - cy_osm;
+    double cy_tms  = (1 << z) - cy_osm;
 
     ImVec2 centerScreen(windowPos.x + windowSize.x * 0.5f, windowPos.y + windowSize.y * 0.5f);
 
@@ -358,7 +358,7 @@ void Window::Reconstruction::render() {
         double cx_osm  = (m_centerLon + 180.0) / 360.0 * (1 << m_testZ);
         double clatRad = m_centerLat * pi / 180.0;
         double cy_osm  = (1.0 - std::log(std::tan(clatRad) + 1.0 / std::cos(clatRad)) / pi) / 2.0 * (1 << m_testZ);
-        double cy_tms  = (1 << m_testZ) - 1.0 - cy_osm;
+        double cy_tms  = (1 << m_testZ) - cy_osm;
 
         float tileSize = 256.0f * m_zoomScale;
 
@@ -672,10 +672,10 @@ void Window::Reconstruction::render() {
                 double latRad = m_centerLat * pi / 180.0;
                 double cy_osm_ref =
                     (1.0 - std::log(std::tan(latRad) + 1.0 / std::cos(latRad)) / pi) / 2.0 * (1 << m_testZ);
-                double cy_tms_ref = (1 << m_testZ) - 1.0 - cy_osm_ref;
+                double cy_tms_ref = (1 << m_testZ) - cy_osm_ref;
 
                 double cy_tms_new = cy_tms_ref - cy_offset;
-                double cy_osm_new = (1 << m_testZ) - 1.0 - cy_tms_new;
+                double cy_osm_new = (1 << m_testZ) - cy_tms_new;
                 double v          = pi * (1.0 - 2.0 * cy_osm_new / (1 << m_testZ));
                 double newLat     = (2.0 * std::atan(std::exp(v)) - pi / 2.0) * 180.0 / pi;
 
@@ -686,7 +686,7 @@ void Window::Reconstruction::render() {
                 cy_tms += deltaY / tileSize;
 
                 m_centerLon       = cx_osm * 360.0 / (1 << m_testZ) - 180.0;
-                double cy_osm_new = (1 << m_testZ) - 1.0 - cy_tms;
+                double cy_osm_new = (1 << m_testZ) - cy_tms;
                 double v          = pi * (1.0 - 2.0 * cy_osm_new / (1 << m_testZ));
                 m_centerLat       = (2.0 * std::atan(std::exp(v)) - pi / 2.0) * 180.0 / pi;
 
@@ -815,10 +815,10 @@ void Window::Reconstruction::render() {
                     double latRad = m_centerLat * pi / 180.0;
                     double cy_osm_ref =
                         (1.0 - std::log(std::tan(latRad) + 1.0 / std::cos(latRad)) / pi) / 2.0 * (1 << m_testZ);
-                    double cy_tms_ref = (1 << m_testZ) - 1.0 - cy_osm_ref;
+                    double cy_tms_ref = (1 << m_testZ) - cy_osm_ref;
 
                     double cy_tms_new = cy_tms_ref - cy_offset;
-                    double cy_osm_new = (1 << m_testZ) - 1.0 - cy_tms_new;
+                    double cy_osm_new = (1 << m_testZ) - cy_tms_new;
                     double v          = pi * (1.0 - 2.0 * cy_osm_new / (1 << m_testZ));
                     double newLat     = (2.0 * std::atan(std::exp(v)) - pi / 2.0) * 180.0 / pi;
 
@@ -829,7 +829,7 @@ void Window::Reconstruction::render() {
                     cy_tms += dy / tileSize;
 
                     m_centerLon       = cx_osm * 360.0 / (1 << m_testZ) - 180.0;
-                    double cy_osm_new = (1 << m_testZ) - 1.0 - cy_tms;
+                    double cy_osm_new = (1 << m_testZ) - cy_tms;
                     double v          = pi * (1.0 - 2.0 * cy_osm_new / (1 << m_testZ));
                     m_centerLat       = (2.0 * std::atan(std::exp(v)) - pi / 2.0) * 180.0 / pi;
 
