@@ -155,8 +155,8 @@ void Window::WheelControl::addColumn(const std::string& fileType, const std::str
         wd.data = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (!wd.data || wd.data->empty()) {
-        LOG("ERROR", "[Volante] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "' (Vetor vazio ou inexistente).");
+    if (!wd.data) {
+        LOG("ERROR", "[Volante] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "'.");
         return;
     }
 

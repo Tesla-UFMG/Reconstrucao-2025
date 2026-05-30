@@ -236,8 +236,8 @@ void Window::Pedal::addColumn(const std::string& fileType, const std::string& fi
         pd.data = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
     
-    if (!pd.data || pd.data->empty()) {
-        LOG("ERROR", "[Pedal] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "' (Vetor vazio ou inexistente).");
+    if (!pd.data) {
+        LOG("ERROR", "[Pedal] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "'.");
         return;
     }
 

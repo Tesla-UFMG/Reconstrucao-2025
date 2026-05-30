@@ -85,9 +85,8 @@ void Window::Graph::addColumn(const std::string& fileType, const std::string& fi
         graphData.y = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (!graphData.y || graphData.y->empty()) {
-        Dialogs::showErrorDialog("Não é possível adicionar uma coluna vazia ao gráfico!");
-        LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " está vazia.");
+    if (!graphData.y) {
+        Dialogs::showErrorDialog("Não é possível adicionar uma coluna inválida ao gráfico!");
         return;
     }
 
@@ -243,7 +242,10 @@ void Window::Graph::renderGraphPlot() {
                 snprintf(fmt, sizeof(fmt), "%%%d.%df", maxLen, prec);
 
                 ImVec4 lineColor    = ImPlot::GetColormapColor(j);
-                double currentValue = yData.back();
+                double currentValue = 0.0;
+                if (!yData.empty()) {
+                    currentValue = yData.back();
+                }
 
                 ImPlot::TagY(currentValue, lineColor, fmt, currentValue);
             }

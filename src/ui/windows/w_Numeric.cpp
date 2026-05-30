@@ -50,7 +50,17 @@ void Window::Numeric::render() {
     if (m_hasData && anyData) {
         hasVal = true;
         if (m_currentMetric == MetricType::LAST) {
-            val = m_loadedColumns.back().data->back();
+            bool found = false;
+            for (auto it = m_loadedColumns.rbegin(); it != m_loadedColumns.rend(); ++it) {
+                if (it->data && !it->data->empty()) {
+                    val = it->data->back();
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                hasVal = false;
+            }
         } else {
             if (m_statModeAll) {
                 if (m_currentMetric == MetricType::MIN) {
@@ -631,7 +641,7 @@ void Window::Numeric::addColumn(const std::string& fileType, const std::string& 
         colData.data = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (colData.data && !colData.data->empty()) {
+    if (colData.data) {
         m_loadedColumns.push_back(colData);
         m_hasData = true;
         LOG("INFO", "[Numérico] Adicionado dados da coluna '" + columnName + "' de '" + fileName +

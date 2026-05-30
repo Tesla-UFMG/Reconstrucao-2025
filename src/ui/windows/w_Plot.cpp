@@ -178,9 +178,8 @@ void Window::Plot::addColumnToGraph(::Graph& graph, const ColumnPayload* payload
         graphData.y = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (graphData.y->empty()) {
-        Dialogs::showErrorDialog("Não é possível adicionar uma coluna vazia ao gráfico!");
-        LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " está vazia.");
+    if (!graphData.y) {
+        Dialogs::showErrorDialog("Não é possível adicionar uma coluna inválida ao gráfico!");
         return;
     }
 
@@ -445,7 +444,10 @@ void Window::Plot::renderGraph(size_t graphIndex) {
 
                 // Pega a cor e o ultimo valor
                 ImVec4 lineColor    = ImPlot::GetColormapColor(j);
-                double currentValue = yData.back();
+                double currentValue = 0.0;
+                if (!yData.empty()) {
+                    currentValue = yData.back();
+                }
 
                 ImPlot::TagY(currentValue, // posição da tag
                              lineColor,    // cor

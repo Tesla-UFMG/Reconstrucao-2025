@@ -495,7 +495,7 @@ void Window::Bar::addColumn(const std::string& fileType, const std::string& file
         m_loadedData.data = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (m_loadedData.data && !m_loadedData.data->empty()) {
+    if (m_loadedData.data) {
         m_hasData = true;
         LOG("INFO", "[Barra] Carregado dados da coluna '" + columnName + "' de '" + fileName + "'. Total de registros: " + std::to_string(m_loadedData.data->size()));
     } else {
