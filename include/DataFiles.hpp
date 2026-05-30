@@ -61,6 +61,7 @@ class TelemetryFile : public GenericFile {
         bool                                    insertData(const std::vector<double>& newData);
         bool insertDate(const std::string& newDate);
         void                                    setName(const std::string& newName);
+        void                                    setPacketId(const std::string& newPacketId);
         void                                    setColumnNames(const std::vector<std::string>& newCols);
         void                                    clearData();
     };

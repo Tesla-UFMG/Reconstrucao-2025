@@ -117,7 +117,7 @@ void Window::Graph::renderGraphPlot() {
     if (!graphConfig.xColumn.empty()) {
         for (const GraphData& graphData : m_graph.data) {
             if (graphData.columnName == graphConfig.xColumn) {
-                customX    = *graphData.y;
+                customX    = graphData.getYData();
                 useCustomX = true;
                 break;
             }
@@ -154,16 +154,13 @@ void Window::Graph::renderGraphPlot() {
         if (useCustomX) {
             axisLength = customX.size();
         } else if (!m_graph.data.empty()) {
-            axisLength = m_graph.data[0].y->size();
+            axisLength = m_graph.data[0].getYData().size();
             for (const GraphData& graphData : m_graph.data) {
-                if (graphData.y->size() > axisLength) {
-                    axisLength = graphData.y->size();
+                if (graphData.getYData().size() > axisLength) {
+                    axisLength = graphData.getYData().size();
                 }
             }
         }
-
-        int start = graphConfig.followTheEnd ? std::max(0, int(axisLength) - graphConfig.numPoints) : 0;
-
         ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Horizontal);
 
         // Plota cada coluna
@@ -173,7 +170,7 @@ void Window::Graph::renderGraphPlot() {
             if (!graphConfig.xColumn.empty() && graphData.columnName == graphConfig.xColumn)
                 continue;
 
-            const std::vector<double>& y = *graphData.y;
+            const std::vector<double>& y = graphData.getYData();
             std::vector<double>        yData(y.size());
             if (graphData.multiplier == 1.0) {
                 yData = y;
@@ -183,19 +180,31 @@ void Window::Graph::renderGraphPlot() {
                 }
             }
 
-            // Define qual vetor de X sera usado
-            if (graphData.x.size() != y.size())
-                graphData.buildXVector();
+            std::vector<double> xData;
+            std::vector<double> alignedY;
 
-            std::vector<double> xData = (useCustomX) ? customX : graphData.x;
+            if (useCustomX) {
+                auto aligned = alignVectors(customX, yData, graphConfig.xyAlignmentMode);
+                xData = aligned.first;
+                alignedY = aligned.second;
+            } else {
+                std::vector<double> baseGrid(axisLength);
+                for (size_t i = 0; i < axisLength; ++i) {
+                    baseGrid[i] = static_cast<double>(i);
+                }
+                auto aligned = alignVectors(baseGrid, yData, graphConfig.xyAlignmentMode);
+                xData = aligned.first;
+                alignedY = aligned.second;
+            }
 
-            const double* xPtr = xData.data() + start;
-            const double* yPtr = yData.data() + start;
+            int safeSize = static_cast<int>(std::min(xData.size(), alignedY.size()));
+            int colStart = graphConfig.followTheEnd ? std::max(0, safeSize - graphConfig.numPoints) : 0;
+            int numPoints = graphConfig.followTheEnd ? std::min(safeSize, graphConfig.numPoints) : safeSize;
+
+            const double* xPtr = xData.data() + colStart;
+            const double* yPtr = alignedY.data() + colStart;
 
             const char* columnName = graphData.columnName.c_str();
-
-            int totalPts  = static_cast<int>(std::min(xData.size(), yData.size()));
-            int numPoints = graphConfig.followTheEnd ? std::min(totalPts, graphConfig.numPoints) : totalPts;
 
             switch (graphConfig.type) {
                 case GRAPH_LINE:
@@ -392,6 +401,21 @@ void Window::Graph::drawLegendPopup() {
                     }
                 }
                 ImGui::EndCombo();
+            }
+
+            {
+                ImGui::SeparatorText("Alinhamento Temporal / XY");
+                const char* alignmentModes[] = {
+                    "Tamanho Mínimo",
+                    "Proximidade Temporal",
+                    "Interpolação Linear (Técnico)"
+                };
+                int currentMode = static_cast<int>(m_graph.config.xyAlignmentMode);
+                ImGui::SetNextItemWidth(180.0f);
+                if (ImGui::Combo("Alinhamento##XY", &currentMode, alignmentModes, IM_ARRAYSIZE(alignmentModes))) {
+                    m_graph.config.xyAlignmentMode = static_cast<XYAlignmentMode>(currentMode);
+                    ImPlot::BustItemCache();
+                }
             }
 
             ImGui::SeparatorText("Colunas");

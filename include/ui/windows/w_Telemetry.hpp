@@ -72,6 +72,7 @@ namespace Window {
             std::mutex              queueMutex;
             std::queue<std::string> messageQueue;
             std::atomic<bool>       keepReading{false};
+            static Telemetry*        s_instance;
 
             void clearAndResizeInputBuffers();
 
@@ -94,6 +95,9 @@ namespace Window {
             ~Telemetry();
 
             void render() override;
+
+            void toggleConnection();
+            static Telemetry* getInstance();
     };
 
 } // namespace Window

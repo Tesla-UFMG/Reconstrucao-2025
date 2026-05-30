@@ -70,18 +70,35 @@ void ProjectData::removePacket(const std::string& packetId) {
     LOG("ERROR", "Pacote não encontrado para remoção: " + packetId);
 }
 
-bool ProjectData::updatePacket(const std::string& packetId, const std::string& newName,
-                               const std::vector<std::string>& newCols) {
+bool ProjectData::updatePacket(const std::string& oldPacketId, const std::string& newPacketId,
+                               const std::string& newName, const std::vector<std::string>& newCols) {
+    if (oldPacketId != newPacketId) {
+        for (const auto& f : this->telemetryFiles) {
+            if (f.getPacketId() == newPacketId) {
+                LOG("WARN", "Pacote já existe com o novo ID: " + newPacketId);
+                return false;
+            }
+        }
+    }
+
     for (auto& f : this->telemetryFiles) {
-        if (f.getPacketId() == packetId) {
+        if (f.getPacketId() == oldPacketId) {
+            f.setPacketId(newPacketId);
             f.setName(newName);
             f.setColumnNames(newCols);
-            LOG("INFO", "Pacote atualizado: " + newName + " (" + packetId + ")");
+            LOG("INFO", "Pacote atualizado: " + newName + " (" + newPacketId + ")");
             return true;
         }
     }
-    LOG("ERROR", "Pacote não encontrado para atualização: " + packetId);
+    LOG("ERROR", "Pacote não encontrado para atualização: " + oldPacketId);
     return false;
+}
+
+void ProjectData::swapPackets(size_t index1, size_t index2) {
+    if (index1 < this->telemetryFiles.size() && index2 < this->telemetryFiles.size()) {
+        std::swap(this->telemetryFiles[index1], this->telemetryFiles[index2]);
+        LOG("INFO", "Ordem dos pacotes alterada: trocado índice " + std::to_string(index1) + " com " + std::to_string(index2));
+    }
 }
 
 void ProjectData::clearAllTelemetryData() {

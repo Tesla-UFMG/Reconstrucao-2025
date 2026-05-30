@@ -127,14 +127,13 @@ Janela numérica - OK
 - Adicionar unidade de medida;
 - Adicionar fórmula;
 - Converter valor para texto?;
-
 - Ver de qual dado é colocando o mouse por cima;
 
-Janela de logs de avisos:
+Janela de logs de avisos: - OK
 - Poder assinalar cor do aviso;
 - Salvar no selecionador de dados e em CSV
 
-Janela Telemetria:
+Janela Telemetria: - Ok
 - Mudar projeto facilmente - Piloto, teste...;
 - limpar a UART facilmente;
 - Imprimir o tempo que está sendo gravado;
@@ -144,7 +143,7 @@ Janela Telemetria:
 
 Janela de barra - OK.
 
-Janela de gráficos 
+Janela de gráficos - Ok
 - Colocar anotações de texto gráficos
 - Resolver problemas de vetores 
 
@@ -154,7 +153,7 @@ Reformulação da janela do pedal - Ok.
 
 Matriz de Dados - OK.
 
-Reformular janela do GNSS 
+Reformular janela do GNSS - Ok
 - Colocar anotações de texto 
 - Mudar cor dos pontos com base em oturo dado na reconstrucao
 - Resolver problemas de vetores 

@@ -38,12 +38,14 @@ void MenuBar::Windows() {
         MenuBar::changeWindowVisibility("Avisos", &vw.visibility.showWarnings);
         MenuBar::changeWindowVisibility("Reconstrução de Pista", &vw.visibility.showReconstruction);
         //MenuBar::changeWindowVisibility("Plot", &vw.visibility.showPlot);
-        MenuBar::changeWindowVisibility("Estatísticas", &vw.visibility.showStatistics);
         MenuBar::changeWindowVisibility("Volante", &vw.visibility.showWheelControl);
         MenuBar::changeWindowVisibility("Pedais", &vw.visibility.showPedal);
         
         
         ImGui::SeparatorText("Janelas Dinâmicas");
+        if (ImGui::MenuItem("Tabela")) {
+            vw.createTabelaWindow();
+        }
         if (ImGui::MenuItem("Gráfico")) {
             vw.createGraphWindow();
         }

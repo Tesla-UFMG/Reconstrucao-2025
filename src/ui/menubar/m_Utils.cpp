@@ -1,4 +1,5 @@
 #include "ui/menubar/m_Utils.hpp"
+#include "ui/windows/w_Telemetry.hpp"
 
 void MenuBar::changeWindowVisibility(const std::filesystem::path& windowName, bool* isOpen) {
     if (isOpen == nullptr) {
@@ -15,41 +16,78 @@ void MenuBar::changeWindowVisibility(const std::filesystem::path& windowName, bo
 }
 
 void MenuBar::renderStatus() {
-    std::string text;
-
-    // Telemetry Status
     int telemetryStatus  = DB::getInstance().getProject().getTelemetryStatus();
-    if (telemetryStatus == 1) {
-        text += "Conectado  ";
-    } else if (telemetryStatus == 2) {
-        text += "Reconectando...  ";
-    } else {
-        text += "Desconectado  ";
-    }
-
-    // Telemetry Status
     bool processingStatus = DB::getInstance().getProject().getProcessingStatus();
+
+    std::string statusWord;
+    std::string procWord;
+    ImVec4 statusColor;
+    ImVec4 procColor;
+
     if (telemetryStatus == 1) {
-        text += processingStatus ? "Ok  " : "Erro  ";
+        statusWord = "Conectado  ";
+        statusColor = HI(1.0f);
+        procWord = processingStatus ? "Ok  " : "Erro  ";
+        procColor = processingStatus ? HI(1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+    } else if (telemetryStatus == 2) {
+        statusWord = "Reconectando...  ";
+        statusColor = ImVec4(1.0f, 0.6f, 0.0f, 1.0f);
+    } else {
+        statusWord = "Desconectado  ";
+        statusColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
     }
 
+    std::string restText;
     // Get FPS
     float fps = ImGui::GetIO().Framerate;
     char  fpsText[16];
     std::snprintf(fpsText, sizeof(fpsText), "%.1f  ", fps);
-    text += fpsText;
+    restText += fpsText;
 
     // Get Hour
     std::time_t t   = std::time(nullptr);
     std::tm*    now = std::localtime(&t);
     char        currentTime[64];
     std::strftime(currentTime, sizeof(currentTime), "%H:%M:%S  %d-%m-%Y", now);
-    text += currentTime;
+    restText += currentTime;
 
     // Render text
-    float textWidth = ImGui::CalcTextSize(text.c_str()).x;
-    ImGui::SameLine(ImGui::GetWindowWidth() - textWidth * 1.1f);
-    ImGui::Text("%s", text.c_str());
+    float totalWidth = ImGui::CalcTextSize(statusWord.c_str()).x;
+    if (!procWord.empty()) {
+        totalWidth += ImGui::CalcTextSize(procWord.c_str()).x;
+    }
+    totalWidth += ImGui::CalcTextSize(restText.c_str()).x;
+    ImGui::SameLine(ImGui::GetWindowWidth() - totalWidth * 1.1f);
+
+    ImGui::PushStyleColor(ImGuiCol_Text, statusColor);
+    ImGui::Text("%s", statusWord.c_str());
+    ImGui::PopStyleColor();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetItemTooltip("Clique para conectar ou desconectar a UART");
+    }
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+        if (auto telemetryWin = Window::Telemetry::getInstance()) {
+            telemetryWin->toggleConnection();
+        }
+    }
+
+    if (!procWord.empty()) {
+        ImGui::SameLine(0, 0);
+        ImGui::PushStyleColor(ImGuiCol_Text, procColor);
+        ImGui::Text("%s", procWord.c_str());
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetItemTooltip("Clique para conectar ou desconectar a UART");
+        }
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+            if (auto telemetryWin = Window::Telemetry::getInstance()) {
+                telemetryWin->toggleConnection();
+            }
+        }
+    }
+
+    ImGui::SameLine(0, 0);
+    ImGui::Text("%s", restText.c_str());
 }
 
 void MenuBar::renderProgramName() {

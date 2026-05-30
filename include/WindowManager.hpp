@@ -46,7 +46,6 @@ struct VisibilityFlags {
         bool showImPlotDemo     = false;
         bool showImPlot3dDemo   = false;
         bool showImGuiDemo      = false;
-        bool showStatistics     = false;
         bool showTelemetry      = false;
         bool showWarnings       = false;
 };
@@ -89,6 +88,7 @@ public:
         void createGraphWindow();
         void createBarWindow();
         void createMatrixWindow();
+        void createTabelaWindow();
 };
 
 #endif // WINDOW_HPP

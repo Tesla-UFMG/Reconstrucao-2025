@@ -102,7 +102,6 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::ImPlotDemo>(&visibility.showImPlotDemo));
     windows.emplace_back(std::make_unique<Window::ImPlot3dDemo>(&visibility.showImPlot3dDemo));
     // windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
-    windows.emplace_back(std::make_unique<Window::Statistics>(&visibility.showStatistics));
     windows.emplace_back(std::make_unique<Window::Telemetry>(&visibility.showTelemetry));
     windows.emplace_back(std::make_unique<Window::Warning>(&visibility.showWarnings));
 }
@@ -235,6 +234,33 @@ void WindowManager::createMatrixWindow() {
     windows.emplace_back(std::move(matWindow));
 
     LOG("INFO", "Criada nova janela de matriz: " + windowTitle);
+}
+
+void WindowManager::createTabelaWindow() {
+    int maxIdx = 0;
+    for (const auto& w : windows) {
+        if (w->isDynamic() && w->getDynamicType() == "Tabela") {
+            auto* tabWin = dynamic_cast<Window::Statistics*>(w.get());
+            if (tabWin) {
+                std::string wTitle = tabWin->getTitle();
+                size_t hashPos = wTitle.find('#');
+                if (hashPos != std::string::npos) {
+                    try {
+                        int idx = std::stoi(wTitle.substr(hashPos + 1));
+                        if (idx > maxIdx) {
+                            maxIdx = idx;
+                        }
+                    } catch (...) {}
+                }
+            }
+        }
+    }
+    std::string windowTitle = "Tabela #" + std::to_string(maxIdx + 1);
+
+    auto tabelaWindow = std::make_unique<Window::Statistics>(windowTitle);
+    windows.emplace_back(std::move(tabelaWindow));
+
+    LOG("INFO", "Criada nova janela de tabela: " + windowTitle);
 }
 
 void WindowManager::saveDynamicWindows(const std::string& filepath) {
@@ -395,6 +421,7 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     file << config.showValueOnYAxis << "\n";
                     file << config.showCursorOnYAxis << "\n";
                     file << config.xColumn << "\n";
+                    file << "XYALIGN:" << static_cast<int>(config.xyAlignmentMode) << "\n";
                     file << graph.data.size() << "\n";
                     for (const auto& gd : graph.data) {
                         file << gd.columnName << "\n";
@@ -452,6 +479,17 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                         file << rule.text << "\n";
                     }
                 }
+            } else if (w->getDynamicType() == "Tabela") {
+                auto* tabWin = dynamic_cast<Window::Statistics*>(w.get());
+                if (tabWin) {
+                    file << tabWin->getTitle() << "\n";
+                    file << tabWin->getMetrics().size() << "\n";
+                    for (const auto& metric : tabWin->getMetrics()) {
+                        file << metric.fileType << "\n";
+                        file << metric.fileName << "\n";
+                        file << metric.display_name << "\n";
+                    }
+                }
             }
         }
     }
@@ -480,7 +518,7 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
 
         std::string type = "Numeric";
         std::string title;
-        if (line == "Numeric" || line == "Graph" || line == "Bar" || line == "Matrix") {
+        if (line == "Numeric" || line == "Graph" || line == "Bar" || line == "Matrix" || line == "Tabela") {
             type = line;
             if (!std::getline(file, title)) break;
         } else {
@@ -710,8 +748,22 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
             std::getline(file, config.xColumn);
 
             size_t dataSize = 0;
-            file >> dataSize;
-            std::getline(file, dummy); // Consome newline
+            config.xyAlignmentMode = ALIGN_MIN_SIZE;
+            std::string nextLine;
+            if (std::getline(file, nextLine)) {
+                if (nextLine.rfind("XYALIGN:", 0) == 0) {
+                    try {
+                        int alignVal = std::stoi(nextLine.substr(8));
+                        config.xyAlignmentMode = static_cast<XYAlignmentMode>(alignVal);
+                    } catch (...) {}
+                    file >> dataSize;
+                    std::getline(file, dummy); // Consome newline
+                } else {
+                    try {
+                        dataSize = std::stoull(nextLine);
+                    } catch (...) {}
+                }
+            }
 
             for (size_t d = 0; d < dataSize; d++) {
                 std::string colName, fileName, fileType;
@@ -814,6 +866,20 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
             }
 
             windows.emplace_back(std::move(matWin));
+        } else if (type == "Tabela") {
+            size_t numMetrics = 0;
+            file >> numMetrics;
+            std::getline(file, dummy); // Consome o newline
+
+            auto tabWin = std::make_unique<Window::Statistics>(title);
+            for (size_t m = 0; m < numMetrics; ++m) {
+                std::string fileType, fileName, columnName;
+                std::getline(file, fileType);
+                std::getline(file, fileName);
+                std::getline(file, columnName);
+                tabWin->addColumn(fileType, fileName, columnName);
+            }
+            windows.emplace_back(std::move(tabWin));
         }
     }
 }

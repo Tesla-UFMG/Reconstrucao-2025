@@ -10,6 +10,7 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 #include "ui/windows/iWindow.hpp"
+#include "ui/windows/w_Plot.hpp"
 
 // Third Party
 #include "sqlite3/sqlite3.h"
@@ -63,6 +64,15 @@ namespace Window {
             std::string              m_selectedFileName;         // CSV file name or Telemetry packetId
             std::string              m_selectedLatCol;
             std::string              m_selectedLonCol;
+            XYAlignmentMode          m_alignmentMode = ALIGN_LINEAR_INTERPOLATION;
+            XYAlignmentMode          m_colorAlignmentMode = ALIGN_LINEAR_INTERPOLATION;
+            std::string              m_selectedColorCol;
+            std::string              m_selectedColorFileName;
+            std::string              m_selectedColorFileType;
+            double                   m_gradMinVal = 0.0;
+            double                   m_gradMaxVal = 100.0;
+            float                    m_gradMinColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // Blue
+            float                    m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // Red
 
             // Georeferenced camera center variables (continuous camera target)
             double                   m_centerLat = 0.0;
@@ -79,6 +89,7 @@ namespace Window {
             float                   m_colorLastPoint[4] = {0.7f, 1.0f, 0.0f, 1.0f};  // Neon lime green
 
             void centerOnTrack();
+            void autoFitColorLimits();
             std::vector<TrackTextAnnotation> m_textAnnotations;
     };
 } // namespace Window

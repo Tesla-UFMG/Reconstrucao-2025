@@ -1,89 +1,116 @@
 #include "ui/windows/w_Statistics.hpp"
 
-static bool showGraphs = false;
-
-Window::Statistics::Statistics(bool* isOpen) : IWindow(isOpen) {
-    this->title = "Estatísticas";
-    this->flags = ImGuiWindowFlags_MenuBar;
+Window::Statistics::Statistics(const std::string& title) : IWindow() {
+    this->title    = title;
+    this->flags    = 0;
+    this->m_isOpen = true;
+    this->setupVisibility(&this->m_isOpen);
 }
 
 void Window::Statistics::render() {
-    if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
-        this->renderMenuBar();
-        ImGui::Dummy(ImGui::GetContentRegionAvail());
+    if (!this->isOpen || !*this->isOpen) {
+        return;
+    }
+
+    ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+
+    ImVec2 avail = ImGui::GetContentRegionAvail();
+    if (metrics.empty()) {
+        ImGui::Dummy(avail);
+        this->processColumnDragDrop();
+        ImGui::SetCursorScreenPos(ImGui::GetItemRectMin());
+
+        std::string placeholder = "(Arraste colunas de dados aqui)";
+        ImVec2      textSize    = ImGui::CalcTextSize(placeholder.c_str());
+        float       x           = ImGui::GetWindowContentRegionMin().x + (avail.x - textSize.x) * 0.5f;
+        float       y           = ImGui::GetWindowContentRegionMin().y + (avail.y - textSize.y) * 0.5f;
+        ImGui::SetCursorPos(ImVec2(x, y));
+        ImGui::TextDisabled("%s", placeholder.c_str());
+    } else {
+        ImGui::Dummy(avail);
         this->processColumnDragDrop();
         ImGui::SetCursorScreenPos(ImGui::GetItemRectMin());
         this->renderTable();
-        ImGui::End();
     }
+
+    ImGui::End();
 }
 
-void Window::Statistics::renderMenuBar() {
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("Opções")) {
-            if (ImGui::BeginMenu("Gráficos")) {
-                ImGui::MenuItem("Mostrar Gráficos", nullptr, &showGraphs);
-                MenuBar::changePlotColormap();
-                ImGui::EndMenu();
-            }
-            ImGui::EndMenu(); 
-        }
-        ImGui::EndMenuBar();
+
+void Window::Statistics::addColumn(const std::string& fileType, const std::string& fileName, const std::string& columnName) {
+    if (fileType == "Text") {
+        return;
     }
+
+    Metric new_metric;
+    new_metric.display_name = columnName;
+    new_metric.unique_id    = fileName + ":" + columnName;
+    new_metric.fileName     = fileName;
+    new_metric.fileType     = fileType;
+
+    for (const auto& metric : metrics) {
+        if (metric.unique_id == new_metric.unique_id) {
+            LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já está na tabela.");
+            return;
+        }
+    }
+
+    if (fileType == "CSV") {
+        new_metric.data = &DB::getInstance().getCSVData(fileName, columnName);
+    } else if (fileType == "Telemetry") {
+        new_metric.data = &DB::getInstance().getTelemetryData(fileName, columnName);
+    }
+
+    metrics.push_back(new_metric);
+    LOG("INFO", "A coluna " + columnName + " do arquivo " + fileName + " foi adicionada à tabela.");
 }
 
 void Window::Statistics::processColumnDragDrop() {
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-
-            std::string fileType   = columnPayload->fileType;
-            std::string fileName   = columnPayload->fileName;
-            std::string columnName = columnPayload->columnName;
-
-            if (fileType == "Text") {
-                ImGui::EndDragDropTarget();
-                return;
-            }
-
-            Metric new_metric;
-            new_metric.display_name = columnName;
-            new_metric.unique_id    = fileName + ":" + columnName;
-            for (const auto& metric : metrics) {
-                if (metric.unique_id == new_metric.unique_id) {
-                    LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " já está nas estatísticas.");
-                    ImGui::EndDragDropTarget();
-                    return;
-                }
-            }
+            this->addColumn(columnPayload->fileType, columnPayload->fileName, columnPayload->columnName);
+        }
+        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
+            const ArchivePayload* archivePayload = reinterpret_cast<const ArchivePayload*>(payload->Data);
+            std::string fileType = archivePayload->fileType;
+            std::string fileName = archivePayload->fileName;
 
             if (fileType == "CSV") {
-                new_metric.data = &DB::getInstance().getCSVData(fileName, columnName);
+                const auto& csvFiles = DB::getInstance().getProject().getCSVFiles();
+                for (const auto& csvFile : csvFiles) {
+                    if (csvFile.getName() == fileName) {
+                        for (const std::string& colName : csvFile.getColumnNames()) {
+                            this->addColumn(fileType, fileName, colName);
+                        }
+                        break;
+                    }
+                }
             } else if (fileType == "Telemetry") {
-                new_metric.data = &DB::getInstance().getTelemetryData(fileName, columnName);
+                const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
+                for (const auto& telemetryFile : telemetryFiles) {
+                    if (telemetryFile.getPacketId() == fileName) {
+                        for (const std::string& colName : telemetryFile.getColumnNames()) {
+                            this->addColumn(fileType, fileName, colName);
+                        }
+                        break;
+                    }
+                }
             }
-
-            metrics.push_back(new_metric);
-            LOG("WARN", "A coluna " + columnName + " do arquivo " + fileName + " foi adicionado às estatísticas.");
         }
         ImGui::EndDragDropTarget();
     }
 }
 
 void Window::Statistics::renderTable() {
-    int                    column_count = showGraphs ? 4 : 3;
     static ImGuiTableFlags flags =
         ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
     int metric_to_remove = -1;
 
-    if (ImGui::BeginTable("##telemetry_table", column_count, flags)) {
+    if (ImGui::BeginTable("##telemetry_table", 3, flags)) {
         ImGui::TableSetupColumn("Métrica", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("Valor Atual", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-        if (showGraphs) {
-            ImGui::TableSetupColumn("Gráfico", ImGuiTableColumnFlags_WidthStretch);
-        }
-        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize, 30.0f);
         ImGui::TableHeadersRow();
 
         if (!metrics.empty()) {
@@ -105,18 +132,9 @@ void Window::Statistics::renderTable() {
                     ImGui::Text("%.3f", value);
                 }
 
-                if (showGraphs) {
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::PushID(metric.unique_id.c_str());
-                    if (!metric.data->empty()) {
-                        this->renderGraph(metric, i);
-                    }
-                    ImGui::PopID();
-                }
-
-                ImGui::TableSetColumnIndex(showGraphs ? 3 : 2);
+                ImGui::TableSetColumnIndex(2);
                 ImGui::PushID(i);
-                if (ImGui::Button("X")) {
+                if (ImGui::Button("X", ImVec2(22.0f, 0))) {
                     metric_to_remove = i;
                 }
                 ImGui::PopID();
@@ -128,26 +146,4 @@ void Window::Statistics::renderTable() {
     if (metric_to_remove != -1) {
         metrics.erase(metrics.begin() + metric_to_remove);
     }
-}
-
-void Window::Statistics::renderGraph(const Metric& metric, size_t i) {
-    std::string         id          = metric.unique_id;
-    std::vector<double> y           = *(metric.data);
-    size_t              ySize       = y.size();
-    size_t              numOfPoints = std::min<size_t>(ySize, HISTORY_SIZE);
-    size_t              begin       = ySize - numOfPoints;
-
-    ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
-    if (ImPlot::BeginPlot(id.c_str(), ImVec2(-1, 50), ImPlotFlags_CanvasOnly)) {
-        ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations,
-                          ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_AutoFit);
-
-        ImPlot::SetupAxisLimits(ImAxis_X1, (double)begin, (double)ySize, ImGuiCond_Always);
-        ImVec4 color = ImPlot::GetColormapColor(static_cast<int>(i) % ImPlot::GetColormapSize());
-        ImPlot::SetNextLineStyle(color, 1.0f);
-        ImPlot::SetNextFillStyle(color, 0.25f);
-        ImPlot::PlotLine(id.c_str(), y.data() + begin, (int)numOfPoints, 1.0, (double)begin, ImPlotLineFlags_Shaded);
-        ImPlot::EndPlot();
-    }
-    ImPlot::PopStyleVar();
 }

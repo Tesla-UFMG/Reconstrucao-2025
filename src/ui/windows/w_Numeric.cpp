@@ -36,6 +36,8 @@ void Window::Numeric::render() {
     // Calculate value and styling overrides before ImGui::Begin so background color applies correctly
     double val = 0.0;
     bool hasVal = false;
+    std::string hoveredColumnName = "";
+    std::string hoveredArchiveName = "";
 
     bool anyData = false;
     for (const auto& col : m_loadedColumns) {
@@ -53,26 +55,38 @@ void Window::Numeric::render() {
             if (m_statModeAll) {
                 if (m_currentMetric == MetricType::MIN) {
                     double minVal = std::numeric_limits<double>::max();
+                    std::string bestCol = "";
+                    std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
                             double colMin = *std::min_element(col.data->begin(), col.data->end());
                             if (colMin < minVal) {
                                 minVal = colMin;
+                                bestCol = col.column;
+                                bestArch = col.archive;
                             }
                         }
                     }
                     val = minVal;
+                    hoveredColumnName = bestCol;
+                    hoveredArchiveName = bestArch;
                 } else if (m_currentMetric == MetricType::MAX) {
                     double maxVal = -std::numeric_limits<double>::max();
+                    std::string bestCol = "";
+                    std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
                             double colMax = *std::max_element(col.data->begin(), col.data->end());
                             if (colMax > maxVal) {
                                 maxVal = colMax;
+                                bestCol = col.column;
+                                bestArch = col.archive;
                             }
                         }
                     }
                     val = maxVal;
+                    hoveredColumnName = bestCol;
+                    hoveredArchiveName = bestArch;
                 } else if (m_currentMetric == MetricType::AVERAGE) {
                     double sum = 0.0;
                     size_t count = 0;
@@ -87,24 +101,54 @@ void Window::Numeric::render() {
                     val = (count > 0) ? (sum / count) : 0.0;
                 }
             } else {
-                std::vector<double> lastValues;
-                for (const auto& col : m_loadedColumns) {
-                    if (col.data && !col.data->empty()) {
-                        lastValues.push_back(col.data->back());
-                    }
-                }
-                if (!lastValues.empty()) {
-                    if (m_currentMetric == MetricType::MIN) {
-                        val = *std::min_element(lastValues.begin(), lastValues.end());
-                    } else if (m_currentMetric == MetricType::MAX) {
-                        val = *std::max_element(lastValues.begin(), lastValues.end());
-                    } else if (m_currentMetric == MetricType::AVERAGE) {
-                        double sum = 0.0;
-                        for (double x : lastValues) {
-                            sum += x;
+                if (m_currentMetric == MetricType::MIN) {
+                    double minVal = std::numeric_limits<double>::max();
+                    std::string bestCol = "";
+                    std::string bestArch = "";
+                    for (const auto& col : m_loadedColumns) {
+                        if (col.data && !col.data->empty()) {
+                            double lastVal = col.data->back();
+                            if (lastVal < minVal) {
+                                minVal = lastVal;
+                                bestCol = col.column;
+                                bestArch = col.archive;
+                            }
                         }
-                        val = sum / lastValues.size();
                     }
+                    if (minVal != std::numeric_limits<double>::max()) {
+                        val = minVal;
+                        hoveredColumnName = bestCol;
+                        hoveredArchiveName = bestArch;
+                    }
+                } else if (m_currentMetric == MetricType::MAX) {
+                    double maxVal = -std::numeric_limits<double>::max();
+                    std::string bestCol = "";
+                    std::string bestArch = "";
+                    for (const auto& col : m_loadedColumns) {
+                        if (col.data && !col.data->empty()) {
+                            double lastVal = col.data->back();
+                            if (lastVal > maxVal) {
+                                maxVal = lastVal;
+                                bestCol = col.column;
+                                bestArch = col.archive;
+                            }
+                        }
+                    }
+                    if (maxVal != -std::numeric_limits<double>::max()) {
+                        val = maxVal;
+                        hoveredColumnName = bestCol;
+                        hoveredArchiveName = bestArch;
+                    }
+                } else if (m_currentMetric == MetricType::AVERAGE) {
+                    double sum = 0.0;
+                    size_t count = 0;
+                    for (const auto& col : m_loadedColumns) {
+                        if (col.data && !col.data->empty()) {
+                            sum += col.data->back();
+                            count++;
+                        }
+                    }
+                    val = (count > 0) ? (sum / count) : 0.0;
                 }
             }
         }
@@ -506,6 +550,26 @@ void Window::Numeric::render() {
 
         if (pushedFg) {
             ImGui::PopStyleColor(1);
+        }
+    }
+
+    if (m_loadedColumns.size() > 1 && (m_currentMetric == MetricType::MIN || m_currentMetric == MetricType::MAX)) {
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows)) {
+            std::string actualFile = hoveredArchiveName;
+            // Resolve packetId to actual file name if it's a telemetry packet
+            const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
+            for (const auto& tf : telemetryFiles) {
+                if (tf.getPacketId() == hoveredArchiveName) {
+                    actualFile = tf.getName();
+                    break;
+                }
+            }
+
+            ImGui::BeginTooltip();
+            ImGui::Text("Valor originado de:");
+            ImGui::Text("Coluna: %s", hoveredColumnName.c_str());
+            ImGui::Text("Arquivo: %s", actualFile.c_str());
+            ImGui::EndTooltip();
         }
     }
 

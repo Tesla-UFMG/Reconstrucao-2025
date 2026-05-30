@@ -85,6 +85,11 @@ void TelemetryFile::setName(const std::string& newName) {
     this->name = newName;
 }
 
+void TelemetryFile::setPacketId(const std::string& newPacketId) {
+    this->packetId = newPacketId;
+}
+
+
 void TelemetryFile::setColumnNames(const std::vector<std::string>& newCols) {
     size_t oldSize = this->columnNames.size();
     this->columnNames = newCols;

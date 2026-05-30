@@ -55,8 +55,9 @@ class ProjectData {
         bool loadPacket(const std::string& packetName, const std::string& packetId,
                         const std::vector<std::string>& columnNames);
         void removePacket(const std::string& packetId);
-        bool updatePacket(const std::string& packetId, const std::string& newName,
-                          const std::vector<std::string>& newCols);
+        bool updatePacket(const std::string& oldPacketId, const std::string& newPacketId,
+                          const std::string& newName, const std::vector<std::string>& newCols);
+        void swapPackets(size_t index1, size_t index2);
         void clearAllTelemetryData();
         void addTextFile(const std::filesystem::path& filepath, const std::vector<std::string>& columnNames, const std::vector<std::string>& dates, const std::vector<std::vector<std::string>>& data);
         void removeTextFile(const std::filesystem::path& filepath);

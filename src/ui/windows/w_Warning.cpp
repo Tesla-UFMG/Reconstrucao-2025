@@ -6,7 +6,7 @@ Window::Warning* Window::Warning::s_instance = nullptr;
 Window::Warning::Warning(bool* isOpen) : IWindow(isOpen) {
     this->title = "Avisos";
     this->flags = ImGuiWindowFlags_MenuBar;
-    s_instance = this;
+    s_instance  = this;
 }
 
 Window::Warning::~Warning() {
@@ -15,9 +15,7 @@ Window::Warning::~Warning() {
     }
 }
 
-Window::Warning* Window::Warning::getInstance() {
-    return s_instance;
-}
+Window::Warning* Window::Warning::getInstance() { return s_instance; }
 
 void Window::Warning::render() {
     if (!this->isOpen || !*this->isOpen)
@@ -29,26 +27,26 @@ void Window::Warning::render() {
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
     // Get loaded files
-    auto& project = DB::getInstance().getProject();
-    const auto& csvFiles = project.csvFiles;
+    auto&       project        = DB::getInstance().getProject();
+    const auto& csvFiles       = project.csvFiles;
     const auto& telemetryFiles = project.telemetryFiles;
 
     // Build list of unified files dynamically
     struct FileSource {
-        std::string type;         // "CSV" or "Telemetry"
-        std::string name;         // original filename or packetId
-        std::string displayName;  // e.g. "[CSV] run.csv" or "[Telemetria] packet1"
+            std::string type;        // "CSV" or "Telemetry"
+            std::string name;        // original filename or packetId
+            std::string displayName; // e.g. "[CSV] run.csv" or "[Telemetria] packet1"
     };
 
     std::vector<FileSource> sources;
     for (const auto& file : csvFiles) {
-        sources.push_back({ "CSV", file.getName(), "[CSV] " + file.getName() });
+        sources.push_back({"CSV", file.getName(), "[CSV] " + file.getName()});
     }
     for (const auto& file : telemetryFiles) {
-        sources.push_back({ "Telemetry", file.getPacketId(), "[Telemetria] " + file.getPacketId() });
+        sources.push_back({"Telemetry", file.getPacketId(), "[Telemetria] " + file.getPacketId()});
     }
 
-    bool openAddRule = false;
+    bool openAddRule     = false;
     bool openActiveRules = false;
 
     // ==========================================
@@ -112,7 +110,7 @@ void Window::Warning::render() {
                     bool isSelected = (m_selectedFileIdx == i);
                     if (ImGui::Selectable(sources[i].displayName.c_str(), isSelected)) {
                         m_selectedFileIdx = i;
-                        m_selectedColIdx = 0; // reset column index
+                        m_selectedColIdx  = 0; // reset column index
                     }
                     if (isSelected) {
                         ImGui::SetItemDefaultFocus();
@@ -122,7 +120,7 @@ void Window::Warning::render() {
             }
 
             // Obter colunas para a fonte selecionada
-            const auto& src = sources[m_selectedFileIdx];
+            const auto&              src = sources[m_selectedFileIdx];
             std::vector<std::string> colNames;
             if (src.type == "CSV") {
                 for (const auto& file : csvFiles) {
@@ -164,13 +162,8 @@ void Window::Warning::render() {
 
             ImGui::Separator();
             ImGui::TextUnformatted("Condição do Alerta:");
-            const char* conditions[] = { 
-                "Igual a (Especifico)", 
-                "Fora da Faixa (Min/Max)", 
-                "Dentro da Faixa (Min/Max)", 
-                "Maior que (>) ", 
-                "Menor que (<) " 
-            };
+            const char* conditions[] = {"Igual a (Especifico)", "Fora da Faixa (Min/Max)", "Dentro da Faixa (Min/Max)",
+                                        "Maior que (>) ", "Menor que (<) "};
             if (ImGui::BeginCombo("##condition_combo", conditions[m_selectedCondType])) {
                 for (int i = 0; i < 5; i++) {
                     bool isSelected = (m_selectedCondType == i);
@@ -200,23 +193,24 @@ void Window::Warning::render() {
             ImGui::Spacing();
             ImGui::TextUnformatted("Cor de Destaque da Linha:");
             ImGui::SameLine();
-            ImGui::ColorEdit4("##alert_color", m_tempColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+            ImGui::ColorEdit4("##alert_color", m_tempColor,
+                              ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
 
             ImGui::Separator();
             if (ImGui::Button("Adicionar Regra (+)", ImVec2(160, 0))) {
                 if (!colNames.empty()) {
                     WarningRule rule;
-                    rule.fileType = src.type;
-                    rule.fileName = src.name;
-                    rule.columnName = colNames[m_selectedColIdx];
+                    rule.fileType      = src.type;
+                    rule.fileName      = src.name;
+                    rule.columnName    = colNames[m_selectedColIdx];
                     rule.conditionType = m_selectedCondType;
-                    rule.targetValue = m_tempTargetValue;
-                    rule.minVal = m_tempMinVal;
-                    rule.maxVal = m_tempMaxVal;
-                    rule.description = m_tempDesc;
+                    rule.targetValue   = m_tempTargetValue;
+                    rule.minVal        = m_tempMinVal;
+                    rule.maxVal        = m_tempMaxVal;
+                    rule.description   = m_tempDesc;
                     std::copy(std::begin(m_tempColor), std::end(m_tempColor), std::begin(rule.alertColor));
                     rule.lastProcessedIndex = -1;
-                    rule.wasTriggered = false;
+                    rule.wasTriggered       = false;
 
                     addRule(rule);
 
@@ -247,20 +241,28 @@ void Window::Warning::render() {
             ImGui::BeginChild("##active_rules_popup_child", ImVec2(550, 200), true);
             for (size_t i = 0; i < m_rules.size(); i++) {
                 ImGui::PushID(static_cast<int>(i));
-                
-                ImVec4 alertColVec = ImVec4(m_rules[i].alertColor[0], m_rules[i].alertColor[1], m_rules[i].alertColor[2], m_rules[i].alertColor[3]);
+
+                ImVec4 alertColVec = ImVec4(m_rules[i].alertColor[0], m_rules[i].alertColor[1],
+                                            m_rules[i].alertColor[2], m_rules[i].alertColor[3]);
                 ImGui::TextColored(alertColVec, "%s: %s", m_rules[i].fileName.c_str(), m_rules[i].columnName.c_str());
                 ImGui::SameLine();
-                
+
                 std::string condDesc = "";
-                if (m_rules[i].conditionType == 0) condDesc = "== " + std::to_string(m_rules[i].targetValue);
-                else if (m_rules[i].conditionType == 1) condDesc = "Fora de [" + std::to_string(m_rules[i].minVal) + ", " + std::to_string(m_rules[i].maxVal) + "]";
-                else if (m_rules[i].conditionType == 2) condDesc = "Dentro de [" + std::to_string(m_rules[i].minVal) + ", " + std::to_string(m_rules[i].maxVal) + "]";
-                else if (m_rules[i].conditionType == 3) condDesc = "> " + std::to_string(m_rules[i].targetValue);
-                else if (m_rules[i].conditionType == 4) condDesc = "< " + std::to_string(m_rules[i].targetValue);
+                if (m_rules[i].conditionType == 0)
+                    condDesc = "== " + std::to_string(m_rules[i].targetValue);
+                else if (m_rules[i].conditionType == 1)
+                    condDesc = "Fora de [" + std::to_string(m_rules[i].minVal) + ", " +
+                               std::to_string(m_rules[i].maxVal) + "]";
+                else if (m_rules[i].conditionType == 2)
+                    condDesc = "Dentro de [" + std::to_string(m_rules[i].minVal) + ", " +
+                               std::to_string(m_rules[i].maxVal) + "]";
+                else if (m_rules[i].conditionType == 3)
+                    condDesc = "> " + std::to_string(m_rules[i].targetValue);
+                else if (m_rules[i].conditionType == 4)
+                    condDesc = "< " + std::to_string(m_rules[i].targetValue);
 
                 ImGui::Text("| %s", condDesc.c_str());
-                
+
                 if (!m_rules[i].description.empty()) {
                     ImGui::SameLine();
                     ImGui::Text("| Descrição: %s", m_rules[i].description.c_str());
@@ -287,11 +289,17 @@ void Window::Warning::render() {
     // ==========================================
     // LOGGED WARNINGS TABLE (Main body)
     // ==========================================
-    if (ImGui::BeginTable("##warnings_table", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
-        ImGui::TableSetupColumn("Data/Hora", ImGuiTableColumnFlags_WidthFixed, 140.0f);
-        ImGui::TableSetupColumn("Variável", ImGuiTableColumnFlags_WidthFixed, 180.0f);
-        ImGui::TableSetupColumn("Valor Atingido", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableSetupColumn("Restrição", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+    float w0 = ImGui::CalcTextSize("Data/Hora").x + ImGui::GetStyle().CellPadding.x * 2.0f + 25.0f;
+    float w1 = ImGui::CalcTextSize("Variável").x + ImGui::GetStyle().CellPadding.x * 2.0f + 25.0f;
+    float w2 = ImGui::CalcTextSize("Valor Atingido").x + ImGui::GetStyle().CellPadding.x * 2.0f + 25.0f;
+    float w3 = ImGui::CalcTextSize("Restrição").x + ImGui::GetStyle().CellPadding.x * 2.0f + 25.0f;
+
+    if (ImGui::BeginTable("##warnings_table", 5,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("Data/Hora", ImGuiTableColumnFlags_WidthFixed, w0);
+        ImGui::TableSetupColumn("Variável", ImGuiTableColumnFlags_WidthFixed, w1);
+        ImGui::TableSetupColumn("Valor Atingido", ImGuiTableColumnFlags_WidthFixed, w2);
+        ImGui::TableSetupColumn("Restrição", ImGuiTableColumnFlags_WidthFixed, w3);
         ImGui::TableSetupColumn("Descrição / Rótulo", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
@@ -339,7 +347,7 @@ void Window::Warning::evaluateRules() {
         }
 
         int currentSize = static_cast<int>(data->size());
-        
+
         // Handle database clear or load-reloads safely
         if (rule.lastProcessedIndex >= currentSize) {
             rule.lastProcessedIndex = -1;
@@ -351,8 +359,8 @@ void Window::Warning::evaluateRules() {
         } else if (rule.lastProcessedIndex < currentSize - 1) {
             // Process all new telemetry data points since last update
             for (int idx = rule.lastProcessedIndex + 1; idx < currentSize; ++idx) {
-                double val = (*data)[idx];
-                bool triggered = false;
+                double val       = (*data)[idx];
+                bool   triggered = false;
 
                 if (rule.conditionType == 0) { // Specific Value
                     triggered = (std::abs(val - rule.targetValue) < 1e-5);
@@ -382,24 +390,24 @@ void Window::Warning::evaluateRules() {
 
 void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
     LoggedWarning logEntry;
-    
+
     // Get formatted local timestamp YYYY-MM-DD HH:MM:SS
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-    std::tm tm_struct = *std::localtime(&now_time);
-    
+    auto        now       = std::chrono::system_clock::now();
+    std::time_t now_time  = std::chrono::system_clock::to_time_t(now);
+    std::tm     tm_struct = *std::localtime(&now_time);
+
     std::ostringstream oss;
     oss << std::put_time(&tm_struct, "%Y-%m-%d %H:%M:%S");
     logEntry.timestamp = oss.str();
-    
+
     logEntry.variableName = rule.columnName;
-    logEntry.archiveName = rule.fileName;
+    logEntry.archiveName  = rule.fileName;
     logEntry.valueReached = value;
-    logEntry.description = rule.description;
-    
+    logEntry.description  = rule.description;
+
     // Copy visual highlight color
     std::copy(std::begin(rule.alertColor), std::end(rule.alertColor), std::begin(logEntry.color));
-    
+
     // Format restriction description
     if (rule.conditionType == 0) {
         logEntry.conditionText = "Igual a " + std::to_string(rule.targetValue);
@@ -413,15 +421,16 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
         logEntry.conditionText = "Menor que " + std::to_string(rule.targetValue);
     }
     m_logs.push_back(logEntry);
-    
+
     // Registra o aviso disparado no TextFile "Avisos"
     {
-        auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
+        auto timestamp_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                .count();
         std::string epochStr = std::to_string(timestamp_ms);
 
         std::vector<std::string> rowData(5, "");
-        std::string warnText = rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value) + " (" + logEntry.conditionText + ")";
+        std::string warnText = rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value);
         if (rule.conditionType >= 0 && rule.conditionType < 5) {
             rowData[rule.conditionType] = warnText;
         }
@@ -434,7 +443,7 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
         }
     }
 
-    LOG("WARN", "[Aviso] " + rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value) + " (" + logEntry.conditionText + ")");
+    LOG("WARN", "[Aviso] " + rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value));
     
     // Automatic CSV Export if toggled
     if (m_autoExport) {
@@ -443,9 +452,7 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
     }
 }
 
-void Window::Warning::addRule(const WarningRule& rule) {
-    m_rules.push_back(rule);
-}
+void Window::Warning::addRule(const WarningRule& rule) { m_rules.push_back(rule); }
 
 void Window::Warning::removeRule(size_t index) {
     if (index < m_rules.size()) {
@@ -453,9 +460,7 @@ void Window::Warning::removeRule(size_t index) {
     }
 }
 
-void Window::Warning::clearLogs() {
-    m_logs.clear();
-}
+void Window::Warning::clearLogs() { m_logs.clear(); }
 
 void Window::Warning::exportToCSV(const std::string& filepath) {
     std::ofstream file(filepath);
@@ -463,19 +468,16 @@ void Window::Warning::exportToCSV(const std::string& filepath) {
         LOG("ERROR", "[Avisos] Falha ao abrir arquivo para exportação de relatório: " + filepath);
         return;
     }
-    
+
     // CSV Header with UTF-8 BOM to keep Excel compatibility
     file << "\xEF\xBB\xBF";
     file << "Data/Hora,Variavel,Arquivo,Valor Atingido,Condicao,Descricao\n";
-    
+
     for (const auto& log : m_logs) {
-        file << log.timestamp << ","
-             << log.variableName << ","
-             << log.archiveName << ","
-             << log.valueReached << ","
-             << log.conditionText << ","
-             << log.description << "\n";
+        file << log.timestamp << "," << log.variableName << "," << log.archiveName << "," << log.valueReached << ","
+             << log.conditionText << "," << log.description << "\n";
     }
-    
-    LOG("INFO", "[Avisos] Relatório de avisos exportado com sucesso para '" + filepath + "'. Total de entradas: " + std::to_string(m_logs.size()));
+
+    LOG("INFO", "[Avisos] Relatório de avisos exportado com sucesso para '" + filepath +
+                    "'. Total de entradas: " + std::to_string(m_logs.size()));
 }
