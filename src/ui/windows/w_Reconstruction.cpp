@@ -768,10 +768,10 @@ void Window::Reconstruction::render() {
 
         if (ImGui::IsItemHovered()) {
             float scroll = ImGui::GetIO().MouseWheel;
-            if (scroll > 0.0f && m_zoomScale < 2.0f) {
-                m_zoomScale = std::min(m_zoomScale + 0.01f, 2.0f);
-            } else if (scroll < 0.0f && m_zoomScale > 0.5f) {
-                m_zoomScale = std::max(m_zoomScale - 0.01f, 0.5f);
+            if (scroll > 0.0f) {
+                m_zoomScale += 0.05f;
+            } else if (scroll < 0.0f) {
+                m_zoomScale -= 0.05f;
             }
         }
 
@@ -779,11 +779,11 @@ void Window::Reconstruction::render() {
         if (ImGui::IsWindowFocused()) {
             // Tecla "+" ou "=" (Aumenta escala dos blocos)
             if (ImGui::IsKeyDown(ImGuiKey_Equal) || ImGui::IsKeyDown(ImGuiKey_KeypadAdd)) {
-                m_zoomScale = std::min(m_zoomScale + 0.01f, 2.0f);
+                m_zoomScale += 0.01f;
             }
             // Tecla "-" (Diminui escala dos blocos)
             if (ImGui::IsKeyDown(ImGuiKey_Minus) || ImGui::IsKeyDown(ImGuiKey_KeypadSubtract)) {
-                m_zoomScale = std::max(m_zoomScale - 0.01f, 0.5f);
+                m_zoomScale -= 0.01f;
             }
 
             // Movimentação suave contínua com todas as setas do teclado (Hold keys)
@@ -844,6 +844,38 @@ void Window::Reconstruction::render() {
                 }
             }
         }
+
+        // 5. Transição automática de nível de zoom baseada na escala dos blocos (Zoom Infinito Contínuo e Responsivo)
+        if (m_zoomScale > 2.0f) {
+            if (m_testZ < 18) {
+                m_testZ++;
+                m_zoomScale /= 2.0f;
+                m_statusMessage = "Zoom Automático In (Z=" + std::to_string(m_testZ) + ")";
+            } else {
+                m_zoomScale = 2.0f;
+            }
+        } else if (m_zoomScale < 1.0f) {
+            if (m_testZ > 12) {
+                m_testZ--;
+                m_zoomScale *= 2.0f;
+                m_statusMessage = "Zoom Automático Out (Z=" + std::to_string(m_testZ) + ")";
+            } else {
+                if (m_zoomScale < 0.5f) {
+                    m_zoomScale = 0.5f;
+                }
+            }
+        }
+
+        // Recalcular parâmetros georreferenciados para garantir alinhamento perfeito na mesma frame
+        cx_osm   = (m_centerLon + 180.0) / 360.0 * (1 << m_testZ);
+        clatRad  = m_centerLat * pi / 180.0;
+        cy_osm   = (1.0 - std::log(std::tan(clatRad) + 1.0 / std::cos(clatRad)) / pi) / 2.0 * (1 << m_testZ);
+        cy_tms   = (1 << m_testZ) - cy_osm;
+        tileSize = 256.0f * m_zoomScale;
+        m_testX  = static_cast<int>(std::floor(cx_osm));
+        m_testY  = static_cast<int>(std::floor(cy_tms));
+        m_panX   = -static_cast<float>(cx_osm - (m_testX + 0.5)) * tileSize;
+        m_panY   = static_cast<float>(cy_tms - (m_testY + 0.5)) * tileSize;
 
         // 6. Determinar dinamicamente a grade de tiles necessária para cobrir 100% da janela
         int halfTilesX = static_cast<int>(std::ceil(windowSize.x * 0.5f / tileSize)) + 1;
