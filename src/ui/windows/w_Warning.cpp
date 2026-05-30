@@ -62,24 +62,12 @@ void Window::Warning::render() {
             }
             ImGui::EndMenu();
         }
-        if (ImGui::BeginMenu("Relatório")) {
-            if (ImGui::MenuItem("Limpar Relatório")) {
-                clearLogs();
-            }
-            if (ImGui::MenuItem("Exportar Manual (CSV)...")) {
-                char* filepath = Dialogs::showSaveFileDialog("Exportar Avisos", "warning_report", "*.csv");
-                if (filepath) {
-                    exportToCSV(filepath);
-                }
-            }
-            ImGui::MenuItem("Exportar Auto ao Ocorrer", nullptr, &m_autoExport);
-            ImGui::EndMenu();
-        }
         ImGui::EndMenuBar();
     }
 
     if (openAddRule) {
         ImGui::OpenPopup("Adicionar Regra");
+        m_selectedCols.clear();
     }
     if (openActiveRules) {
         ImGui::OpenPopup("Regras Ativas");
@@ -110,7 +98,7 @@ void Window::Warning::render() {
                     bool isSelected = (m_selectedFileIdx == i);
                     if (ImGui::Selectable(sources[i].displayName.c_str(), isSelected)) {
                         m_selectedFileIdx = i;
-                        m_selectedColIdx  = 0; // reset column index
+                        m_selectedCols.clear();
                     }
                     if (isSelected) {
                         ImGui::SetItemDefaultFocus();
@@ -141,23 +129,19 @@ void Window::Warning::render() {
             if (colNames.empty()) {
                 ImGui::TextDisabled("(Nenhuma coluna encontrada nesta fonte)");
             } else {
-                if (m_selectedColIdx < 0 || m_selectedColIdx >= static_cast<int>(colNames.size())) {
-                    m_selectedColIdx = 0;
+                if (m_selectedCols.size() != colNames.size()) {
+                    m_selectedCols.assign(colNames.size(), false);
                 }
 
-                // Combobox para Variável
-                if (ImGui::BeginCombo("Variável / Coluna", colNames[m_selectedColIdx].c_str())) {
-                    for (int i = 0; i < static_cast<int>(colNames.size()); i++) {
-                        bool isSelected = (m_selectedColIdx == i);
-                        if (ImGui::Selectable(colNames[i].c_str(), isSelected)) {
-                            m_selectedColIdx = i;
-                        }
-                        if (isSelected) {
-                            ImGui::SetItemDefaultFocus();
-                        }
+                ImGui::Text("Selecione as Variáveis / Colunas:");
+                ImGui::BeginChild("##columns_list", ImVec2(350, 150), true);
+                for (int i = 0; i < static_cast<int>(colNames.size()); i++) {
+                    bool selected = m_selectedCols[i];
+                    if (ImGui::Checkbox(colNames[i].c_str(), &selected)) {
+                        m_selectedCols[i] = selected;
                     }
-                    ImGui::EndCombo();
                 }
+                ImGui::EndChild();
             }
 
             ImGui::Separator();
@@ -199,24 +183,36 @@ void Window::Warning::render() {
             ImGui::Separator();
             if (ImGui::Button("Adicionar Regra (+)", ImVec2(160, 0))) {
                 if (!colNames.empty()) {
-                    WarningRule rule;
-                    rule.fileType      = src.type;
-                    rule.fileName      = src.name;
-                    rule.columnName    = colNames[m_selectedColIdx];
-                    rule.conditionType = m_selectedCondType;
-                    rule.targetValue   = m_tempTargetValue;
-                    rule.minVal        = m_tempMinVal;
-                    rule.maxVal        = m_tempMaxVal;
-                    rule.description   = m_tempDesc;
-                    std::copy(std::begin(m_tempColor), std::end(m_tempColor), std::begin(rule.alertColor));
-                    rule.lastProcessedIndex = -1;
-                    rule.wasTriggered       = false;
+                    bool addedAny = false;
+                    for (int i = 0; i < static_cast<int>(colNames.size()); i++) {
+                        if (i < static_cast<int>(m_selectedCols.size()) && m_selectedCols[i]) {
+                            WarningRule rule;
+                            rule.fileType      = src.type;
+                            rule.fileName      = src.name;
+                            rule.columnName    = colNames[i];
+                            rule.conditionType = m_selectedCondType;
+                            rule.targetValue   = m_tempTargetValue;
+                            rule.minVal        = m_tempMinVal;
+                            rule.maxVal        = m_tempMaxVal;
+                            rule.description   = m_tempDesc;
+                            std::copy(std::begin(m_tempColor), std::end(m_tempColor), std::begin(rule.alertColor));
+                            rule.lastProcessedIndex = -1;
+                            rule.wasTriggered       = false;
 
-                    addRule(rule);
+                            addRule(rule);
+                            addedAny = true;
+                        }
+                    }
 
-                    // Limpa campo temporário de descrição
-                    memset(m_tempDesc, 0, sizeof(m_tempDesc));
-                    ImGui::CloseCurrentPopup();
+                    if (addedAny) {
+                        // Limpa campo temporário de descrição
+                        memset(m_tempDesc, 0, sizeof(m_tempDesc));
+                        // Reseta seleções
+                        m_selectedCols.assign(colNames.size(), false);
+                        ImGui::CloseCurrentPopup();
+                    } else {
+                        Dialogs::showErrorDialog("Selecione pelo menos uma variável/coluna para aplicar a regra.");
+                    }
                 }
             }
             ImGui::SameLine();
@@ -444,12 +440,6 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
     }
 
     LOG("WARN", "[Aviso] " + rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value));
-    
-    // Automatic CSV Export if toggled
-    if (m_autoExport) {
-        std::filesystem::create_directories("telemetry");
-        exportToCSV("telemetry/warning_report.csv");
-    }
 }
 
 void Window::Warning::addRule(const WarningRule& rule) { m_rules.push_back(rule); }

@@ -5,8 +5,7 @@
 namespace Window {
     Updates::Updates(bool* isOpen) : IWindow(isOpen) {
         this->title = "Novidades da Versão";
-        this->flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking |
-                      ImGuiWindowFlags_NoMove;
+        this->flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
 
         m_dontShowAgain = checkHideFileExists();
     }
@@ -49,8 +48,8 @@ namespace Window {
             ImGui::SetNextWindowSize(ImVec2(540, 440), ImGuiCond_Appearing);
 
             // Estilos premium para o modal
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24, 24));
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
+            // ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24, 24));
+            // ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
 
             bool keepOpen = true;
             if (ImGui::BeginPopupModal("Novidades da Versão", &keepOpen, this->flags)) {
@@ -287,7 +286,7 @@ namespace Window {
                 m_popupOpen   = false;
             }
 
-            ImGui::PopStyleVar(2);
+            // ImGui::PopStyleVar(2);
         } else {
             m_popupOpen = false;
         }

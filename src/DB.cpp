@@ -310,6 +310,12 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
         }
     }
 
+    auto* warningWin = Window::Warning::getInstance();
+    if (warningWin) {
+        std::filesystem::path warnPath = baseDir / "warning_report.csv";
+        warningWin->exportToCSV(warnPath.string());
+    }
+
     return true;
 }
 

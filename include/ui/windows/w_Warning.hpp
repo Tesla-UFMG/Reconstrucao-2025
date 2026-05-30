@@ -53,11 +53,10 @@ namespace Window {
 
             std::vector<WarningRule> m_rules;
             std::vector<LoggedWarning> m_logs;
-            bool m_autoExport = false;
 
             // UI Temporary States for Rule Creator
             int m_selectedFileIdx = -1;
-            int m_selectedColIdx = -1;
+            std::vector<bool> m_selectedCols;
             int m_selectedCondType = 3;   // Default to 'Maior que'
             double m_tempTargetValue = 100.0;
             double m_tempMinVal = 0.0;
