@@ -352,8 +352,8 @@ void Window::Bar::render() {
                 ImGui::GetWindowDrawList()->AddRectFilled(fillMin, fillMax, barColU32, ImGui::GetStyle().FrameRounding);
             }
 
-            // Draw threshold stripe indicators if m_useThresholds is active
-            if (m_useThresholds) {
+            // Draw threshold stripe indicators if color mode is set to Thresholds (mode 2)
+            if (m_colorBarMode == 2) {
                 auto drawStripe = [&](double threshVal, const float* col) {
                     double ratio = (threshVal - minL) / range;
                     if (ratio >= 0.0 && ratio <= 1.0) {
@@ -414,8 +414,8 @@ void Window::Bar::render() {
                 ImGui::GetWindowDrawList()->AddRectFilled(fillMin, fillMax, barColU32, ImGui::GetStyle().FrameRounding);
             }
 
-            // Draw threshold stripe indicators if m_useThresholds is active
-            if (m_useThresholds) {
+            // Draw threshold stripe indicators if color mode is set to Thresholds (mode 2)
+            if (m_colorBarMode == 2) {
                 auto drawStripe = [&](double threshVal, const float* col) {
                     double ratio = (threshVal - minL) / range;
                     if (ratio >= 0.0 && ratio <= 1.0) {
