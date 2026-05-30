@@ -11,7 +11,6 @@
 #include "ui/windows/w_Demo.hpp"
 #include "ui/windows/w_HomePage.hpp"
 #include "ui/windows/w_Pedal.hpp"
-#include "ui/windows/w_Plot.hpp"
 #include "ui/windows/w_Statistics.hpp"
 #include "ui/windows/w_Telemetry.hpp"
 #include "ui/windows/w_Terminal.hpp"
@@ -38,7 +37,6 @@ struct VisibilityFlags {
     public:
         bool showDataPicker     = false;
         bool showReconstruction = false;
-        bool showPlot           = false;
         bool showLog            = false;
         bool showWheelControl   = false;
         bool showPedal          = false;
@@ -65,8 +63,8 @@ class WindowManager {
         // Estes ponteiros servem apenas para facilitar a comunicação entre janelas.
         Window::Reconstruction* m_reconstructionWindow = nullptr;
         Window::About* m_aboutWindow = nullptr;
-        void saveDynamicWindows(const std::string& filepath);
-        void loadDynamicWindows(const std::string& filepath);
+        void saveWindowCustomStates(const std::string& filepath);
+        void loadWindowCustomStates(const std::string& filepath);
 
 public:
     WindowManager(WindowManager&&)            = delete;

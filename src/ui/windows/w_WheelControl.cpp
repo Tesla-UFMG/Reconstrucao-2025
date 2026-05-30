@@ -148,6 +148,7 @@ void Window::WheelControl::addColumn(const std::string& fileType, const std::str
     WheelData wd;
     wd.archive = fileName;
     wd.column = columnName;
+    wd.fileType = fileType;
 
     if (fileType == "CSV") {
         wd.data = &DB::getInstance().getCSVData(fileName, columnName);

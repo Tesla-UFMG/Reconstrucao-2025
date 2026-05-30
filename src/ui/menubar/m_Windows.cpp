@@ -9,23 +9,33 @@ void MenuBar::Windows() {
 
         ImGui::Separator();
 
-        if (ImGui::BeginMenu("Salvar Layout")) {
+        std::string currentProject = DB::getInstance().getProject().currentProjectName;
+        bool projectActive = !currentProject.empty();
+
+        if (!projectActive) {
+            ImGui::MenuItem("Layouts (Requer projeto ativo)", nullptr, false, false);
+            ImGui::Separator();
+        }
+
+        if (ImGui::BeginMenu("Salvar Layout", projectActive)) {
             for (int i = 1; i <= 10; i++) {
                 std::string layoutName = "Layout " + std::to_string(i);
                 if (ImGui::MenuItem(layoutName.c_str(), ("CTRL + F" + std::to_string(i)).c_str())) {
-                    vw.saveWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
-                    ImGuiWrapper::saveLayout("./cache/layouts/.layout_" + std::to_string(i) + ".ini");
+                    vw.saveWindowVisibility("./cache/layouts/" + currentProject + "/.visibility_" + std::to_string(i) + ".bin");
+                    ImGuiWrapper::saveLayout("./cache/layouts/" + currentProject + "/.layout_" + std::to_string(i) + ".ini");
                 }
             }
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Carregar Layout")) {
+        if (ImGui::BeginMenu("Carregar Layout", projectActive)) {
             for (int i = 1; i <= 10; i++) {
-                std::string layoutName = "Layout " + std::to_string(i);
-                if (ImGui::MenuItem(layoutName.c_str(), ("F" + std::to_string(i)).c_str())) {
-                    vw.loadWindowVisibility("./cache/layouts/.visibility_" + std::to_string(i) + ".bin");
-                    ImGuiWrapper::loadLayout("./cache/layouts/.layout_" + std::to_string(i) + ".ini");
+                std::string pathIni = "./cache/layouts/" + currentProject + "/.layout_" + std::to_string(i) + ".ini";
+                bool exists = std::filesystem::exists(pathIni);
+                std::string layoutName = "Layout " + std::to_string(i) + (exists ? "" : " (Vazio)");
+                if (ImGui::MenuItem(layoutName.c_str(), ("F" + std::to_string(i)).c_str(), false, exists)) {
+                    vw.loadWindowVisibility("./cache/layouts/" + currentProject + "/.visibility_" + std::to_string(i) + ".bin");
+                    ImGuiWrapper::loadLayout(pathIni);
                 }
             }
             ImGui::EndMenu();

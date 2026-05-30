@@ -11,6 +11,7 @@ void ProjectData::clear() {
     this->videoFiles.clear();
     this->telemetryFiles.clear();
     this->textFiles.clear();
+    this->warningRules.clear();
     this->textFiles.emplace_back("Comentários", std::vector<std::string>{"Comentários"});
     this->textFiles.emplace_back("Avisos", std::vector<std::string>{"Igual a", "Fora da Faixa", "Dentro da Faixa", "Maior que", "Menor que"});
 }
@@ -236,6 +237,36 @@ bool ProjectData::serialize(const std::filesystem::path& filepath) const {
         }
     }
 
+    // Serializa as regras de aviso (WarningRule)
+    size_t numWarningRules = this->warningRules.size();
+    file.write(reinterpret_cast<const char*>(&numWarningRules), sizeof(numWarningRules));
+    for (const auto& rule : this->warningRules) {
+        size_t lenFileType = rule.fileType.size();
+        file.write(reinterpret_cast<const char*>(&lenFileType), sizeof(lenFileType));
+        file.write(rule.fileType.data(), lenFileType);
+
+        size_t lenFileName = rule.fileName.size();
+        file.write(reinterpret_cast<const char*>(&lenFileName), sizeof(lenFileName));
+        file.write(rule.fileName.data(), lenFileName);
+
+        size_t lenColumnName = rule.columnName.size();
+        file.write(reinterpret_cast<const char*>(&lenColumnName), sizeof(lenColumnName));
+        file.write(rule.columnName.data(), lenColumnName);
+
+        file.write(reinterpret_cast<const char*>(&rule.conditionType), sizeof(rule.conditionType));
+        file.write(reinterpret_cast<const char*>(&rule.targetValue), sizeof(rule.targetValue));
+        file.write(reinterpret_cast<const char*>(&rule.minVal), sizeof(rule.minVal));
+        file.write(reinterpret_cast<const char*>(&rule.maxVal), sizeof(rule.maxVal));
+        file.write(reinterpret_cast<const char*>(rule.alertColor), sizeof(rule.alertColor));
+
+        size_t lenDesc = rule.description.size();
+        file.write(reinterpret_cast<const char*>(&lenDesc), sizeof(lenDesc));
+        file.write(rule.description.data(), lenDesc);
+
+        file.write(reinterpret_cast<const char*>(&rule.lastProcessedIndex), sizeof(rule.lastProcessedIndex));
+        file.write(reinterpret_cast<const char*>(&rule.wasTriggered), sizeof(rule.wasTriggered));
+    }
+
     return true;
 }
 
@@ -344,6 +375,46 @@ bool ProjectData::deserialize(const std::filesystem::path& filepath) {
             }
 
             this->addTextFile(pathStr, colNames, dates, data);
+        }
+    }
+
+    // Desserializa as regras de aviso (WarningRule)
+    size_t numWarningRules = 0;
+    if (file.read(reinterpret_cast<char*>(&numWarningRules), sizeof(numWarningRules))) {
+        this->warningRules.clear();
+        for (size_t i = 0; i < numWarningRules; ++i) {
+            WarningRule rule;
+
+            size_t lenFileType = 0;
+            if (!file.read(reinterpret_cast<char*>(&lenFileType), sizeof(lenFileType))) break;
+            rule.fileType.resize(lenFileType);
+            if (!file.read(&rule.fileType[0], lenFileType)) break;
+
+            size_t lenFileName = 0;
+            if (!file.read(reinterpret_cast<char*>(&lenFileName), sizeof(lenFileName))) break;
+            rule.fileName.resize(lenFileName);
+            if (!file.read(&rule.fileName[0], lenFileName)) break;
+
+            size_t lenColumnName = 0;
+            if (!file.read(reinterpret_cast<char*>(&lenColumnName), sizeof(lenColumnName))) break;
+            rule.columnName.resize(lenColumnName);
+            if (!file.read(&rule.columnName[0], lenColumnName)) break;
+
+            if (!file.read(reinterpret_cast<char*>(&rule.conditionType), sizeof(rule.conditionType))) break;
+            if (!file.read(reinterpret_cast<char*>(&rule.targetValue), sizeof(rule.targetValue))) break;
+            if (!file.read(reinterpret_cast<char*>(&rule.minVal), sizeof(rule.minVal))) break;
+            if (!file.read(reinterpret_cast<char*>(&rule.maxVal), sizeof(rule.maxVal))) break;
+            if (!file.read(reinterpret_cast<char*>(rule.alertColor), sizeof(rule.alertColor))) break;
+
+            size_t lenDesc = 0;
+            if (!file.read(reinterpret_cast<char*>(&lenDesc), sizeof(lenDesc))) break;
+            rule.description.resize(lenDesc);
+            if (!file.read(&rule.description[0], lenDesc)) break;
+
+            if (!file.read(reinterpret_cast<char*>(&rule.lastProcessedIndex), sizeof(rule.lastProcessedIndex))) break;
+            if (!file.read(reinterpret_cast<char*>(&rule.wasTriggered), sizeof(rule.wasTriggered))) break;
+
+            this->warningRules.push_back(rule);
         }
     }
 

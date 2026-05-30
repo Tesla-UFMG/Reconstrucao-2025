@@ -34,15 +34,21 @@ bool App::handleEvent() {
             int offset = 1073741881;
             if (SDLWrapper::events.key.keysym.sym > offset &&
                 SDLWrapper::events.key.keysym.sym < offset + 11) { // Entre F1 e F10. Olhe no SDL_keycode
-                std::string F_number = std::to_string(SDLWrapper::events.key.keysym.sym - offset);
-                if ((SDLWrapper::events.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver precionado...
-                    WindowManager::getInstance().saveWindowVisibility("./cache/layouts/.visibility_" + F_number +
-                                                                      ".bin");
-                    ImGuiWrapper::saveLayout("./cache/layouts/.layout_" + F_number + ".ini");
-                } else {
-                    WindowManager::getInstance().loadWindowVisibility("./cache/layouts/.visibility_" + F_number +
-                                                                      ".bin");
-                    ImGuiWrapper::loadLayout("./cache/layouts/.layout_" + F_number + ".ini");
+                std::string currentProject = DB::getInstance().getProject().currentProjectName;
+                if (!currentProject.empty()) {
+                    std::string F_number = std::to_string(SDLWrapper::events.key.keysym.sym - offset);
+                    if ((SDLWrapper::events.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver pressionado...
+                        WindowManager::getInstance().saveWindowVisibility("./cache/layouts/" + currentProject + "/.visibility_" + F_number + ".bin");
+                        ImGuiWrapper::saveLayout("./cache/layouts/" + currentProject + "/.layout_" + F_number + ".ini");
+                    } else {
+                        std::string pathIni = "./cache/layouts/" + currentProject + "/.layout_" + F_number + ".ini";
+                        if (std::filesystem::exists(pathIni)) {
+                            WindowManager::getInstance().loadWindowVisibility("./cache/layouts/" + currentProject + "/.visibility_" + F_number + ".bin");
+                            ImGuiWrapper::loadLayout(pathIni);
+                        } else {
+                            LOG("WARN", "Layout " + F_number + " não existe para o projeto atual.");
+                        }
+                    }
                 }
             }
 
@@ -69,9 +75,6 @@ void App::loop() {
     LOG("AUDIT", "Entrou no loop principal.");
 
     WindowManager& wm = WindowManager::getInstance();
-
-    wm.loadWindowVisibility("./cache/layouts/.visibility_1.bin");
-    ImGuiWrapper::loadLayout("./cache/layouts/.layout_1.ini");
 
     while (true) {
         if (App::handleEvent()) {

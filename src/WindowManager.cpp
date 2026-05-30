@@ -7,7 +7,6 @@
 #include "ui/windows/w_Demo.hpp"
 #include "ui/windows/w_HomePage.hpp"
 #include "ui/windows/w_Pedal.hpp"
-#include "ui/windows/w_Plot.hpp"
 #include "ui/windows/w_Statistics.hpp"
 #include "ui/windows/w_Telemetry.hpp"
 #include "ui/windows/w_Terminal.hpp"
@@ -52,7 +51,7 @@ void WindowManager::saveWindowVisibility(const std::filesystem::path& filepath) 
     file.write(reinterpret_cast<const char*>(&visibility), sizeof(VisibilityFlags));
     LOG("INFO", "Visibilidade '" + filepath.string() + "' salvo com sucesso.");
 
-    saveDynamicWindows(filepath.string() + ".numeric");
+    saveWindowCustomStates(filepath.string() + ".state");
 }
 
 void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) {
@@ -65,7 +64,7 @@ void WindowManager::loadWindowVisibility(const std::filesystem::path& filepath) 
     file.read(reinterpret_cast<char*>(&visibility), sizeof(VisibilityFlags));
     LOG("INFO", "Visibilidade '" + filepath.string() + "' carregada com sucesso.");
 
-    loadDynamicWindows(filepath.string() + ".numeric");
+    loadWindowCustomStates(filepath.string() + ".state");
 }
 
 void WindowManager::setup() {
@@ -96,7 +95,6 @@ void WindowManager::setup() {
     windows.emplace_back(std::move(temp_about_ptr));
 
     windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
-    windows.emplace_back(std::make_unique<Window::Plot>(&visibility.showPlot));
     windows.emplace_back(std::make_unique<Window::Terminal>(&visibility.showLog));
     windows.emplace_back(std::make_unique<Window::ImGuiDemo>(&visibility.showImGuiDemo));
     windows.emplace_back(std::make_unique<Window::ImPlotDemo>(&visibility.showImPlotDemo));
@@ -263,13 +261,102 @@ void WindowManager::createTabelaWindow() {
     LOG("INFO", "Criada nova janela de tabela: " + windowTitle);
 }
 
-void WindowManager::saveDynamicWindows(const std::string& filepath) {
+void WindowManager::saveWindowCustomStates(const std::string& filepath) {
     std::ofstream file(filepath);
     if (!file) {
-        LOG("WARN", "Não foi possível salvar as janelas dinâmicas em '" + filepath + "'.");
+        LOG("WARN", "Não foi possível salvar os estados customizados em '" + filepath + "'.");
         return;
     }
 
+    // 1. Encontrar ponteiros para janelas estáticas
+    Window::Reconstruction* reconWin = nullptr;
+    Window::Pedal* pedalWin = nullptr;
+    Window::WheelControl* wheelWin = nullptr;
+
+    for (const auto& w : windows) {
+        if (auto* r = dynamic_cast<Window::Reconstruction*>(w.get())) {
+            reconWin = r;
+        } else if (auto* p = dynamic_cast<Window::Pedal*>(w.get())) {
+            pedalWin = p;
+        } else if (auto* wh = dynamic_cast<Window::WheelControl*>(w.get())) {
+            wheelWin = wh;
+        }
+    }
+
+    // Salvando estado da janela de Reconstrução
+    if (reconWin) {
+        file << "RECONSTRUCTION_STATE\n";
+        file << reconWin->m_panX << " " << reconWin->m_panY << " " << reconWin->m_zoomScale << "\n";
+        file << reconWin->m_selectedFileType << "\n";
+        file << reconWin->m_selectedFileName << "\n";
+        file << reconWin->m_selectedLatCol << "\n";
+        file << reconWin->m_selectedLonCol << "\n";
+        file << static_cast<int>(reconWin->m_alignmentMode) << "\n";
+        file << static_cast<int>(reconWin->m_colorAlignmentMode) << "\n";
+        file << reconWin->m_selectedColorCol << "\n";
+        file << reconWin->m_selectedColorFileName << "\n";
+        file << reconWin->m_selectedColorFileType << "\n";
+        file << reconWin->m_gradMinVal << "\n";
+        file << reconWin->m_gradMaxVal << "\n";
+        file << reconWin->m_gradMinColor[0] << " " << reconWin->m_gradMinColor[1] << " " << reconWin->m_gradMinColor[2] << " " << reconWin->m_gradMinColor[3] << "\n";
+        file << reconWin->m_gradMaxColor[0] << " " << reconWin->m_gradMaxColor[1] << " " << reconWin->m_gradMaxColor[2] << " " << reconWin->m_gradMaxColor[3] << "\n";
+        file << reconWin->m_centerLat << " " << reconWin->m_centerLon << "\n";
+        file << reconWin->m_trackOffsetLat << " " << reconWin->m_trackOffsetLon << "\n";
+        file << reconWin->m_colorLine[0] << " " << reconWin->m_colorLine[1] << " " << reconWin->m_colorLine[2] << " " << reconWin->m_colorLine[3] << "\n";
+        file << reconWin->m_colorPoint[0] << " " << reconWin->m_colorPoint[1] << " " << reconWin->m_colorPoint[2] << " " << reconWin->m_colorPoint[3] << "\n";
+        file << reconWin->m_colorLastPoint[0] << " " << reconWin->m_colorLastPoint[1] << " " << reconWin->m_colorLastPoint[2] << " " << reconWin->m_colorLastPoint[3] << "\n";
+        file << reconWin->m_textAnnotations.size() << "\n";
+        for (const auto& ann : reconWin->m_textAnnotations) {
+            file << ann.archiveName << "\n";
+            file << ann.columnName << "\n";
+        }
+    } else {
+        file << "NO_RECONSTRUCTION_STATE\n";
+    }
+
+    // Salvando estado da janela de Pedais
+    if (pedalWin) {
+        file << "PEDAL_STATE\n";
+        file << pedalWin->m_isPlaying << "\n";
+        file << pedalWin->m_playbackSpeed << "\n";
+        file << pedalWin->m_currentTime << "\n";
+        file << pedalWin->m_stepSize << "\n";
+        file << pedalWin->m_showPedalImages << "\n";
+        file << pedalWin->m_throttleIndex << "\n";
+        file << pedalWin->m_brakeIndex << "\n";
+        file << pedalWin->m_dataList.size() << "\n";
+        for (const auto& pd : pedalWin->m_dataList) {
+            file << pd.column << "\n";
+            file << pd.archive << "\n";
+            file << pd.fileType << "\n";
+            file << pd.maxValue << "\n";
+        }
+    } else {
+        file << "NO_PEDAL_STATE\n";
+    }
+
+    // Salvando estado da janela de Volante
+    if (wheelWin) {
+        file << "WHEEL_STATE\n";
+        file << wheelWin->m_isPlaying << "\n";
+        file << wheelWin->m_playbackSpeed << "\n";
+        file << wheelWin->m_currentTime << "\n";
+        file << wheelWin->m_stepSize << "\n";
+        file << wheelWin->m_dataIsDegrees << "\n";
+        file << wheelWin->m_steerIndex << "\n";
+        file << wheelWin->m_dataList.size() << "\n";
+        for (const auto& wd : wheelWin->m_dataList) {
+            file << wd.column << "\n";
+            file << wd.archive << "\n";
+            file << wd.fileType << "\n";
+            file << wd.maxValue << "\n";
+            file << wd.minValue << "\n";
+        }
+    } else {
+        file << "NO_WHEEL_STATE\n";
+    }
+
+    // 2. Salvando janelas dinâmicas
     int count = 0;
     for (const auto& w : windows) {
         if (w->isDynamic()) {
@@ -292,25 +379,17 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                         file << col.column << "\n";
                     }
                     file << static_cast<int>(numWin->getMetricType()) << "\n";
-
-                    // Prefix and Suffix
                     file << numWin->m_prefix << "\n";
                     file << numWin->m_suffix << "\n";
-
-                    // Formula
                     file << numWin->m_useFormula << "\n";
                     file << numWin->m_multiplier << "\n";
                     file << numWin->m_offset << "\n";
-
-                    // Translations
                     file << numWin->m_useTranslation << "\n";
                     file << numWin->m_translationRules.size() << "\n";
                     for (const auto& rule : numWin->m_translationRules) {
                         file << rule.value << "\n";
                         file << rule.text << "\n";
                     }
-
-                    // Colors
                     file << numWin->m_colorMode << "\n";
                     file << numWin->m_threshLL << "\n";
                     file << numWin->m_threshL << "\n";
@@ -357,19 +436,13 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                         file << barWin->getColumnName() << "\n";
                     }
                     file << static_cast<int>(barWin->getMetricType()) << "\n";
-
-                    // Orientation and scale limits
                     file << barWin->m_orientation << "\n";
                     file << barWin->m_useManualLimits << "\n";
                     file << barWin->m_minVal << "\n";
                     file << barWin->m_maxVal << "\n";
-
-                    // Colors
                     file << barWin->m_barColor[0] << " " << barWin->m_barColor[1] << " " << barWin->m_barColor[2] << " " << barWin->m_barColor[3] << "\n";
                     file << barWin->m_bgColor[0] << " " << barWin->m_bgColor[1] << " " << barWin->m_bgColor[2] << " " << barWin->m_bgColor[3] << "\n";
                     file << barWin->m_fgColor[0] << " " << barWin->m_fgColor[1] << " " << barWin->m_fgColor[2] << " " << barWin->m_fgColor[3] << "\n";
-
-                    // Text properties
                     file << barWin->m_fontScale << "\n";
                     file << barWin->m_showPercentage << "\n";
                     file << barWin->m_showValue << "\n";
@@ -377,8 +450,6 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     file << barWin->m_stripPattern << "\n";
                     file << barWin->m_prefix << "\n";
                     file << barWin->m_suffix << "\n";
-
-                    // Thresholds
                     file << barWin->m_useThresholds << "\n";
                     file << barWin->m_threshLL << "\n";
                     file << barWin->m_threshL << "\n";
@@ -396,38 +467,43 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     saveBarConf(barWin->m_confH);
                     saveBarConf(barWin->m_confHH);
 
-                    // Bar Gradient Configs
                     file << barWin->m_useGradient << "\n";
                     file << barWin->m_gradMinColor[0] << " " << barWin->m_gradMinColor[1] << " " << barWin->m_gradMinColor[2] << " " << barWin->m_gradMinColor[3] << "\n";
                     file << barWin->m_gradMaxColor[0] << " " << barWin->m_gradMaxColor[1] << " " << barWin->m_gradMaxColor[2] << " " << barWin->m_gradMaxColor[3] << "\n";
-
-                    // Unified color mode + gradient limits
                     file << barWin->m_colorBarMode << "\n";
                     file << barWin->m_gradMinVal << "\n";
                     file << barWin->m_gradMaxVal << "\n";
                 }
             } else if (w->getDynamicType() == "Graph") {
-                auto* graphWin = dynamic_cast<Window::Graph*>(w.get());
+                auto graphWin = dynamic_cast<Window::Graph*>(w.get());
                 if (graphWin) {
-                    const auto& graph = graphWin->getGraph();
-                    const auto& config = graph.config;
+                    auto& graph = graphWin->getGraph();
+                    auto& config = graph.config;
                     file << graphWin->getTitle() << "\n";
                     file << static_cast<int>(config.type) << "\n";
                     file << config.showXAxis << "\n";
                     file << config.showYAxis << "\n";
                     file << config.numPoints << "\n";
+                    file << config.plotHeight << "\n";
                     file << config.followTheEnd << "\n";
                     file << config.autoFit << "\n";
                     file << config.showValueOnYAxis << "\n";
                     file << config.showCursorOnYAxis << "\n";
                     file << config.xColumn << "\n";
                     file << "XYALIGN:" << static_cast<int>(config.xyAlignmentMode) << "\n";
+                    
+                    file << graph.textAnnotations.size() << "\n";
+                    for (const auto& ann : graph.textAnnotations) {
+                        file << ann.archiveName << "\n";
+                        file << ann.columnName << "\n";
+                    }
+
                     file << graph.data.size() << "\n";
-                    for (const auto& gd : graph.data) {
-                        file << gd.columnName << "\n";
-                        file << gd.fileName << "\n";
-                        file << gd.fileType << "\n";
-                        file << gd.multiplier << "\n";
+                    for (const auto& col : graph.data) {
+                        file << col.columnName << "\n";
+                        file << col.fileName << "\n";
+                        file << col.fileType << "\n";
+                        file << col.multiplier << "\n";
                     }
                 }
             } else if (w->getDynamicType() == "Matrix") {
@@ -440,8 +516,8 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     file << matWin->m_minColor[0] << " " << matWin->m_minColor[1] << " " << matWin->m_minColor[2] << " " << matWin->m_minColor[3] << "\n";
                     file << matWin->m_maxColor[0] << " " << matWin->m_maxColor[1] << " " << matWin->m_maxColor[2] << " " << matWin->m_maxColor[3] << "\n";
                     file << matWin->m_threshLL << "\n";
-                    file << matWin->m_threshL  << "\n";
-                    file << matWin->m_threshH  << "\n";
+                    file << matWin->m_threshL << "\n";
+                    file << matWin->m_threshH << "\n";
                     file << matWin->m_threshHH << "\n";
 
                     auto saveMatConf = [&](const ColorThresholdConfig& conf) {
@@ -455,28 +531,27 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
                     saveMatConf(matWin->m_confH);
                     saveMatConf(matWin->m_confHH);
 
-                    // Columns
                     file << matWin->m_columns.size() << "\n";
                     for (const auto& col : matWin->m_columns) {
-                        file << col.fileType    << "\n";
+                        file << col.fileType << "\n";
                         file << col.archiveName << "\n";
-                        file << matWin->m_rowVariables.size() << "\n";
-                        for (const auto& var : matWin->m_rowVariables) {
-                            file << var << "\n";
+                        file << col.variables.size() << "\n";
+                        for (const auto& v : col.variables) {
+                            file << v << "\n";
                         }
                     }
+
                     file << matWin->m_fontScale << "\n";
                     file << matWin->m_showVariableName << "\n";
-                    // Matrix extra configs
                     file << matWin->m_suffix << "\n";
                     file << matWin->m_useFormula << "\n";
                     file << matWin->m_multiplier << "\n";
                     file << matWin->m_offset << "\n";
                     file << matWin->m_useTranslation << "\n";
                     file << matWin->m_translationRules.size() << "\n";
-                    for (const auto& rule : matWin->m_translationRules) {
-                        file << rule.value << "\n";
-                        file << rule.text << "\n";
+                    for (const auto& r : matWin->m_translationRules) {
+                        file << r.value << "\n";
+                        file << r.text << "\n";
                     }
                 }
             } else if (w->getDynamicType() == "Tabela") {
@@ -495,13 +570,188 @@ void WindowManager::saveDynamicWindows(const std::string& filepath) {
     }
 }
 
-void WindowManager::loadDynamicWindows(const std::string& filepath) {
+void WindowManager::loadWindowCustomStates(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file) {
         return;
     }
 
-    // 1. Remove todas as janelas dinâmicas existentes
+    // 1. Encontrar ponteiros para janelas estáticas
+    Window::Reconstruction* reconWin = nullptr;
+    Window::Pedal* pedalWin = nullptr;
+    Window::WheelControl* wheelWin = nullptr;
+
+    for (const auto& w : windows) {
+        if (auto* r = dynamic_cast<Window::Reconstruction*>(w.get())) {
+            reconWin = r;
+        } else if (auto* p = dynamic_cast<Window::Pedal*>(w.get())) {
+            pedalWin = p;
+        } else if (auto* wh = dynamic_cast<Window::WheelControl*>(w.get())) {
+            wheelWin = wh;
+        }
+    }
+
+    std::string line, dummy;
+
+    // Restaurando estado da janela de Reconstrução
+    if (std::getline(file, line)) {
+        if (line == "RECONSTRUCTION_STATE" && reconWin) {
+            file >> reconWin->m_panX >> reconWin->m_panY >> reconWin->m_zoomScale;
+            std::getline(file, dummy); // consume newline
+            std::getline(file, reconWin->m_selectedFileType);
+            std::getline(file, reconWin->m_selectedFileName);
+            std::getline(file, reconWin->m_selectedLatCol);
+            std::getline(file, reconWin->m_selectedLonCol);
+            int alignVal = 0, colorAlignVal = 0;
+            file >> alignVal;
+            reconWin->m_alignmentMode = static_cast<XYAlignmentMode>(alignVal);
+            file >> colorAlignVal;
+            reconWin->m_colorAlignmentMode = static_cast<XYAlignmentMode>(colorAlignVal);
+            std::getline(file, dummy); // consume newline
+            std::getline(file, reconWin->m_selectedColorCol);
+            std::getline(file, reconWin->m_selectedColorFileName);
+            std::getline(file, reconWin->m_selectedColorFileType);
+            file >> reconWin->m_gradMinVal;
+            file >> reconWin->m_gradMaxVal;
+            file >> reconWin->m_gradMinColor[0] >> reconWin->m_gradMinColor[1] >> reconWin->m_gradMinColor[2] >> reconWin->m_gradMinColor[3];
+            file >> reconWin->m_gradMaxColor[0] >> reconWin->m_gradMaxColor[1] >> reconWin->m_gradMaxColor[2] >> reconWin->m_gradMaxColor[3];
+            file >> reconWin->m_centerLat >> reconWin->m_centerLon;
+            file >> reconWin->m_trackOffsetLat >> reconWin->m_trackOffsetLon;
+            file >> reconWin->m_colorLine[0] >> reconWin->m_colorLine[1] >> reconWin->m_colorLine[2] >> reconWin->m_colorLine[3];
+            file >> reconWin->m_colorPoint[0] >> reconWin->m_colorPoint[1] >> reconWin->m_colorPoint[2] >> reconWin->m_colorPoint[3];
+            file >> reconWin->m_colorLastPoint[0] >> reconWin->m_colorLastPoint[1] >> reconWin->m_colorLastPoint[2] >> reconWin->m_colorLastPoint[3];
+            size_t annSize = 0;
+            file >> annSize;
+            std::getline(file, dummy); // consume newline
+            reconWin->m_textAnnotations.clear();
+            for (size_t a = 0; a < annSize; ++a) {
+                TrackTextAnnotation ann;
+                std::getline(file, ann.archiveName);
+                std::getline(file, ann.columnName);
+                bool exists = DB::getInstance().columnExists("CSV", ann.archiveName, ann.columnName) ||
+                              DB::getInstance().columnExists("Telemetry", ann.archiveName, ann.columnName);
+                if (exists) {
+                    reconWin->m_textAnnotations.push_back(ann);
+                }
+            }
+
+            // Validar se latitude/longitude ainda existem
+            if (!reconWin->m_selectedLatCol.empty() && 
+                !DB::getInstance().columnExists(reconWin->m_selectedFileType, reconWin->m_selectedFileName, reconWin->m_selectedLatCol)) {
+                reconWin->m_selectedLatCol.clear();
+            }
+            if (!reconWin->m_selectedLonCol.empty() && 
+                !DB::getInstance().columnExists(reconWin->m_selectedFileType, reconWin->m_selectedFileName, reconWin->m_selectedLonCol)) {
+                reconWin->m_selectedLonCol.clear();
+            }
+            if (reconWin->m_selectedLatCol.empty() || reconWin->m_selectedLonCol.empty()) {
+                reconWin->m_selectedFileName.clear();
+            }
+
+            // Validar se coluna de gradiente ainda existe
+            if (!reconWin->m_selectedColorCol.empty() && 
+                !DB::getInstance().columnExists(reconWin->m_selectedColorFileType, reconWin->m_selectedColorFileName, reconWin->m_selectedColorCol)) {
+                reconWin->m_selectedColorCol.clear();
+                reconWin->m_selectedColorFileName.clear();
+                reconWin->m_selectedColorFileType.clear();
+            }
+        } else if (line == "NO_RECONSTRUCTION_STATE") {
+            // Nenhuma ação necessária
+        }
+    }
+
+    // Restaurando estado da janela de Pedais
+    if (std::getline(file, line)) {
+        if (line == "PEDAL_STATE" && pedalWin) {
+            file >> pedalWin->m_isPlaying;
+            file >> pedalWin->m_playbackSpeed;
+            file >> pedalWin->m_currentTime;
+            file >> pedalWin->m_stepSize;
+            file >> pedalWin->m_showPedalImages;
+            file >> pedalWin->m_throttleIndex;
+            file >> pedalWin->m_brakeIndex;
+            size_t dataListSize = 0;
+            file >> dataListSize;
+            std::getline(file, dummy); // consume newline
+            int origThrottle = pedalWin->m_throttleIndex;
+            int origBrake = pedalWin->m_brakeIndex;
+            pedalWin->m_throttleIndex = -1;
+            pedalWin->m_brakeIndex = -1;
+            pedalWin->m_dataList.clear();
+            for (size_t d = 0; d < dataListSize; ++d) {
+                PedalData pd;
+                std::getline(file, pd.column);
+                std::getline(file, pd.archive);
+                std::getline(file, pd.fileType);
+                file >> pd.maxValue;
+                std::getline(file, dummy); // consume newline
+
+                if (DB::getInstance().columnExists(pd.fileType, pd.archive, pd.column)) {
+                    pd.data = nullptr;
+                    if (pd.fileType == "CSV") {
+                        pd.data = &DB::getInstance().getCSVData(pd.archive, pd.column);
+                    } else if (pd.fileType == "Telemetry") {
+                        pd.data = &DB::getInstance().getTelemetryData(pd.archive, pd.column);
+                    }
+                    pedalWin->m_dataList.push_back(pd);
+                    int newIdx = static_cast<int>(pedalWin->m_dataList.size() - 1);
+                    if (static_cast<int>(d) == origThrottle) {
+                        pedalWin->m_throttleIndex = newIdx;
+                    }
+                    if (static_cast<int>(d) == origBrake) {
+                        pedalWin->m_brakeIndex = newIdx;
+                    }
+                }
+            }
+        } else if (line == "NO_PEDAL_STATE") {
+            // Nenhuma ação necessária
+        }
+    }
+
+    // Restaurando estado da janela de Volante
+    if (std::getline(file, line)) {
+        if (line == "WHEEL_STATE" && wheelWin) {
+            file >> wheelWin->m_isPlaying;
+            file >> wheelWin->m_playbackSpeed;
+            file >> wheelWin->m_currentTime;
+            file >> wheelWin->m_stepSize;
+            file >> wheelWin->m_dataIsDegrees;
+            file >> wheelWin->m_steerIndex;
+            size_t dataListSize = 0;
+            file >> dataListSize;
+            std::getline(file, dummy); // consume newline
+            int origSteer = wheelWin->m_steerIndex;
+            wheelWin->m_steerIndex = -1;
+            wheelWin->m_dataList.clear();
+            for (size_t d = 0; d < dataListSize; ++d) {
+                WheelData wd;
+                std::getline(file, wd.column);
+                std::getline(file, wd.archive);
+                std::getline(file, wd.fileType);
+                file >> wd.maxValue;
+                file >> wd.minValue;
+                std::getline(file, dummy); // consume newline
+
+                if (DB::getInstance().columnExists(wd.fileType, wd.archive, wd.column)) {
+                    wd.data = nullptr;
+                    if (wd.fileType == "CSV") {
+                        wd.data = &DB::getInstance().getCSVData(wd.archive, wd.column);
+                    } else if (wd.fileType == "Telemetry") {
+                        wd.data = &DB::getInstance().getTelemetryData(wd.archive, wd.column);
+                    }
+                    wheelWin->m_dataList.push_back(wd);
+                    int newIdx = static_cast<int>(wheelWin->m_dataList.size() - 1);
+                    if (static_cast<int>(d) == origSteer) {
+                        wheelWin->m_steerIndex = newIdx;
+                    }
+                }
+            }
+        } else if (line == "NO_WHEEL_STATE") {
+            // Nenhuma ação necessária
+        }
+    }
+
+    // 2. Remove todas as janelas dinâmicas existentes
     windows.erase(std::remove_if(windows.begin(), windows.end(),
         [](const std::unique_ptr<IWindow>& w) {
             return w->isDynamic();
@@ -509,21 +759,19 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
 
     int count = 0;
     if (!(file >> count)) return;
-    std::string dummy;
     std::getline(file, dummy); // Consome o newline
 
     for (int i = 0; i < count; i++) {
-        std::string line;
-        if (!std::getline(file, line)) break;
+        std::string lineType;
+        if (!std::getline(file, lineType)) break;
 
         std::string type = "Numeric";
         std::string title;
-        if (line == "Numeric" || line == "Graph" || line == "Bar" || line == "Matrix" || line == "Tabela") {
-            type = line;
+        if (lineType == "Numeric" || lineType == "Graph" || lineType == "Bar" || lineType == "Matrix" || lineType == "Tabela") {
+            type = lineType;
             if (!std::getline(file, title)) break;
         } else {
-            // Retrocompatibilidade: se não for "Numeric", "Graph" ou "Bar", a primeira linha é o título do tipo Numeric
-            title = line;
+            title = lineType;
         }
 
         if (type == "Numeric") {
@@ -537,7 +785,9 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                 std::getline(file, fileType);
                 std::getline(file, archive);
                 std::getline(file, column);
-                numWin->addColumn(fileType, archive, column);
+                if (DB::getInstance().columnExists(fileType, archive, column)) {
+                    numWin->addColumn(fileType, archive, column);
+                }
             }
 
             int metricVal = 0;
@@ -660,7 +910,9 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
 
             auto barWin = std::make_unique<Window::Bar>(title);
             if (hasData) {
-                barWin->addColumn(fileType, archive, column);
+                if (DB::getInstance().columnExists(fileType, archive, column)) {
+                    barWin->addColumn(fileType, archive, column);
+                }
             }
             barWin->setMetricType(static_cast<MetricType>(metricVal));
 
@@ -740,6 +992,7 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
             file >> config.showXAxis;
             file >> config.showYAxis;
             file >> config.numPoints;
+            file >> config.plotHeight;
             file >> config.followTheEnd;
             file >> config.autoFit;
             file >> config.showValueOnYAxis;
@@ -756,6 +1009,23 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                         int alignVal = std::stoi(nextLine.substr(8));
                         config.xyAlignmentMode = static_cast<XYAlignmentMode>(alignVal);
                     } catch (...) {}
+                    
+                    // Carregar anotações
+                    size_t annSize = 0;
+                    file >> annSize;
+                    std::getline(file, dummy); // consume newline
+                    graph.textAnnotations.clear();
+                    for (size_t a = 0; a < annSize; ++a) {
+                        GraphTextAnnotation ann;
+                        std::getline(file, ann.archiveName);
+                        std::getline(file, ann.columnName);
+                        bool exists = DB::getInstance().columnExists("CSV", ann.archiveName, ann.columnName) ||
+                                      DB::getInstance().columnExists("Telemetry", ann.archiveName, ann.columnName);
+                        if (exists) {
+                            graph.textAnnotations.push_back(ann);
+                        }
+                    }
+
                     file >> dataSize;
                     std::getline(file, dummy); // Consome newline
                 } else {
@@ -775,9 +1045,11 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                 file >> multiplier;
                 std::getline(file, dummy); // Consome newline
 
-                graphWin->addColumn(fileType, fileName, colName);
-                if (!graph.data.empty()) {
-                    graph.data.back().multiplier = multiplier;
+                if (DB::getInstance().columnExists(fileType, fileName, colName)) {
+                    graphWin->addColumn(fileType, fileName, colName);
+                    if (!graph.data.empty()) {
+                        graph.data.back().multiplier = multiplier;
+                    }
                 }
             }
 
@@ -822,11 +1094,16 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                 for (size_t vi = 0; vi < numVars; vi++) {
                     std::string var;
                     std::getline(file, var);
-                    if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), var) == matWin->m_rowVariables.end()) {
-                        matWin->m_rowVariables.push_back(var);
+                    if (DB::getInstance().columnExists(col.fileType, col.archiveName, var)) {
+                        col.variables.push_back(var);
+                        if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), var) == matWin->m_rowVariables.end()) {
+                            matWin->m_rowVariables.push_back(var);
+                        }
                     }
                 }
-                matWin->m_columns.push_back(col);
+                if (!col.variables.empty()) {
+                    matWin->m_columns.push_back(col);
+                }
             }
 
             float fontScale = 1.0f;
@@ -877,7 +1154,9 @@ void WindowManager::loadDynamicWindows(const std::string& filepath) {
                 std::getline(file, fileType);
                 std::getline(file, fileName);
                 std::getline(file, columnName);
-                tabWin->addColumn(fileType, fileName, columnName);
+                if (DB::getInstance().columnExists(fileType, fileName, columnName)) {
+                    tabWin->addColumn(fileType, fileName, columnName);
+                }
             }
             windows.emplace_back(std::move(tabWin));
         }

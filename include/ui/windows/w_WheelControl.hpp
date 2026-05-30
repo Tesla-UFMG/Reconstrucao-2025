@@ -18,13 +18,17 @@
 struct WheelData {
     std::string         column;
     std::string         archive;
+    std::string         fileType;
     const std::vector<double>* data;
     double              maxValue = 1.0;
     double              minValue = 0.0; 
 };
 
+class WindowManager;
+
 namespace Window {
     class WheelControl : public IWindow {
+        friend class ::WindowManager;
         public:
             explicit WheelControl(bool* isOpen = nullptr);
             virtual void render() override;

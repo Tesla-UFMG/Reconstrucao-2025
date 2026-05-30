@@ -17,6 +17,7 @@ Para salvar informações globais do projeto. Por exemplo, csv's
 #include "DataFiles.hpp"
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
+#include "WarningRule.hpp"
 
 // Third party
 #include "rapidcsv.h"
@@ -38,6 +39,7 @@ class ProjectData {
         std::vector<VideoFile>     videoFiles;
         std::vector<TelemetryFile> telemetryFiles;
         std::vector<TextFile>      textFiles;
+        std::vector<WarningRule>   warningRules;
 
         int getTelemetryStatus();
         void setTelemetryStatus(int status);

@@ -17,12 +17,16 @@
 struct PedalData {
     std::string         column;
     std::string         archive;
+    std::string         fileType;
     const std::vector<double>* data;
     double              maxValue = 1.0;
 };
 
+class WindowManager;
+
 namespace Window {
     class Pedal : public IWindow {
+        friend class ::WindowManager;
         public:
             explicit Pedal(bool* isOpen = nullptr);
             virtual void render() override;

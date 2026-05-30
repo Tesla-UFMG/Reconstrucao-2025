@@ -1,4 +1,6 @@
 #include "DB.hpp"
+#include "WindowManager.hpp"
+#include "ui/windows/w_Warning.hpp"
 
 DB& DB::getInstance() {
     static DB instance;
@@ -19,6 +21,11 @@ void DB::createProjectDialog() {
     char* filepath = Dialogs::showSaveFileDialog("Criar Projeto", this->projectData.currentProjectName, "*.tesla");
     if (filepath) {
         this->projectData.clear();
+        auto* warningWin = Window::Warning::getInstance();
+        if (warningWin) {
+            warningWin->setRules(this->projectData.warningRules);
+            warningWin->clearLogs();
+        }
         DB::saveProject(filepath);
     }
 }
@@ -47,19 +54,79 @@ void DB::loadCSVDialog() {
 }
 
 void DB::saveProject(const std::filesystem::path& filepath) {
-    if (this->projectData.serialize(filepath)) {
-        this->projectData.currentProjectName = filepath.filename().string();
+    std::filesystem::path finalPath = filepath;
+    if (finalPath.extension() != ".tesla") {
+        finalPath += ".tesla";
+    }
+    auto* warningWin = Window::Warning::getInstance();
+    if (warningWin) {
+        this->projectData.warningRules = warningWin->getRules();
+    }
+    if (this->projectData.serialize(finalPath)) {
+        this->projectData.currentProjectName = finalPath.filename().string();
         SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProjectName);
         LOG("INFO", "Projeto salvo: " + this->projectData.currentProjectName);
     }
 }
 
 void DB::loadProject(const std::filesystem::path& filepath) {
-    if (this->projectData.deserialize(filepath)) {
-        this->projectData.currentProjectName = filepath.filename().string();
+    std::filesystem::path finalPath = filepath;
+    if (finalPath.extension() != ".tesla") {
+        finalPath += ".tesla";
+    }
+    if (this->projectData.deserialize(finalPath)) {
+        this->projectData.currentProjectName = finalPath.filename().string();
         SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProjectName);
         LOG("INFO", "Projeto carregado com sucesso.");
+
+        auto* warningWin = Window::Warning::getInstance();
+        if (warningWin) {
+            auto rules = this->projectData.warningRules;
+            for (auto& rule : rules) {
+                rule.lastProcessedIndex = -1;
+                rule.wasTriggered = false;
+            }
+            warningWin->setRules(rules);
+            warningWin->clearLogs();
+        }
+
+        std::string currentProject = this->projectData.currentProjectName;
+        std::string pathIni = "./cache/layouts/" + currentProject + "/.layout_1.ini";
+        if (std::filesystem::exists(pathIni)) {
+            WindowManager::getInstance().loadWindowVisibility("./cache/layouts/" + currentProject + "/.visibility_1.bin");
+            ImGuiWrapper::loadLayout(pathIni);
+            LOG("INFO", "Autocarregado Layout 1 do projeto: " + currentProject);
+        }
     }
+}
+
+bool DB::columnExists(const std::string& fileType, const std::string& fileName, const std::string& columnName) const {
+    if (fileType == "CSV") {
+        for (const CSVFile& csvFile : this->projectData.csvFiles) {
+            if (csvFile.getName() == fileName) {
+                for (const auto& col : csvFile.getColumnNames()) {
+                    if (col == columnName) return true;
+                }
+            }
+        }
+    } else if (fileType == "Telemetry") {
+        for (const TelemetryFile& telFile : this->projectData.telemetryFiles) {
+            if (telFile.getPacketId() == fileName) {
+                for (const auto& col : telFile.getColumnNames()) {
+                    if (col == columnName) return true;
+                }
+            }
+        }
+    } else if (fileType == "Text") {
+        for (const auto& textFile : this->projectData.textFiles) {
+            if (textFile.getName() == fileName) {
+                for (const auto& col : textFile.getColumnNames()) {
+                    if (col == columnName) return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 const std::vector<double>& DB::getCSVData(const std::string& filepath, const std::string& columnName) const {

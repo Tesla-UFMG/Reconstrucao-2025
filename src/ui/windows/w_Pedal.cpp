@@ -228,6 +228,7 @@ void Window::Pedal::addColumn(const std::string& fileType, const std::string& fi
     PedalData pd;
     pd.archive = fileName;
     pd.column = columnName;
+    pd.fileType = fileType;
     
     // Carregar dados dependendo da fonte (CSV ou Telemetria)
     if (fileType == "CSV") {

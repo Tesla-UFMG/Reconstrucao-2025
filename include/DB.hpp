@@ -51,6 +51,8 @@ class DB {
 
         void deleteCSV(const std::filesystem::path& filepath);
 
+        bool columnExists(const std::string& fileType, const std::string& fileName, const std::string& columnName) const;
+
         const std::vector<double>& getCSVData(const std::string& filepath, const std::string& columnName) const;
         const std::vector<double>& getTelemetryData(const std::string& packetId, const std::string& columnName) const;
         const std::vector<double>& getTextData(const std::string& filename, const std::string& columnName) const;

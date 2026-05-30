@@ -3,7 +3,7 @@
 
 // Project
 #include "ui/windows/iWindow.hpp"
-#include "ui/windows/w_Plot.hpp"
+#include "XYAlignment.hpp"
 #include "DB.hpp"
 #include "Log.hpp"
 #include "Dialogs.hpp"

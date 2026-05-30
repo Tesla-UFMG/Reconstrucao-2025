@@ -10,7 +10,7 @@
 #include "ImGuiWrapper.hpp"
 #include "SDLWrapper.hpp"
 #include "ui/windows/iWindow.hpp"
-#include "ui/windows/w_Plot.hpp"
+#include "XYAlignment.hpp"
 
 // Third Party
 #include "sqlite3/sqlite3.h"
@@ -27,8 +27,11 @@ struct TrackTextAnnotation {
     std::string columnName;
 };
 
+class WindowManager;
+
 namespace Window {
     class Reconstruction : public IWindow {
+        friend class ::WindowManager;
         public:
             explicit Reconstruction(bool* isOpen = nullptr);
             virtual ~Reconstruction();
