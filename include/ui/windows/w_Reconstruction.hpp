@@ -63,9 +63,11 @@ namespace Window {
             std::string              m_currentMapName;
 
             // Track reconstruction variables
-            std::string              m_selectedFileType = "CSV"; // "CSV" or "Telemetry"
-            std::string              m_selectedFileName;         // CSV file name or Telemetry packetId
+            std::string              m_selectedLatFileType = "CSV"; // "CSV" or "Telemetry"
+            std::string              m_selectedLatFileName;         // CSV file name or Telemetry packetId
             std::string              m_selectedLatCol;
+            std::string              m_selectedLonFileType = "CSV"; // "CSV" or "Telemetry"
+            std::string              m_selectedLonFileName;         // CSV file name or Telemetry packetId
             std::string              m_selectedLonCol;
             XYAlignmentMode          m_alignmentMode = ALIGN_LINEAR_INTERPOLATION;
             XYAlignmentMode          m_colorAlignmentMode = ALIGN_LINEAR_INTERPOLATION;

@@ -303,9 +303,11 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
     if (reconWin) {
         file << "RECONSTRUCTION_STATE\n";
         file << reconWin->m_panX << " " << reconWin->m_panY << " " << reconWin->m_zoomScale << "\n";
-        file << reconWin->m_selectedFileType << "\n";
-        file << reconWin->m_selectedFileName << "\n";
+        file << reconWin->m_selectedLatFileType << "\n";
+        file << reconWin->m_selectedLatFileName << "\n";
         file << reconWin->m_selectedLatCol << "\n";
+        file << reconWin->m_selectedLonFileType << "\n";
+        file << reconWin->m_selectedLonFileName << "\n";
         file << reconWin->m_selectedLonCol << "\n";
         file << static_cast<int>(reconWin->m_alignmentMode) << "\n";
         file << static_cast<int>(reconWin->m_colorAlignmentMode) << "\n";
@@ -551,8 +553,8 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     for (const auto& col : matWin->m_columns) {
                         file << col.fileType << "\n";
                         file << col.archiveName << "\n";
-                        file << col.variables.size() << "\n";
-                        for (const auto& v : col.variables) {
+                        file << matWin->m_rowVariables.size() << "\n";
+                        for (const auto& v : matWin->m_rowVariables) {
                             file << v << "\n";
                         }
                     }
@@ -614,16 +616,61 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
         if (line == "RECONSTRUCTION_STATE" && reconWin) {
             file >> reconWin->m_panX >> reconWin->m_panY >> reconWin->m_zoomScale;
             std::getline(file, dummy); // consume newline
-            std::getline(file, reconWin->m_selectedFileType);
-            std::getline(file, reconWin->m_selectedFileName);
-            std::getline(file, reconWin->m_selectedLatCol);
-            std::getline(file, reconWin->m_selectedLonCol);
+            std::string str1, str2, str3, str4;
+            std::getline(file, str1);
+            std::getline(file, str2);
+            std::getline(file, str3);
+            std::getline(file, str4);
+
+            bool isOldFormat = true;
+            std::string line5;
+            
+            if (str4 == "CSV" || str4 == "Telemetry") {
+                isOldFormat = false;
+                std::getline(file, line5);
+            } else if (str4.empty()) {
+                std::getline(file, line5);
+                if (line5.empty()) {
+                    isOldFormat = false;
+                }
+            }
+
             int alignVal = 0, colorAlignVal = 0;
-            file >> alignVal;
-            reconWin->m_alignmentMode = static_cast<XYAlignmentMode>(alignVal);
-            file >> colorAlignVal;
-            reconWin->m_colorAlignmentMode = static_cast<XYAlignmentMode>(colorAlignVal);
-            std::getline(file, dummy); // consume newline
+            if (isOldFormat) {
+                reconWin->m_selectedLatFileType = str1;
+                reconWin->m_selectedLatFileName = str2;
+                reconWin->m_selectedLatCol = str3;
+                reconWin->m_selectedLonFileType = str1;
+                reconWin->m_selectedLonFileName = str2;
+                reconWin->m_selectedLonCol = str4;
+                
+                if (!line5.empty()) {
+                    try {
+                        alignVal = std::stoi(line5);
+                    } catch (...) {
+                        alignVal = 2; // Default fallback
+                    }
+                } else {
+                    file >> alignVal;
+                }
+                reconWin->m_alignmentMode = static_cast<XYAlignmentMode>(alignVal);
+                file >> colorAlignVal;
+                reconWin->m_colorAlignmentMode = static_cast<XYAlignmentMode>(colorAlignVal);
+                std::getline(file, dummy); // consume newline
+            } else {
+                reconWin->m_selectedLatFileType = str1;
+                reconWin->m_selectedLatFileName = str2;
+                reconWin->m_selectedLatCol = str3;
+                reconWin->m_selectedLonFileType = str4;
+                reconWin->m_selectedLonFileName = line5;
+                std::getline(file, reconWin->m_selectedLonCol);
+                
+                file >> alignVal;
+                reconWin->m_alignmentMode = static_cast<XYAlignmentMode>(alignVal);
+                file >> colorAlignVal;
+                reconWin->m_colorAlignmentMode = static_cast<XYAlignmentMode>(colorAlignVal);
+                std::getline(file, dummy); // consume newline
+            }
             std::getline(file, reconWin->m_selectedColorCol);
             std::getline(file, reconWin->m_selectedColorFileName);
             std::getline(file, reconWin->m_selectedColorFileType);
@@ -653,15 +700,14 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
 
             // Validar se latitude/longitude ainda existem
             if (!reconWin->m_selectedLatCol.empty() && 
-                !DB::getInstance().columnExists(reconWin->m_selectedFileType, reconWin->m_selectedFileName, reconWin->m_selectedLatCol)) {
+                !DB::getInstance().columnExists(reconWin->m_selectedLatFileType, reconWin->m_selectedLatFileName, reconWin->m_selectedLatCol)) {
                 reconWin->m_selectedLatCol.clear();
+                reconWin->m_selectedLatFileName.clear();
             }
             if (!reconWin->m_selectedLonCol.empty() && 
-                !DB::getInstance().columnExists(reconWin->m_selectedFileType, reconWin->m_selectedFileName, reconWin->m_selectedLonCol)) {
+                !DB::getInstance().columnExists(reconWin->m_selectedLonFileType, reconWin->m_selectedLonFileName, reconWin->m_selectedLonCol)) {
                 reconWin->m_selectedLonCol.clear();
-            }
-            if (reconWin->m_selectedLatCol.empty() || reconWin->m_selectedLonCol.empty()) {
-                reconWin->m_selectedFileName.clear();
+                reconWin->m_selectedLonFileName.clear();
             }
 
             // Validar se coluna de gradiente ainda existe

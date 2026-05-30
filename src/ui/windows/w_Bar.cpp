@@ -33,27 +33,49 @@ void Window::Bar::render() {
     double maxL = m_maxVal;
     double minL = m_minVal;
 
-    if (m_hasData && m_loadedData.data && !m_loadedData.data->empty()) {
+    if (m_hasData && m_loadedData.data) {
         hasVal = true;
-        if (m_currentMetric == MetricType::LAST) {
-            val = m_loadedData.data->back();
-        } else if (m_currentMetric == MetricType::AVERAGE) {
-            double sum = 0.0;
-            for (double x : *m_loadedData.data) {
-                sum += x;
+        if (!m_loadedData.data->empty()) {
+            if (m_currentMetric == MetricType::LAST) {
+                val = m_loadedData.data->back();
+            } else if (m_currentMetric == MetricType::AVERAGE) {
+                double sum = 0.0;
+                for (double x : *m_loadedData.data) {
+                    sum += x;
+                }
+                val = sum / m_loadedData.data->size();
+            } else if (m_currentMetric == MetricType::MIN) {
+                val = *std::min_element(m_loadedData.data->begin(), m_loadedData.data->end());
+            } else if (m_currentMetric == MetricType::MAX) {
+                val = *std::max_element(m_loadedData.data->begin(), m_loadedData.data->end());
             }
-            val = sum / m_loadedData.data->size();
-        } else if (m_currentMetric == MetricType::MIN) {
-            val = *std::min_element(m_loadedData.data->begin(), m_loadedData.data->end());
-        } else if (m_currentMetric == MetricType::MAX) {
-            val = *std::max_element(m_loadedData.data->begin(), m_loadedData.data->end());
-        }
 
-        if (!m_useManualLimits) {
-            double dataMin = *std::min_element(m_loadedData.data->begin(), m_loadedData.data->end());
-            double dataMax = *std::max_element(m_loadedData.data->begin(), m_loadedData.data->end());
-            minL = dataMin;
-            maxL = (dataMax == dataMin) ? (dataMin + 1.0) : dataMax;
+            if (!m_useManualLimits) {
+                double dataMin = *std::min_element(m_loadedData.data->begin(), m_loadedData.data->end());
+                double dataMax = *std::max_element(m_loadedData.data->begin(), m_loadedData.data->end());
+                minL = std::min(0.0, dataMin);
+                maxL = (dataMax == minL) ? (minL + 1.0) : dataMax;
+
+                // Adjust auto-scale limits to include enabled thresholds so stripes are always visible
+                if (m_colorBarMode == 2) {
+                    if (m_confLL.enabled) minL = std::min(minL, m_threshLL);
+                    if (m_confL.enabled)  minL = std::min(minL, m_threshL);
+                    if (m_confH.enabled)  maxL = std::max(maxL, m_threshH);
+                    if (m_confHH.enabled) maxL = std::max(maxL, m_threshHH);
+                }
+            }
+        } else {
+            val = 0.0;
+            if (!m_useManualLimits) {
+                minL = 0.0;
+                maxL = 100.0;
+                if (m_colorBarMode == 2) {
+                    if (m_confLL.enabled) minL = std::min(minL, m_threshLL);
+                    if (m_confL.enabled)  minL = std::min(minL, m_threshL);
+                    if (m_confH.enabled)  maxL = std::max(maxL, m_threshH);
+                    if (m_confHH.enabled) maxL = std::max(maxL, m_threshHH);
+                }
+            }
         }
     }
 
@@ -243,7 +265,7 @@ void Window::Bar::render() {
         ImGui::EndPopup();
     }
 
-    if (!m_hasData || !m_loadedData.data || m_loadedData.data->empty()) {
+    if (!m_hasData || !m_loadedData.data) {
         std::string placeholder = "(Arraste uma coluna de dados aqui)";
         ImVec2      textSize    = ImGui::CalcTextSize(placeholder.c_str());
         textSize.x             *= m_fontScale;
@@ -361,6 +383,15 @@ void Window::Bar::render() {
                         float thickness = 1.2f * m_fontScale;
                         float stripeY = barMax.y - barHeight * ratio;
                         stripeY = std::clamp(stripeY, barMin.y, barMax.y);
+                        
+                        // Draw black background line for high contrast against any fill/background
+                        ImGui::GetWindowDrawList()->AddLine(
+                            ImVec2(barMin.x, stripeY),
+                            ImVec2(barMax.x, stripeY),
+                            IM_COL32(0, 0, 0, 255),
+                            thickness + 1.5f
+                        );
+                        
                         ImGui::GetWindowDrawList()->AddLine(
                             ImVec2(barMin.x, stripeY),
                             ImVec2(barMax.x, stripeY),
@@ -423,6 +454,15 @@ void Window::Bar::render() {
                         float thickness = 1.2f * m_fontScale;
                         float stripeX = barMin.x + barWidth * ratio;
                         stripeX = std::clamp(stripeX, barMin.x, barMax.x);
+                        
+                        // Draw black background line for high contrast against any fill/background
+                        ImGui::GetWindowDrawList()->AddLine(
+                            ImVec2(stripeX, barMin.y),
+                            ImVec2(stripeX, barMax.y),
+                            IM_COL32(0, 0, 0, 255),
+                            thickness + 1.5f
+                        );
+                        
                         ImGui::GetWindowDrawList()->AddLine(
                             ImVec2(stripeX, barMin.y),
                             ImVec2(stripeX, barMax.y),

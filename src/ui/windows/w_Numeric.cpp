@@ -451,15 +451,7 @@ void Window::Numeric::render() {
         ImGui::EndPopup();
     }
 
-    bool anyDataToRender = false;
-    for (const auto& col : m_loadedColumns) {
-        if (col.data && !col.data->empty()) {
-            anyDataToRender = true;
-            break;
-        }
-    }
-
-    if (!m_hasData || m_loadedColumns.empty() || !anyDataToRender) {
+    if (!m_hasData || m_loadedColumns.empty()) {
         // Exibe mensagem centralizada pedindo drag and drop
         std::string placeholder = "(Arraste colunas de dados aqui)";
         ImVec2      textSize    = ImGui::CalcTextSize(placeholder.c_str());

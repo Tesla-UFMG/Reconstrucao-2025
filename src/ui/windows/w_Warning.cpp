@@ -387,6 +387,16 @@ void Window::Warning::evaluateRules() {
 void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
     LoggedWarning logEntry;
 
+    std::string realFileName = rule.fileName;
+    if (rule.fileType == "Telemetry") {
+        for (const auto& tf : DB::getInstance().getProject().getTelemetryFiles()) {
+            if (tf.getPacketId() == rule.fileName) {
+                realFileName = tf.getName();
+                break;
+            }
+        }
+    }
+
     // Get formatted local timestamp YYYY-MM-DD HH:MM:SS
     auto        now       = std::chrono::system_clock::now();
     std::time_t now_time  = std::chrono::system_clock::to_time_t(now);
@@ -397,7 +407,7 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
     logEntry.timestamp = oss.str();
 
     logEntry.variableName = rule.columnName;
-    logEntry.archiveName  = rule.fileName;
+    logEntry.archiveName  = realFileName;
     logEntry.valueReached = value;
     logEntry.description  = rule.description;
 
@@ -426,7 +436,7 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
         std::string epochStr = std::to_string(timestamp_ms);
 
         std::vector<std::string> rowData(5, "");
-        std::string warnText = rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value);
+        std::string warnText = rule.columnName + " de " + realFileName + " atingiu " + std::to_string(value);
         if (rule.conditionType >= 0 && rule.conditionType < 5) {
             rowData[rule.conditionType] = warnText;
         }
@@ -439,7 +449,7 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
         }
     }
 
-    LOG("WARN", "[Aviso] " + rule.columnName + " de " + rule.fileName + " atingiu " + std::to_string(value));
+    LOG("WARN", "[Aviso] " + rule.columnName + " de " + realFileName + " atingiu " + std::to_string(value));
 }
 
 void Window::Warning::addRule(const WarningRule& rule) { m_rules.push_back(rule); }

@@ -260,19 +260,27 @@ static ImVec2 getScreenPosFromLatLon(double lat, double lon, double centerLat, d
 }
 
 void Window::Reconstruction::centerOnTrack() {
-    if (m_selectedFileName.empty() || m_selectedLatCol.empty() || m_selectedLonCol.empty())
+    if (m_selectedLatFileName.empty() || m_selectedLatCol.empty() || m_selectedLonFileName.empty() || m_selectedLonCol.empty())
+        return;
+
+    if (!DB::getInstance().columnExists(m_selectedLatFileType, m_selectedLatFileName, m_selectedLatCol) ||
+        !DB::getInstance().columnExists(m_selectedLonFileType, m_selectedLonFileName, m_selectedLonCol))
         return;
 
     try {
         const std::vector<double>* latDataPtr = nullptr;
         const std::vector<double>* lonDataPtr = nullptr;
 
-        if (m_selectedFileType == "CSV") {
-            latDataPtr = &DB::getInstance().getCSVData(m_selectedFileName, m_selectedLatCol);
-            lonDataPtr = &DB::getInstance().getCSVData(m_selectedFileName, m_selectedLonCol);
-        } else if (m_selectedFileType == "Telemetry") {
-            latDataPtr = &DB::getInstance().getTelemetryData(m_selectedFileName, m_selectedLatCol);
-            lonDataPtr = &DB::getInstance().getTelemetryData(m_selectedFileName, m_selectedLonCol);
+        if (m_selectedLatFileType == "CSV") {
+            latDataPtr = &DB::getInstance().getCSVData(m_selectedLatFileName, m_selectedLatCol);
+        } else if (m_selectedLatFileType == "Telemetry") {
+            latDataPtr = &DB::getInstance().getTelemetryData(m_selectedLatFileName, m_selectedLatCol);
+        }
+
+        if (m_selectedLonFileType == "CSV") {
+            lonDataPtr = &DB::getInstance().getCSVData(m_selectedLonFileName, m_selectedLonCol);
+        } else if (m_selectedLonFileType == "Telemetry") {
+            lonDataPtr = &DB::getInstance().getTelemetryData(m_selectedLonFileName, m_selectedLonCol);
         }
 
         if (!latDataPtr || !lonDataPtr)
@@ -309,8 +317,8 @@ void Window::Reconstruction::autoFitColorLimits() {
         return;
     try {
         const std::vector<double>* colorDataPtr = nullptr;
-        std::string colFile = m_selectedColorFileName.empty() ? m_selectedFileName : m_selectedColorFileName;
-        std::string colType = m_selectedColorFileType.empty() ? m_selectedFileType : m_selectedColorFileType;
+        std::string colFile = m_selectedColorFileName.empty() ? m_selectedLatFileName : m_selectedColorFileName;
+        std::string colType = m_selectedColorFileType.empty() ? m_selectedLatFileType : m_selectedColorFileType;
         if (colType == "CSV") {
             colorDataPtr = &DB::getInstance().getCSVData(colFile, m_selectedColorCol);
         } else if (colType == "Telemetry") {
@@ -437,7 +445,8 @@ void Window::Reconstruction::render() {
             // Menu 2: Trajeto
             if (ImGui::BeginMenu("Trajeto")) {
                 // Botão de centralizar no trajeto
-                bool hasTrack = !m_selectedFileName.empty() && !m_selectedLatCol.empty() && !m_selectedLonCol.empty();
+                bool hasTrack = !m_selectedLatFileName.empty() && !m_selectedLatCol.empty() && 
+                                !m_selectedLonFileName.empty() && !m_selectedLonCol.empty();
                 if (hasTrack) {
                     if (ImGui::MenuItem("Centralizar no Trajeto")) {
                         centerOnTrack();
@@ -454,7 +463,7 @@ void Window::Reconstruction::render() {
 
                     // --- LATITUDE ---
                     ImGui::Text("Latitude:");
-                    std::string latLabel = m_selectedLatCol.empty() ? "(Nenhuma - Arraste aqui)" : m_selectedLatCol;
+                    std::string latLabel = m_selectedLatCol.empty() ? "(Nenhuma - Arraste aqui)##LatButton" : (m_selectedLatCol + "##LatButton");
 
                     ImGui::PushStyleColor(ImGuiCol_Button, m_selectedLatCol.empty() ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f) : ImVec4(0.1f, 0.4f, 0.2f, 0.6f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedLatCol.empty() ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f) : ImVec4(0.15f, 0.5f, 0.25f, 0.7f));
@@ -464,8 +473,8 @@ void Window::Reconstruction::render() {
                     if (ImGui::BeginDragDropTarget()) {
                         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
                             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-                            m_selectedFileType                 = columnPayload->fileType;
-                            m_selectedFileName                 = columnPayload->fileName;
+                            m_selectedLatFileType              = columnPayload->fileType;
+                            m_selectedLatFileName              = columnPayload->fileName;
                             m_selectedLatCol                   = columnPayload->columnName;
                             centerOnTrack();
                         }
@@ -476,10 +485,7 @@ void Window::Reconstruction::render() {
                         ImGui::SameLine();
                         if (ImGui::Button("X##ClearLat")) {
                             m_selectedLatCol = "";
-                            if (m_selectedLonCol.empty()) {
-                                m_selectedFileName = "";
-                                m_selectedFileType = "";
-                            }
+                            m_selectedLatFileName = "";
                         }
                     }
 
@@ -487,18 +493,18 @@ void Window::Reconstruction::render() {
 
                     // --- LONGITUDE ---
                     ImGui::Text("Longitude:");
-                    std::string lonLabel = m_selectedLonCol.empty() ? "(Nenhuma - Arraste aqui)" : m_selectedLonCol;
+                    std::string lonLabel = m_selectedLonCol.empty() ? "(Nenhuma - Arraste aqui)##LonButton" : (m_selectedLonCol + "##LonButton");
 
-                    ImGui::PushStyleColor(ImGuiCol_Button, lonLabel.empty() ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f) : ImVec4(0.1f, 0.4f, 0.2f, 0.6f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, lonLabel.empty() ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f) : ImVec4(0.15f, 0.5f, 0.25f, 0.7f));
+                    ImGui::PushStyleColor(ImGuiCol_Button, m_selectedLonCol.empty() ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f) : ImVec4(0.1f, 0.4f, 0.2f, 0.6f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedLonCol.empty() ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f) : ImVec4(0.15f, 0.5f, 0.25f, 0.7f));
                     ImGui::Button(lonLabel.c_str(), ImVec2(200.0f, 0.0f));
                     ImGui::PopStyleColor(2);
 
                     if (ImGui::BeginDragDropTarget()) {
                         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
                             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
-                            m_selectedFileType                 = columnPayload->fileType;
-                            m_selectedFileName                 = columnPayload->fileName;
+                            m_selectedLonFileType              = columnPayload->fileType;
+                            m_selectedLonFileName              = columnPayload->fileName;
                             m_selectedLonCol                   = columnPayload->columnName;
                             centerOnTrack();
                         }
@@ -509,10 +515,7 @@ void Window::Reconstruction::render() {
                         ImGui::SameLine();
                         if (ImGui::Button("X##ClearLon")) {
                             m_selectedLonCol = "";
-                            if (m_selectedLatCol.empty()) {
-                                m_selectedFileName = "";
-                                m_selectedFileType = "";
-                            }
+                            m_selectedLonFileName = "";
                         }
                     }
 
@@ -520,13 +523,14 @@ void Window::Reconstruction::render() {
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::TextDisabled("Origem dos dados:");
-                        std::string originText = m_selectedFileName;
-                        if (!m_selectedFileName.empty()) {
-                            originText += (m_selectedFileType == "CSV") ? " (CSV)" : " (Telemetria)";
-                        } else {
-                            originText = "Nenhum arquivo ativo";
+                        if (!m_selectedLatCol.empty()) {
+                            std::string latOriginText = "Lat: " + m_selectedLatFileName + ((m_selectedLatFileType == "CSV") ? " (CSV)" : " (Telemetria)");
+                            ImGui::TextWrapped("%s", latOriginText.c_str());
                         }
-                        ImGui::TextWrapped("%s", originText.c_str());
+                        if (!m_selectedLonCol.empty()) {
+                            std::string lonOriginText = "Lon: " + m_selectedLonFileName + ((m_selectedLonFileType == "CSV") ? " (CSV)" : " (Telemetria)");
+                            ImGui::TextWrapped("%s", lonOriginText.c_str());
+                        }
                     }
 
                     ImGui::Separator();
@@ -562,7 +566,7 @@ void Window::Reconstruction::render() {
                     ImGui::Spacing();
 
                     // --- COLUNA DE GRADIENTE ---
-                    std::string colorLabel = m_selectedColorCol.empty() ? "(Nenhuma - Arraste aqui)" : m_selectedColorCol;
+                    std::string colorLabel = m_selectedColorCol.empty() ? "(Nenhuma - Arraste aqui)##ColorButton" : (m_selectedColorCol + "##ColorButton");
 
                     ImGui::PushStyleColor(ImGuiCol_Button, m_selectedColorCol.empty() ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f) : ImVec4(0.1f, 0.35f, 0.45f, 0.6f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedColorCol.empty() ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f) : ImVec4(0.15f, 0.45f, 0.55f, 0.7f));
@@ -720,46 +724,28 @@ void Window::Reconstruction::render() {
                     }
                 } else {
                     std::string colName  = columnPayload->columnName;
-                    std::string colLower = colName;
-                    std::transform(colLower.begin(), colLower.end(), colLower.begin(), ::tolower);
 
-                    if (colLower.find("lat") != std::string::npos) {
-                        m_selectedFileType                 = columnPayload->fileType;
-                        m_selectedFileName                 = columnPayload->fileName;
-                        m_selectedLatCol = colName;
+                    if (m_selectedLatCol.empty()) {
+                        m_selectedLatFileType                 = columnPayload->fileType;
+                        m_selectedLatFileName                 = columnPayload->fileName;
+                        m_selectedLatCol                      = colName;
                         LOG("INFO", "MBTiles: Latitude definida por Drag & Drop para '" + colName + "' (" +
-                                        m_selectedFileType + ")");
+                                        m_selectedLatFileType + ")");
                         centerOnTrack();
-                    } else if (colLower.find("lon") != std::string::npos || colLower.find("lng") != std::string::npos) {
-                        m_selectedFileType                 = columnPayload->fileType;
-                        m_selectedFileName                 = columnPayload->fileName;
-                        m_selectedLonCol = colName;
+                    } else if (m_selectedLonCol.empty()) {
+                        m_selectedLonFileType                 = columnPayload->fileType;
+                        m_selectedLonFileName                 = columnPayload->fileName;
+                        m_selectedLonCol                      = colName;
                         LOG("INFO", "MBTiles: Longitude definida por Drag & Drop para '" + colName + "' (" +
-                                        m_selectedFileType + ")");
+                                        m_selectedLonFileType + ")");
                         centerOnTrack();
                     } else {
-                        if (!m_selectedLatCol.empty() && !m_selectedLonCol.empty()) {
-                            m_selectedColorCol = colName;
-                            m_selectedColorFileName = columnPayload->fileName;
-                            m_selectedColorFileType = columnPayload->fileType;
-                            LOG("INFO", "MBTiles: Coluna de Gradiente definida por Drag & Drop para '" + colName + "' (" +
-                                            m_selectedColorFileType + ")");
-                            autoFitColorLimits();
-                        } else if (m_selectedLatCol.empty()) {
-                            m_selectedFileType                 = columnPayload->fileType;
-                            m_selectedFileName                 = columnPayload->fileName;
-                            m_selectedLatCol = colName;
-                            LOG("INFO", "MBTiles: Latitude atribuída sequencialmente para '" + colName + "' (" +
-                                            m_selectedFileType + ")");
-                            centerOnTrack();
-                        } else {
-                            m_selectedFileType                 = columnPayload->fileType;
-                            m_selectedFileName                 = columnPayload->fileName;
-                            m_selectedLonCol = colName;
-                            LOG("INFO", "MBTiles: Longitude atribuída sequencialmente para '" + colName + "' (" +
-                                            m_selectedFileType + ")");
-                            centerOnTrack();
-                        }
+                        m_selectedColorCol                 = colName;
+                        m_selectedColorFileName            = columnPayload->fileName;
+                        m_selectedColorFileType            = columnPayload->fileType;
+                        LOG("INFO", "MBTiles: Coluna de Gradiente definida por Drag & Drop para '" + colName + "' (" +
+                                        m_selectedColorFileType + ")");
+                        autoFitColorLimits();
                     }
                 }
             }
@@ -891,23 +877,30 @@ void Window::Reconstruction::render() {
         }
 
         // 6.5 Renderizar os pontos da reconstrução de pista (traçado do circuito) se selecionados
-        if (!m_selectedFileName.empty() && !m_selectedLatCol.empty() && !m_selectedLonCol.empty()) {
+        if (!m_selectedLatFileName.empty() && !m_selectedLatCol.empty() && 
+            !m_selectedLonFileName.empty() && !m_selectedLonCol.empty() &&
+            DB::getInstance().columnExists(m_selectedLatFileType, m_selectedLatFileName, m_selectedLatCol) &&
+            DB::getInstance().columnExists(m_selectedLonFileType, m_selectedLonFileName, m_selectedLonCol)) {
             try {
                 const std::vector<double>* latDataPtr = nullptr;
                 const std::vector<double>* lonDataPtr = nullptr;
                 const std::vector<double>* colorDataPtr = nullptr;
 
-                if (m_selectedFileType == "CSV") {
-                    latDataPtr = &DB::getInstance().getCSVData(m_selectedFileName, m_selectedLatCol);
-                    lonDataPtr = &DB::getInstance().getCSVData(m_selectedFileName, m_selectedLonCol);
-                } else if (m_selectedFileType == "Telemetry") {
-                    latDataPtr = &DB::getInstance().getTelemetryData(m_selectedFileName, m_selectedLatCol);
-                    lonDataPtr = &DB::getInstance().getTelemetryData(m_selectedFileName, m_selectedLonCol);
+                if (m_selectedLatFileType == "CSV") {
+                    latDataPtr = &DB::getInstance().getCSVData(m_selectedLatFileName, m_selectedLatCol);
+                } else if (m_selectedLatFileType == "Telemetry") {
+                    latDataPtr = &DB::getInstance().getTelemetryData(m_selectedLatFileName, m_selectedLatCol);
+                }
+
+                if (m_selectedLonFileType == "CSV") {
+                    lonDataPtr = &DB::getInstance().getCSVData(m_selectedLonFileName, m_selectedLonCol);
+                } else if (m_selectedLonFileType == "Telemetry") {
+                    lonDataPtr = &DB::getInstance().getTelemetryData(m_selectedLonFileName, m_selectedLonCol);
                 }
 
                 if (!m_selectedColorCol.empty()) {
-                    std::string colFile = m_selectedColorFileName.empty() ? m_selectedFileName : m_selectedColorFileName;
-                    std::string colType = m_selectedColorFileType.empty() ? m_selectedFileType : m_selectedColorFileType;
+                    std::string colFile = m_selectedColorFileName.empty() ? m_selectedLatFileName : m_selectedColorFileName;
+                    std::string colType = m_selectedColorFileType.empty() ? m_selectedLatFileType : m_selectedColorFileType;
                     if (colType == "CSV") {
                         colorDataPtr = &DB::getInstance().getCSVData(colFile, m_selectedColorCol);
                     } else if (colType == "Telemetry") {
@@ -981,9 +974,9 @@ void Window::Reconstruction::render() {
                         // Renderizar anotações textuais georreferenciadas sincronizadas pelo tempo mais próximo
                         if (!m_textAnnotations.empty()) {
                             const std::vector<std::string>* trackDates = nullptr;
-                            if (m_selectedFileType == "Telemetry") {
+                            if (m_selectedLatFileType == "Telemetry") {
                                 for (const auto& tf : DB::getInstance().getProject().getTelemetryFiles()) {
-                                    if (tf.getPacketId() == m_selectedFileName) {
+                                    if (tf.getPacketId() == m_selectedLatFileName) {
                                         trackDates = &tf.getDate();
                                         break;
                                     }
@@ -1074,16 +1067,24 @@ void Window::Reconstruction::render() {
         double lastLat   = 0.0;
         double lastLon   = 0.0;
         bool   hasPoints = false;
-        if (!m_selectedFileName.empty() && !m_selectedLatCol.empty() && !m_selectedLonCol.empty()) {
+        if (!m_selectedLatFileName.empty() && !m_selectedLatCol.empty() && 
+            !m_selectedLonFileName.empty() && !m_selectedLonCol.empty() &&
+            DB::getInstance().columnExists(m_selectedLatFileType, m_selectedLatFileName, m_selectedLatCol) &&
+            DB::getInstance().columnExists(m_selectedLonFileType, m_selectedLonFileName, m_selectedLonCol)) {
             try {
                 const std::vector<double>* latDataPtr = nullptr;
                 const std::vector<double>* lonDataPtr = nullptr;
-                if (m_selectedFileType == "CSV") {
-                    latDataPtr = &DB::getInstance().getCSVData(m_selectedFileName, m_selectedLatCol);
-                    lonDataPtr = &DB::getInstance().getCSVData(m_selectedFileName, m_selectedLonCol);
-                } else if (m_selectedFileType == "Telemetry") {
-                    latDataPtr = &DB::getInstance().getTelemetryData(m_selectedFileName, m_selectedLatCol);
-                    lonDataPtr = &DB::getInstance().getTelemetryData(m_selectedFileName, m_selectedLonCol);
+                
+                if (m_selectedLatFileType == "CSV") {
+                    latDataPtr = &DB::getInstance().getCSVData(m_selectedLatFileName, m_selectedLatCol);
+                } else if (m_selectedLatFileType == "Telemetry") {
+                    latDataPtr = &DB::getInstance().getTelemetryData(m_selectedLatFileName, m_selectedLatCol);
+                }
+
+                if (m_selectedLonFileType == "CSV") {
+                    lonDataPtr = &DB::getInstance().getCSVData(m_selectedLonFileName, m_selectedLonCol);
+                } else if (m_selectedLonFileType == "Telemetry") {
+                    lonDataPtr = &DB::getInstance().getTelemetryData(m_selectedLonFileName, m_selectedLonCol);
                 }
                 if (latDataPtr && lonDataPtr && !latDataPtr->empty() && !lonDataPtr->empty()) {
                     auto aligned = alignVectors(*latDataPtr, *lonDataPtr, m_alignmentMode);
