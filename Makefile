@@ -81,7 +81,7 @@ $(BUILD_FOLDER):
 	cp maps/* $(BUILD_FOLDER)/maps/
 endif
 
-$(OBJ_FOLDER):
+$(OBJ_FOLDER):	
 	@mkdir -p $@
 	@mkdir -p $(OBJ_FOLDER)/lib
 

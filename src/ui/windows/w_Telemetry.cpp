@@ -439,7 +439,7 @@ void Window::Telemetry::renderPacketConfigMenu() {
         for (int i = 0; i < 8; ++i) {
             ImGui::TableSetupColumn(("Col. " + std::to_string(i + 1)).c_str(), ImGuiTableColumnFlags_WidthStretch);
         }
-        ImGui::TableSetupColumn("Ações", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+        ImGui::TableSetupColumn("Ações", ImGuiTableColumnFlags_WidthFixed, 100.0f);
         ImGui::TableHeadersRow();
 
         const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
@@ -468,6 +468,8 @@ void Window::Telemetry::renderPacketConfigMenu() {
             // Coluna 10: Botões Ações
             ImGui::TableSetColumnIndex(10);
             ImGui::PushID(telemetryFile.getPacketId().c_str());
+            
+            // Botão EDITAR ("E")
             if (ImGui::Button("E")) {
                 m_editMode     = true;
                 m_editPacketId = telemetryFile.getPacketId();
@@ -492,7 +494,43 @@ void Window::Telemetry::renderPacketConfigMenu() {
                                  COLUMN_NAME_SIZE);
                 }
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Editar este pacote");
+            }
+            
             ImGui::SameLine();
+            
+            // Botão COPIAR ("C")
+            if (ImGui::Button("C")) {
+                m_editMode     = false;
+                m_editPacketId = "";
+
+                // Carrega nome para reaproveitar
+                this->packetName.clear();
+                this->packetName.resize(FILE_NAME_SIZE);
+                std::strncpy(this->packetName.data(), telemetryFile.getName().c_str(), FILE_NAME_SIZE);
+
+                // Deixa o ID em branco para o usuário digitar o novo ID único
+                this->packetId.clear();
+                this->packetId.resize(COLUMN_NAME_SIZE);
+
+                // Carrega colunas para reaproveitar
+                for (int col = 0; col < 8; ++col) {
+                    this->packetColumnNames[col].clear();
+                    this->packetColumnNames[col].resize(COLUMN_NAME_SIZE);
+                }
+                for (size_t col = 0; col < telemetryFile.getColumnNames().size() && col < 8; ++col) {
+                    std::strncpy(this->packetColumnNames[col].data(), telemetryFile.getColumnNames()[col].c_str(),
+                                 COLUMN_NAME_SIZE);
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Copiar estrutura (reaproveitar nome do arquivo e colunas)");
+            }
+
+            ImGui::SameLine();
+            
+            // Botão REMOVER ("X")
             if (ImGui::Button("X")) {
                 if (Dialogs::showConfirmationDialog("Tem certeza que deseja remover o pacote " +
                                                     telemetryFile.getName() + "?")) {
@@ -504,20 +542,10 @@ void Window::Telemetry::renderPacketConfigMenu() {
                     DB::getInstance().getProject().removePacket(telemetryFile.getPacketId());
                 }
             }
-            ImGui::SameLine();
-            ImGui::BeginDisabled(i == 0);
-            if (ImGui::Button("▲")) {
-                DB::getInstance().getProject().swapPackets(i, i - 1);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Remover este pacote");
             }
-            ImGui::EndDisabled();
-
-            ImGui::SameLine();
-            ImGui::BeginDisabled(i + 1 >= telemetryFiles.size());
-            if (ImGui::Button("▼")) {
-                DB::getInstance().getProject().swapPackets(i, i + 1);
-            }
-            ImGui::EndDisabled();
-
+            
             ImGui::PopID();
         }
         ImGui::EndTable();
