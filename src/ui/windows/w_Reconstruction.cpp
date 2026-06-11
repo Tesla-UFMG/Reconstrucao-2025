@@ -773,6 +773,8 @@ void Window::Reconstruction::render() {
             } else if (scroll < 0.0f) {
                 m_zoomScale -= 0.05f;
             }
+            // Ensure zoom scale stays within reasonable bounds
+            if (m_zoomScale < 0.1f) m_zoomScale = 0.1f;
         }
 
         // 4. Capturar comandos do teclado (movimentação por setas e escala por +/-)
@@ -785,6 +787,8 @@ void Window::Reconstruction::render() {
             if (ImGui::IsKeyDown(ImGuiKey_Minus) || ImGui::IsKeyDown(ImGuiKey_KeypadSubtract)) {
                 m_zoomScale -= 0.01f;
             }
+            // Garantir que a escala não fique zero ou negativa (evita divisão por zero)
+            if (m_zoomScale < 0.1f) m_zoomScale = 0.1f;
 
             // Movimentação suave contínua com todas as setas do teclado (Hold keys)
             float arrowPanSpeed = 10.0f;

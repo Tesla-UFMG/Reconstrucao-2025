@@ -167,15 +167,6 @@ namespace Window {
                                            "eu sair dessa equipe)");
                         break;
                     }
-                    case 4: {
-                        ImGui::TextColored(greenColor, "Página 5: Desabafo");
-                        ImGui::Spacing();
-
-                        ImGui::Bullet();
-                        ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped("Quero aposentar gente pelo amor de Deus");
-                        break;
-                    }
                     default:
                         break;
                 }
@@ -215,7 +206,7 @@ namespace Window {
                 ImGui::SameLine();
 
                 // Paginação (bolinhas) no centro
-                int   totalPages = 5;
+                int   totalPages = 4;
                 float availWidth = ImGui::GetContentRegionAvail().x;
                 float dotsWidth  = totalPages * 10.0f + (totalPages - 1) * ImGui::GetStyle().ItemSpacing.x;
                 float startDotsX = ImGui::GetCursorPosX() + (availWidth - nextBtnSize.x - dotsWidth) / 2.0f;

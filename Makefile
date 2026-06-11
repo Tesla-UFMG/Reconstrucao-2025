@@ -99,6 +99,7 @@ clean:
 	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip cache telemetry output
 
 copy:
+	cp -r cache/* $(BUILD_FOLDER)/cache/ 
 	zip -r Reconstrucao.zip $(BUILD_FOLDER)
 
 format:

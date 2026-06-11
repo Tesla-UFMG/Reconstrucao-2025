@@ -123,7 +123,7 @@ void Window::Telemetry::getAvailablePorts() {
     std::string device_port;
     this->closeDevice();
     this->serialPorts.clear();
-    for (int i = 1; i < 99; i++) {
+    for (int i = 0; i < 25; i++) {
 #if defined(_WIN32) || defined(_WIN64)
         device_port = std::string("\\\\.\\COM") + std::to_string(i);
 #elif defined(__linux__)
@@ -132,7 +132,7 @@ void Window::Telemetry::getAvailablePorts() {
 #error "Unsupported operating system"
 #endif
 
-        if (temp_device.openDevice(device_port.c_str(), 9600) == 1) {
+        if (temp_device.openDevice(device_port.c_str(), 115200) == 1) {
             this->serialPorts.push_back(device_port);
             LOG("INFO", "Porta encontrada: " + device_port);
             temp_device.closeDevice();
@@ -676,7 +676,7 @@ void Window::Telemetry::renderSavingMenu() {
         std::string generatedProjName = dateTimeStr + "_" + pilotName + "_" + testType;
 
         // Atualiza o nome do projeto
-        DB::getInstance().getProject().currentProjectName = generatedProjName;
+        //DB::getInstance().getProject().currentProjectName = generatedProjName;
 
         // Limpa e atualiza outputPacketFolder
         this->outputPacketFolder.clear();
