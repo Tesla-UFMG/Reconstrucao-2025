@@ -62,9 +62,9 @@ bool App::handleEvent() {
                 if (SDLWrapper::events.key.keysym.sym == SDLK_n) { // N - Carregar o projeto
                     DB::getInstance().loadProjectDialog();
                 }
-                if (SDLWrapper::events.key.keysym.sym == SDLK_c) { // C - Cria o projeto
-                    DB::getInstance().createProjectDialog();
-                }
+              //  if (SDLWrapper::events.key.keysym.sym == SDLK_c) { // C - Cria o projeto
+              //      DB::getInstance().createProjectDialog();
+              //   }
             }
         }
     }

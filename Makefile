@@ -96,7 +96,7 @@ run: all
 	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip cache telemetry output
+	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip output
 
 copy:
 	cp -r cache/* $(BUILD_FOLDER)/cache/ 

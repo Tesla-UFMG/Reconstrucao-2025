@@ -16,7 +16,7 @@ void Window::About::render() {
         ImGui::SeparatorText("Reconstrução de Pista");
         ImGui::Text("Formula Tesla");
         ImGui::Text("Edição: 2026");
-        ImGui::Text("Versão: 2.0.0");
+        ImGui::Text("Versão: 2.0.1-dev");
         ImGui::Text("A cobra vai fumar!");
         ImGui::SeparatorText("Desenvolvedores");
         for (const std::string& developer : this->developers) {

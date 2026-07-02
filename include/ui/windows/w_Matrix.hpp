@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <limits>
+#include <map>
 
 // Project
 #include "ui/windows/iWindow.hpp"
@@ -15,10 +16,19 @@
 #include "DB.hpp"
 #include "Log.hpp"
 
+struct MatrixCellSource {
+    std::string fileType;
+    std::string archiveName;
+    std::string columnName;
+};
+
 // One column = one archive/ID.
 struct MatrixColumn {
     std::string fileType;
     std::string archiveName;
+    std::string customName;
+    bool isArtificial = false;
+    std::map<std::string, MatrixCellSource> customCells; // rowName -> Source
     std::vector<std::string> variables; // Kept to match existing serialization structures
 };
 
@@ -64,6 +74,9 @@ namespace Window {
             double m_offset = 0.0;
             bool m_useTranslation = false;
             std::vector<TranslationRule> m_translationRules;
+
+            ImVec2 m_lastPlotPos = ImVec2(0,0);
+            ImVec2 m_lastPlotSize = ImVec2(1,1);
 
         private:
             void renderGrid();

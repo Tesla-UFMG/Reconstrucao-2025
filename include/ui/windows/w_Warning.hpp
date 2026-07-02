@@ -20,9 +20,11 @@
 
 struct LoggedWarning {
     std::string timestamp;     // formatted date/time
+    std::string epochTimestamp; // millisecond epoch timestamp
     std::string variableName;
     std::string archiveName;
     std::string conditionText;
+    int conditionType = 0;
     double valueReached = 0.0;
     float color[4] = {0.8f, 0.1f, 0.1f, 1.0f};
     std::string description = "";
@@ -42,12 +44,13 @@ namespace Window {
 
             void addRule(const WarningRule& rule);
             void removeRule(size_t index);
+            void removeLogsAfter(double timestampEpoch);
             void clearLogs();
             void exportToCSV(const std::string& filepath);
 
         private:
             void evaluateRules();
-            void triggerWarning(const WarningRule& rule, double value);
+            void triggerWarning(const WarningRule& rule, double value, const std::string& customTimestampEpoch = "");
 
             static Warning* s_instance;
 
@@ -63,6 +66,7 @@ namespace Window {
             double m_tempMaxVal = 100.0;
             float m_tempColor[4] = {0.8f, 0.1f, 0.1f, 1.0f};
             char m_tempDesc[128] = "";
+            bool m_tempPlaySound = false;
     };
 } // namespace Window
 

@@ -22,6 +22,7 @@
 #include "ui/windows/w_Warning.hpp"
 #include "ui/windows/w_Matrix.hpp"
 #include "ui/windows/w_Updates.hpp"
+#include "ui/windows/w_Playback.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -47,6 +48,7 @@ struct VisibilityFlags {
         bool showImGuiDemo      = false;
         bool showTelemetry      = false;
         bool showWarnings       = false;
+        bool showPlayback       = false;
 };
 
 namespace Window {
@@ -65,6 +67,7 @@ class WindowManager {
         Window::Reconstruction* m_reconstructionWindow = nullptr;
         Window::About* m_aboutWindow = nullptr;
         Window::Updates* m_updatesWindow = nullptr;
+        Window::Playback* m_playbackWindow = nullptr;
         void saveWindowCustomStates(const std::string& filepath);
         void loadWindowCustomStates(const std::string& filepath);
 

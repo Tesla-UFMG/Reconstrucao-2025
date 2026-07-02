@@ -158,7 +158,7 @@ void Window::Matrix::processDragDrop() {
             LOG("INFO", "[Matriz] Adicionado ID: " + name + " com suas variáveis.");
         }
     }
-    // Drop COLUMN/variable -> Find or add column ID, and insert variable to rowVariables
+    // Drop COLUMN/variable -> Check if it was dropped precisely on a cell, else fallback
     else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
         const ColumnPayload* cp = reinterpret_cast<const ColumnPayload*>(payload->Data);
         std::string ft   = cp->fileType;
@@ -170,20 +170,45 @@ void Window::Matrix::processDragDrop() {
             return;
         }
 
-        bool colExists = std::any_of(m_columns.begin(), m_columns.end(),
-            [&](const MatrixColumn& c){ return c.archiveName == name; });
+        // Try to map to specific cell if hovering plot
+        bool mappedToCell = false;
+        ImVec2 mousePos = ImGui::GetMousePos();
+        
+        int numCols = static_cast<int>(m_columns.size());
+        int numRows = static_cast<int>(m_rowVariables.size());
+        
+        if (numCols > 0 && numRows > 0 && m_lastPlotSize.x > 0.0f && m_lastPlotSize.y > 0.0f) {
+            float px = (mousePos.x - m_lastPlotPos.x) / m_lastPlotSize.x;
+            float py = (mousePos.y - m_lastPlotPos.y) / m_lastPlotSize.y;
 
-        if (!colExists) {
-            MatrixColumn col;
-            col.fileType    = ft;
-            col.archiveName = name;
-            m_columns.push_back(col);
+            if (px >= 0.0f && px <= 1.0f && py >= 0.0f && py <= 1.0f) {
+                int c = static_cast<int>(px * numCols);
+                int r = static_cast<int>(py * numRows);
+                
+                if (c >= 0 && c < numCols && r >= 0 && r < numRows) {
+                    m_columns[c].customCells[m_rowVariables[r]] = {ft, name, var};
+                    mappedToCell = true;
+                    LOG("INFO", "[Matriz] Variável '" + var + "' mapeada para célula (" + m_columns[c].customName + ", " + m_rowVariables[r] + ").");
+                }
+            }
         }
 
-        if (std::find(m_rowVariables.begin(), m_rowVariables.end(), var) == m_rowVariables.end()) {
-            m_rowVariables.push_back(var);
+        if (!mappedToCell) {
+            bool colExists = std::any_of(m_columns.begin(), m_columns.end(),
+                [&](const MatrixColumn& c){ return c.archiveName == name && !c.isArtificial; });
+
+            if (!colExists) {
+                MatrixColumn col;
+                col.fileType    = ft;
+                col.archiveName = name;
+                m_columns.push_back(col);
+            }
+
+            if (std::find(m_rowVariables.begin(), m_rowVariables.end(), var) == m_rowVariables.end()) {
+                m_rowVariables.push_back(var);
+            }
+            LOG("INFO", "[Matriz] Adicionada variável '" + var + "' do ID: " + name);
         }
-        LOG("INFO", "[Matriz] Adicionada variável '" + var + "' do ID: " + name);
     }
 
     ImGui::EndDragDropTarget();
@@ -238,7 +263,11 @@ void Window::Matrix::renderGrid() {
     std::vector<std::string> xStrings;
     xStrings.reserve(numCols);
     for (int c = 0; c < numCols; ++c) {
-        xStrings.push_back(getIDDisplayName(m_columns[c].archiveName, m_columns[c].fileType));
+        if (m_columns[c].isArtificial) {
+            xStrings.push_back(m_columns[c].customName);
+        } else {
+            xStrings.push_back(getIDDisplayName(m_columns[c].archiveName, m_columns[c].fileType));
+        }
     }
     std::vector<const char*> xPtrs;
     xPtrs.reserve(numCols);
@@ -284,16 +313,29 @@ void Window::Matrix::renderGrid() {
 
         ImPlot::SetupAxesLimits(0.0, 1.0, 0.0, 1.0, ImPlotCond_Always);
 
+        m_lastPlotPos = ImPlot::GetPlotPos();
+        m_lastPlotSize = ImPlot::GetPlotSize();
+
         for (int r = 0; r < numRows; ++r) {
             std::string varName = m_rowVariables[r];
             for (int c = 0; c < numCols; ++c) {
                 const auto& col = m_columns[c];
 
                 const std::vector<double>* data = nullptr;
-                if (col.fileType == "CSV") {
-                    data = &DB::getInstance().getCSVData(col.archiveName, varName);
-                } else if (col.fileType == "Telemetry") {
-                    data = &DB::getInstance().getTelemetryData(col.archiveName, varName);
+                
+                if (col.customCells.count(varName)) {
+                    const auto& src = col.customCells.at(varName);
+                    if (src.fileType == "CSV") {
+                        data = &DB::getInstance().getCSVData(src.archiveName, src.columnName);
+                    } else if (src.fileType == "Telemetry") {
+                        data = &DB::getInstance().getTelemetryData(src.archiveName, src.columnName);
+                    }
+                } else if (!col.isArtificial) {
+                    if (col.fileType == "CSV") {
+                        data = &DB::getInstance().getCSVData(col.archiveName, varName);
+                    } else if (col.fileType == "Telemetry") {
+                        data = &DB::getInstance().getTelemetryData(col.archiveName, varName);
+                    }
                 }
 
                 bool hasData = (data && !data->empty());
@@ -347,8 +389,8 @@ void Window::Matrix::renderGrid() {
                     ImPlotPoint mousePos = ImPlot::GetPlotMousePos();
                     if (mousePos.x >= x_min && mousePos.x <= x_max && mousePos.y >= y_min && mousePos.y <= y_max) {
                         ImGui::BeginTooltip();
-                        std::string displayName = getIDDisplayName(col.archiveName, col.fileType);
-                        ImGui::Text("[%s] %s - %s", col.archiveName.c_str(), displayName.c_str(), varName.c_str());
+                        std::string displayName = col.isArtificial ? col.customName : getIDDisplayName(col.archiveName, col.fileType);
+                        ImGui::Text("[%s] %s - %s", col.isArtificial ? "Artificial" : col.archiveName.c_str(), displayName.c_str(), varName.c_str());
                         if (hasData) {
                             ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "Valor original: %.6f", val);
                             if (m_useFormula) {
@@ -394,7 +436,8 @@ void Window::Matrix::render() {
                         ImGui::Text("Colunas (IDs) Carregadas:");
                         for (size_t i = 0; i < m_columns.size(); ++i) {
                             ImGui::PushID(static_cast<int>(i));
-                            ImGui::TextUnformatted(m_columns[i].archiveName.c_str());
+                            std::string dispName = m_columns[i].isArtificial ? m_columns[i].customName : m_columns[i].archiveName;
+                            ImGui::TextUnformatted(dispName.c_str());
                             ImGui::SameLine();
                             if (ImGui::SmallButton("X##removeCol")) {
                                 m_columns.erase(m_columns.begin() + i);
@@ -420,12 +463,52 @@ void Window::Matrix::render() {
                             ImGui::PopID();
                         }
                     }
-                    
-                    ImGui::Separator();
-                    if (ImGui::Button("Limpar Matriz")) {
-                        m_columns.clear();
-                        m_rowVariables.clear();
+                } // Fecha o else de 'Nenhum dado carregado'
+                
+                ImGui::Separator();
+                
+                if (ImGui::Button("Adicionar Coluna Artificial")) {
+                    ImGui::OpenPopup("AddArtificialColPopup");
+                }
+                if (ImGui::BeginPopup("AddArtificialColPopup")) {
+                    static char colNameBuf[64] = "";
+                    ImGui::InputText("Nome da Coluna", colNameBuf, sizeof(colNameBuf));
+                    if (ImGui::Button("Criar")) {
+                        std::string cn = colNameBuf;
+                        if (!cn.empty()) {
+                            MatrixColumn col;
+                            col.customName = cn;
+                            col.archiveName = cn;
+                            col.isArtificial = true;
+                            m_columns.push_back(col);
+                        }
+                        colNameBuf[0] = '\0';
+                        ImGui::CloseCurrentPopup();
                     }
+                    ImGui::EndPopup();
+                }
+
+                if (ImGui::Button("Adicionar Linha Artificial")) {
+                    ImGui::OpenPopup("AddArtificialRowPopup");
+                }
+                if (ImGui::BeginPopup("AddArtificialRowPopup")) {
+                    static char rowNameBuf[64] = "";
+                    ImGui::InputText("Nome da Linha", rowNameBuf, sizeof(rowNameBuf));
+                    if (ImGui::Button("Criar")) {
+                        std::string rn = rowNameBuf;
+                        if (!rn.empty() && std::find(m_rowVariables.begin(), m_rowVariables.end(), rn) == m_rowVariables.end()) {
+                            m_rowVariables.push_back(rn);
+                        }
+                        rowNameBuf[0] = '\0';
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
+
+                ImGui::Separator();
+                if (ImGui::Button("Limpar Matriz")) {
+                    m_columns.clear();
+                    m_rowVariables.clear();
                 }
                 ImGui::EndMenu();
             }

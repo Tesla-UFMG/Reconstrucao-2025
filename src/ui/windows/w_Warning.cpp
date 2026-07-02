@@ -1,5 +1,15 @@
 #include "ui/windows/w_Warning.hpp"
 #include "Dialogs.hpp"
+#include <iomanip>
+#include <limits>
+#include <thread>
+#include <chrono>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <iostream>
+#endif
 
 Window::Warning* Window::Warning::s_instance = nullptr;
 
@@ -18,11 +28,11 @@ Window::Warning::~Warning() {
 Window::Warning* Window::Warning::getInstance() { return s_instance; }
 
 void Window::Warning::render() {
+    // 1. Evaluate rules against new data points regardless of window visibility
+    evaluateRules();
+
     if (!this->isOpen || !*this->isOpen)
         return;
-
-    // 1. Evaluate rules against new data points
-    evaluateRules();
 
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
@@ -43,7 +53,7 @@ void Window::Warning::render() {
         sources.push_back({"CSV", file.getName(), "[CSV] " + file.getName()});
     }
     for (const auto& file : telemetryFiles) {
-        sources.push_back({"Telemetry", file.getPacketId(), "[Telemetria] " + file.getPacketId()});
+        sources.push_back({"Telemetry", file.getPacketId(), "[Telemetria] " + file.getPacketId() + " - " + file.getName()});
     }
 
     bool openAddRule     = false;
@@ -179,6 +189,9 @@ void Window::Warning::render() {
             ImGui::SameLine();
             ImGui::ColorEdit4("##alert_color", m_tempColor,
                               ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+            
+            ImGui::Spacing();
+            ImGui::Checkbox("Tocar Som de Alerta", &m_tempPlaySound);
 
             ImGui::Separator();
             if (ImGui::Button("Adicionar Regra (+)", ImVec2(160, 0))) {
@@ -195,6 +208,7 @@ void Window::Warning::render() {
                             rule.minVal        = m_tempMinVal;
                             rule.maxVal        = m_tempMaxVal;
                             rule.description   = m_tempDesc;
+                            rule.playSound     = m_tempPlaySound;
                             std::copy(std::begin(m_tempColor), std::end(m_tempColor), std::begin(rule.alertColor));
                             rule.lastProcessedIndex = -1;
                             rule.wasTriggered       = false;
@@ -299,28 +313,35 @@ void Window::Warning::render() {
         ImGui::TableSetupColumn("Descrição / Rótulo", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
-        for (int i = static_cast<int>(m_logs.size()) - 1; i >= 0; i--) { // Show newest first
-            const auto& log = m_logs[i];
-            ImGui::TableNextRow();
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(m_logs.size()));
+        
+        while (clipper.Step()) {
+            for (int row_n = clipper.DisplayStart; row_n < clipper.DisplayEnd; row_n++) {
+                // Determine the actual index for reversing (newest first)
+                int i = static_cast<int>(m_logs.size()) - 1 - row_n;
+                const auto& log = m_logs[i];
+                ImGui::TableNextRow();
 
-            // Set custom visual highlighting color for the alert row with 15% opacity
-            ImU32 rowColor = ImGui::ColorConvertFloat4ToU32(ImVec4(log.color[0], log.color[1], log.color[2], 0.15f));
-            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, rowColor);
+                // Set custom visual highlighting color for the alert row with 15% opacity
+                ImU32 rowColor = ImGui::ColorConvertFloat4ToU32(ImVec4(log.color[0], log.color[1], log.color[2], 0.15f));
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, rowColor);
 
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted(log.timestamp.c_str());
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(log.timestamp.c_str());
 
-            ImGui::TableSetColumnIndex(1);
-            ImGui::Text("%s (%s)", log.variableName.c_str(), log.archiveName.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s (%s)", log.variableName.c_str(), log.archiveName.c_str());
 
-            ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%.4f", log.valueReached);
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%.4f", log.valueReached);
 
-            ImGui::TableSetColumnIndex(3);
-            ImGui::TextUnformatted(log.conditionText.c_str());
+                ImGui::TableSetColumnIndex(3);
+                ImGui::TextUnformatted(log.conditionText.c_str());
 
-            ImGui::TableSetColumnIndex(4);
-            ImGui::TextUnformatted(log.description.c_str());
+                ImGui::TableSetColumnIndex(4);
+                ImGui::TextUnformatted(log.description.c_str());
+            }
         }
         ImGui::EndTable();
     }
@@ -331,10 +352,18 @@ void Window::Warning::render() {
 void Window::Warning::evaluateRules() {
     for (auto& rule : m_rules) {
         const std::vector<double>* data = nullptr;
+        const std::vector<std::string>* dateData = nullptr;
+        
         if (rule.fileType == "CSV") {
             data = &DB::getInstance().getCSVData(rule.fileName, rule.columnName);
         } else if (rule.fileType == "Telemetry") {
             data = &DB::getInstance().getTelemetryData(rule.fileName, rule.columnName);
+            for (const auto& tf : DB::getInstance().getProject().getTelemetryFiles()) {
+                if (tf.getPacketId() == rule.fileName) {
+                    dateData = &tf.getDate();
+                    break;
+                }
+            }
         }
 
         if (!data || data->empty()) {
@@ -372,7 +401,11 @@ void Window::Warning::evaluateRules() {
 
                 if (triggered) {
                     if (!rule.wasTriggered) {
-                        triggerWarning(rule, val);
+                        std::string customEpoch = "";
+                        if (dateData && idx < static_cast<int>(dateData->size())) {
+                            customEpoch = (*dateData)[idx];
+                        }
+                        triggerWarning(rule, val, customEpoch);
                         rule.wasTriggered = true;
                     }
                 } else {
@@ -384,7 +417,7 @@ void Window::Warning::evaluateRules() {
     }
 }
 
-void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
+void Window::Warning::triggerWarning(const WarningRule& rule, double value, const std::string& customTimestampEpoch) {
     LoggedWarning logEntry;
 
     std::string realFileName = rule.fileName;
@@ -399,17 +432,25 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
 
     // Get formatted local timestamp YYYY-MM-DD HH:MM:SS
     auto        now       = std::chrono::system_clock::now();
+    auto        timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     std::time_t now_time  = std::chrono::system_clock::to_time_t(now);
     std::tm     tm_struct = *std::localtime(&now_time);
 
     std::ostringstream oss;
     oss << std::put_time(&tm_struct, "%Y-%m-%d %H:%M:%S");
     logEntry.timestamp = oss.str();
+    
+    if (customTimestampEpoch.empty()) {
+        logEntry.epochTimestamp = std::to_string(timestamp_ms);
+    } else {
+        logEntry.epochTimestamp = customTimestampEpoch;
+    }
 
     logEntry.variableName = rule.columnName;
     logEntry.archiveName  = realFileName;
     logEntry.valueReached = value;
     logEntry.description  = rule.description;
+    logEntry.conditionType = rule.conditionType;
 
     // Copy visual highlight color
     std::copy(std::begin(rule.alertColor), std::end(rule.alertColor), std::begin(logEntry.color));
@@ -430,10 +471,7 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
 
     // Registra o aviso disparado no TextFile "Avisos"
     {
-        auto timestamp_ms =
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
-                .count();
-        std::string epochStr = std::to_string(timestamp_ms);
+        std::string epochStr = logEntry.epochTimestamp;
 
         std::vector<std::string> rowData(5, "");
         std::string warnText = rule.columnName + " de " + realFileName + " atingiu " + std::to_string(value);
@@ -450,6 +488,24 @@ void Window::Warning::triggerWarning(const WarningRule& rule, double value) {
     }
 
     LOG("WARN", "[Aviso] " + rule.columnName + " de " + realFileName + " atingiu " + std::to_string(value));
+    
+    if (rule.playSound) {
+        std::thread([]() {
+#ifdef _WIN32
+            // Efeito de sirene: Alterna entre frequências altas e baixas
+            for (int i = 0; i < 4; ++i) {
+                Beep(750, 400); // 750 Hz por 400 ms
+                Beep(950, 400); // 950 Hz por 400 ms
+            }
+#else
+            // Som chamativo no Linux usando bipes mais rápidos
+            for (int i = 0; i < 8; ++i) {
+                std::cout << "\a" << std::flush;
+                std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            }
+#endif
+        }).detach();
+    }
 }
 
 void Window::Warning::addRule(const WarningRule& rule) { m_rules.push_back(rule); }
@@ -457,6 +513,32 @@ void Window::Warning::addRule(const WarningRule& rule) { m_rules.push_back(rule)
 void Window::Warning::removeRule(size_t index) {
     if (index < m_rules.size()) {
         m_rules.erase(m_rules.begin() + index);
+    }
+}
+
+void Window::Warning::removeLogsAfter(double timestampEpoch) {
+    // 1. Apaga dos logs em memória
+    m_logs.erase(std::remove_if(m_logs.begin(), m_logs.end(),
+        [timestampEpoch](const LoggedWarning& log) {
+            try {
+                return std::stod(log.epochTimestamp) > timestampEpoch;
+            } catch (...) { return false; }
+        }), m_logs.end());
+
+    // 2. Reescreve o TextFile "Avisos" com os logs restantes
+    for (auto& tf : DB::getInstance().getProject().textFiles) {
+        if (tf.getName() == "Avisos") {
+            tf.clear();
+            for (const auto& log : m_logs) {
+                std::vector<std::string> rowData(5, "");
+                std::string warnText = log.variableName + " de " + log.archiveName + " atingiu " + std::to_string(log.valueReached);
+                if (log.conditionType >= 0 && log.conditionType < 5) {
+                    rowData[log.conditionType] = warnText;
+                }
+                tf.addRow(log.epochTimestamp, rowData);
+            }
+            break;
+        }
     }
 }
 
@@ -471,10 +553,12 @@ void Window::Warning::exportToCSV(const std::string& filepath) {
 
     // CSV Header with UTF-8 BOM to keep Excel compatibility
     file << "\xEF\xBB\xBF";
-    file << "Data/Hora,Variavel,Arquivo,Valor Atingido,Condicao,Descricao\n";
+    file << std::setprecision(std::numeric_limits<double>::max_digits10);
+    file << "index,date,Variavel,Arquivo,Valor Atingido,Condicao,Descricao\n";
 
+    int idx = 0;
     for (const auto& log : m_logs) {
-        file << log.timestamp << "," << log.variableName << "," << log.archiveName << "," << log.valueReached << ","
+        file << idx++ << "," << log.epochTimestamp << "," << log.variableName << "," << log.archiveName << "," << log.valueReached << ","
              << log.conditionText << "," << log.description << "\n";
     }
 

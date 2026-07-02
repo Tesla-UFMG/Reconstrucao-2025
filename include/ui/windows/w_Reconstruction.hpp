@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <map>
 
 // Project
 #include "ImGuiWrapper.hpp"
@@ -51,6 +52,7 @@ namespace Window {
             int                     m_testX = 0;
             int                     m_testY = 0;
             bool                    m_loaded = false;
+            bool                    m_wasOpen = false;
             std::string             m_statusMessage = "Iniciando...";
             
             // Mouse panning and zooming variables
@@ -71,11 +73,15 @@ namespace Window {
             std::string              m_selectedLonCol;
             XYAlignmentMode          m_alignmentMode = ALIGN_LINEAR_INTERPOLATION;
             XYAlignmentMode          m_colorAlignmentMode = ALIGN_LINEAR_INTERPOLATION;
-            std::string              m_selectedColorCol;
+            std::string             m_selectedColorCol;
+            std::map<std::string, ImVec2> m_textOffsets;
+
+            // Database limits para normalização das cores
             std::string              m_selectedColorFileName;
             std::string              m_selectedColorFileType;
             double                   m_gradMinVal = 0.0;
             double                   m_gradMaxVal = 100.0;
+            bool                     m_autoFitGradient = true;
             float                    m_gradMinColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // Blue
             float                    m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // Red
 

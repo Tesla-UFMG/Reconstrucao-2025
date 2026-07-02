@@ -290,9 +290,10 @@ void Window::Reconstruction::centerOnTrack() {
         const auto& latData = aligned.first;
         const auto& lonData = aligned.second;
 
-        size_t count = latData.size();
-        if (count == 0)
+        if (latData.empty() || lonData.empty())
             return;
+
+        size_t count = std::min(latData.size(), lonData.size());
 
         double avgLat = 0.0;
         double avgLon = 0.0;
@@ -338,19 +339,27 @@ void Window::Reconstruction::autoFitColorLimits() {
 }
 
 void Window::Reconstruction::render() {
-    if (!isOpen || !*isOpen)
+    if (!isOpen || !*isOpen) {
+        m_wasOpen = false;
         return;
+    }
 
     // Define margem interna zero para um canvas geográfico contínuo premium
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin(this->title.c_str(), this->isOpen,
+    bool window_is_expanded = ImGui::Begin(this->title.c_str(), this->isOpen,
                  ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     ImGui::PopStyleVar();
 
-    if (m_loaded) {
-        ImVec2      windowPos  = ImGui::GetWindowPos();
-        ImVec2      windowSize = ImGui::GetWindowSize();
-        ImDrawList* drawList   = ImGui::GetWindowDrawList();
+    if (window_is_expanded) {
+        if (m_loaded) {
+            if (m_autoFitGradient && !m_selectedColorCol.empty() && !m_wasOpen) {
+                autoFitColorLimits();
+            }
+            m_wasOpen = true;
+
+            ImVec2      windowPos  = ImGui::GetWindowPos();
+            ImVec2      windowSize = ImGui::GetWindowSize();
+            ImDrawList* drawList   = ImGui::GetWindowDrawList();
 
         // Calcular dinamicamente a posição do bloco (testX, testY) e pan da tela a partir da câmera georreferenciada
         // contínua
@@ -617,6 +626,7 @@ void Window::Reconstruction::render() {
                         if (ImGui::Button("Auto-ajustar Limites", ImVec2(200.0f, 0.0f))) {
                             autoFitColorLimits();
                         }
+                        ImGui::Checkbox("Auto Atualizar Gradiente", &m_autoFitGradient);
 
                         ImGui::Separator();
                         ImGui::Text("Alinhamento do Gradiente:");
@@ -652,11 +662,37 @@ void Window::Reconstruction::render() {
                 ImGui::EndMenu();
             }
 
+            // Menu 5: Anotações Textuais
+            if (ImGui::BeginMenu("Anotações Textuais")) {
+                if (m_textAnnotations.empty()) {
+                    ImGui::TextDisabled("Nenhuma anotação (Arraste colunas de Texto)");
+                } else {
+                    if (ImGui::BeginTable("TabelaTextosRec", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+                        ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableSetupColumn("Anotação", ImGuiTableColumnFlags_WidthStretch);
+                        ImGui::TableHeadersRow();
+                        for (size_t i = 0; i < m_textAnnotations.size(); ++i) {
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            if (ImGui::Button(("X##txtRec" + std::to_string(i)).c_str())) {
+                                m_textAnnotations.erase(m_textAnnotations.begin() + i);
+                                break;
+                            }
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::TextUnformatted(m_textAnnotations[i].columnName.c_str());
+                        }
+                        ImGui::EndTable();
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenuBar();
         }
 
         // 2. Capturar cliques e arraste com o mouse em qualquer parte da janela
         ImGui::InvisibleButton("MapCanvas", windowSize);
+        ImGui::SetItemAllowOverlap();
         if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             float deltaX = ImGui::GetIO().MouseDelta.x;
             float deltaY = ImGui::GetIO().MouseDelta.y;
@@ -949,8 +985,8 @@ void Window::Reconstruction::render() {
                     const auto& latData = aligned.first;
                     const auto& lonData = aligned.second;
 
-                    size_t numPoints = latData.size();
-                    if (numPoints > 0) {
+                    if (!latData.empty() && !lonData.empty()) {
+                        size_t numPoints = std::min(latData.size(), lonData.size());
                         std::vector<ImVec2> screenPoints;
                         screenPoints.reserve(numPoints);
 
@@ -1066,21 +1102,41 @@ void Window::Reconstruction::render() {
                                                         if (closestIdx != -1 && closestIdx < static_cast<int>(screenPoints.size())) {
                                                             ImVec2 p_track = screenPoints[closestIdx];
                                                             
-                                                            // Offset da caixa de texto para evitar sobreposição
-                                                            ImVec2 p_text(p_track.x + 40.0f, p_track.y - 30.0f - (annotationCount % 4) * 28.0f);
+                                                            std::string key = ann.archiveName + "|" + ann.columnName + "|" + std::to_string(row);
+                                                            ImVec2 currentOffset(40.0f, -30.0f - (annotationCount % 4) * 28.0f);
+                                                            if (m_textOffsets.find(key) != m_textOffsets.end()) {
+                                                                currentOffset = m_textOffsets[key];
+                                                            }
+
+                                                            ImVec2 p_text(p_track.x + currentOffset.x, p_track.y + currentOffset.y);
                                                             annotationCount++;
                                                             
                                                             ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
                                                             ImVec2 boxMin(p_text.x - 6.0f, p_text.y - 4.0f);
                                                             ImVec2 boxMax(p_text.x + textSize.x + 6.0f, p_text.y + textSize.y + 4.0f);
                                                             
+                                                            ImGui::SetCursorScreenPos(boxMin);
+                                                            ImGui::InvisibleButton(key.c_str(), ImVec2(boxMax.x - boxMin.x, boxMax.y - boxMin.y));
+                                                            bool isHovered = ImGui::IsItemHovered();
+                                                            bool isActive = ImGui::IsItemActive();
+                                                            
+                                                            if (isActive) {
+                                                                currentOffset.x += ImGui::GetIO().MouseDelta.x;
+                                                                currentOffset.y += ImGui::GetIO().MouseDelta.y;
+                                                                m_textOffsets[key] = currentOffset;
+                                                                p_text.x += ImGui::GetIO().MouseDelta.x;
+                                                                p_text.y += ImGui::GetIO().MouseDelta.y;
+                                                                boxMin = ImVec2(p_text.x - 6.0f, p_text.y - 4.0f);
+                                                                boxMax = ImVec2(p_text.x + textSize.x + 6.0f, p_text.y + textSize.y + 4.0f);
+                                                            }
+
                                                             // Linha conectora amarela
                                                             drawList->AddLine(p_track, ImVec2(boxMin.x, (boxMin.y + boxMax.y) * 0.5f), IM_COL32(255, 255, 0, 180), 1.5f);
                                                             
                                                             // Fundo escuro premium semi-transparente
-                                                            drawList->AddRectFilled(boxMin, boxMax, IM_COL32(15, 15, 15, 220), 4.0f);
+                                                            drawList->AddRectFilled(boxMin, boxMax, isActive ? IM_COL32(40, 40, 40, 240) : (isHovered ? IM_COL32(30, 30, 30, 230) : IM_COL32(15, 15, 15, 220)), 4.0f);
                                                             // Borda amarela premium para destacar o comentário
-                                                            drawList->AddRect(boxMin, boxMax, IM_COL32(255, 255, 0, 255), 4.0f, 0, 1.2f);
+                                                            drawList->AddRect(boxMin, boxMax, IM_COL32(255, 255, 0, 255), 4.0f, 0, isActive ? 2.0f : 1.2f);
                                                             // Texto em amarelo brilhante
                                                             drawList->AddText(p_text, IM_COL32(255, 255, 0, 255), text.c_str());
                                                         }
@@ -1161,8 +1217,9 @@ void Window::Reconstruction::render() {
         ImGui::PopStyleVar();
         ImGui::PopStyleColor();
 
-    } else {
-        ImGui::TextDisabled("Nenhum mapa disponível.");
+        } else {
+            ImGui::TextDisabled("Nenhum mapa disponível.");
+        }
     }
 
     ImGui::End();

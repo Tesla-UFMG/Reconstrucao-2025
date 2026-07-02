@@ -13,6 +13,7 @@
 #include "ui/windows/w_WheelControl.hpp"
 #include "ui/windows/w_Reconstruction.hpp" 
 #include "ui/windows/w_Updates.hpp"
+#include "ui/windows/w_Playback.hpp"
 
 WindowManager& WindowManager::getInstance() {
     static WindowManager instance;
@@ -41,6 +42,7 @@ void WindowManager::cleanup() {
     m_reconstructionWindow = nullptr;
     m_aboutWindow = nullptr;
     m_updatesWindow = nullptr;
+    m_playbackWindow = nullptr;
     m_renderer = nullptr;
 }
 
@@ -115,6 +117,10 @@ void WindowManager::setup() {
     // windows.emplace_back(std::make_unique<Window::WheelControl>(&visibility.showWheelControl));
     windows.emplace_back(std::make_unique<Window::Telemetry>(&visibility.showTelemetry));
     windows.emplace_back(std::make_unique<Window::Warning>(&visibility.showWarnings));
+
+    auto temp_playback_ptr = std::make_unique<Window::Playback>(&visibility.showPlayback);
+    m_playbackWindow = temp_playback_ptr.get();
+    windows.emplace_back(std::move(temp_playback_ptr));
 }
 
 void WindowManager::homePage() {
@@ -551,11 +557,23 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
 
                     file << matWin->m_columns.size() << "\n";
                     for (const auto& col : matWin->m_columns) {
-                        file << col.fileType << "\n";
-                        file << col.archiveName << "\n";
-                        file << matWin->m_rowVariables.size() << "\n";
-                        for (const auto& v : matWin->m_rowVariables) {
-                            file << v << "\n";
+                        if (col.isArtificial) {
+                            file << "Artificial\n";
+                            file << col.customName << "\n";
+                            file << col.customCells.size() << "\n";
+                            for (const auto& kv : col.customCells) {
+                                file << kv.first << "\n";
+                                file << kv.second.fileType << "\n";
+                                file << kv.second.archiveName << "\n";
+                                file << kv.second.columnName << "\n";
+                            }
+                        } else {
+                            file << col.fileType << "\n";
+                            file << col.archiveName << "\n";
+                            file << matWin->m_rowVariables.size() << "\n";
+                            for (const auto& v : matWin->m_rowVariables) {
+                                file << v << "\n";
+                            }
                         }
                     }
 
@@ -570,6 +588,12 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     for (const auto& r : matWin->m_translationRules) {
                         file << r.value << "\n";
                         file << r.text << "\n";
+                    }
+
+                    // Save rowVariables explicitly (to preserve empty artificial rows)
+                    file << matWin->m_rowVariables.size() << "\n";
+                    for (const auto& v : matWin->m_rowVariables) {
+                        file << v << "\n";
                     }
                 }
             } else if (w->getDynamicType() == "Tabela") {
@@ -692,7 +716,8 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                 std::getline(file, ann.archiveName);
                 std::getline(file, ann.columnName);
                 bool exists = DB::getInstance().columnExists("CSV", ann.archiveName, ann.columnName) ||
-                              DB::getInstance().columnExists("Telemetry", ann.archiveName, ann.columnName);
+                              DB::getInstance().columnExists("Telemetry", ann.archiveName, ann.columnName) ||
+                              DB::getInstance().columnExists("Text", ann.archiveName, ann.columnName);
                 if (exists) {
                     reconWin->m_textAnnotations.push_back(ann);
                 }
@@ -1082,7 +1107,8 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                         std::getline(file, ann.archiveName);
                         std::getline(file, ann.columnName);
                         bool exists = DB::getInstance().columnExists("CSV", ann.archiveName, ann.columnName) ||
-                                      DB::getInstance().columnExists("Telemetry", ann.archiveName, ann.columnName);
+                                      DB::getInstance().columnExists("Telemetry", ann.archiveName, ann.columnName) ||
+                                      DB::getInstance().columnExists("Text", ann.archiveName, ann.columnName);
                         if (exists) {
                             graph.textAnnotations.push_back(ann);
                         }
@@ -1149,22 +1175,47 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             for (size_t ci = 0; ci < numCols; ci++) {
                 MatrixColumn col;
                 std::getline(file, col.fileType);
-                std::getline(file, col.archiveName);
-                size_t numVars = 0;
-                file >> numVars;
-                std::getline(file, dummy);
-                for (size_t vi = 0; vi < numVars; vi++) {
-                    std::string var;
-                    std::getline(file, var);
-                    if (DB::getInstance().columnExists(col.fileType, col.archiveName, var)) {
-                        col.variables.push_back(var);
-                        if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), var) == matWin->m_rowVariables.end()) {
-                            matWin->m_rowVariables.push_back(var);
+                if (col.fileType == "Artificial") {
+                    col.isArtificial = true;
+                    std::getline(file, col.customName);
+                    col.archiveName = col.customName;
+                    size_t numCells = 0;
+                    file >> numCells;
+                    std::getline(file, dummy);
+                    for (size_t vi = 0; vi < numCells; vi++) {
+                        std::string rowName;
+                        std::getline(file, rowName);
+                        MatrixCellSource src;
+                        std::getline(file, src.fileType);
+                        std::getline(file, src.archiveName);
+                        std::getline(file, src.columnName);
+                        
+                        if (DB::getInstance().columnExists(src.fileType, src.archiveName, src.columnName)) {
+                            col.customCells[rowName] = src;
+                            if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), rowName) == matWin->m_rowVariables.end()) {
+                                matWin->m_rowVariables.push_back(rowName);
+                            }
                         }
                     }
-                }
-                if (!col.variables.empty()) {
                     matWin->m_columns.push_back(col);
+                } else {
+                    std::getline(file, col.archiveName);
+                    size_t numVars = 0;
+                    file >> numVars;
+                    std::getline(file, dummy);
+                    for (size_t vi = 0; vi < numVars; vi++) {
+                        std::string var;
+                        std::getline(file, var);
+                        if (DB::getInstance().columnExists(col.fileType, col.archiveName, var)) {
+                            col.variables.push_back(var);
+                            if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), var) == matWin->m_rowVariables.end()) {
+                                matWin->m_rowVariables.push_back(var);
+                            }
+                        }
+                    }
+                    if (!col.variables.empty()) {
+                        matWin->m_columns.push_back(col);
+                    }
                 }
             }
 
@@ -1199,6 +1250,21 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                             }
                         }
                     }
+                }
+                
+                // Read explicit row variables if they exist
+                size_t extraRows = 0;
+                if (file >> extraRows) {
+                    std::getline(file, dummy); // consume newline
+                    for (size_t r = 0; r < extraRows; r++) {
+                        std::string rn;
+                        std::getline(file, rn);
+                        if (!rn.empty() && std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), rn) == matWin->m_rowVariables.end()) {
+                            matWin->m_rowVariables.push_back(rn);
+                        }
+                    }
+                } else {
+                    file.clear(); // Clear EOF flag if applicable
                 }
             } else {
                 file.clear();

@@ -331,8 +331,22 @@ void Window::Graph::renderGraphPlot() {
                                         }
                                         
                                         if (closestIdx != -1) {
-                                            // Desenhar linha vertical e caixa de texto correspondente
+                                            // Se followTheEnd está ligado, só renderiza se estiver na janela final
+                                            if (m_graph.config.followTheEnd) {
+                                                int maxIdx = static_cast<int>(plotDates->size());
+                                                int windowStart = std::max(0, maxIdx - m_graph.config.numPoints);
+                                                if (closestIdx < windowStart) {
+                                                    continue; // Pula essa anotação para não forçar o zoom-out
+                                                }
+                                            }
+
+                                            // Valor no eixo X (índice ou valor customizado)
                                             double xVal = static_cast<double>(closestIdx);
+                                            if (useCustomX && closestIdx < static_cast<int>(customX.size())) {
+                                                xVal = customX[closestIdx];
+                                            }
+
+                                            // Desenhar linha vertical e caixa de texto correspondente
                                             ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 1.0f, 0.0f, 0.6f)); // Amarelo translúcido
                                             ImPlot::PlotInfLines("##vLineAnn", &xVal, 1);
                                             ImPlot::PopStyleColor();
@@ -448,6 +462,26 @@ void Window::Graph::drawLegendPopup() {
                     ImGui::PopItemWidth();
                 }
                 ImGui::EndTable();
+            }
+
+            if (!m_graph.textAnnotations.empty()) {
+                ImGui::SeparatorText("Textos e Comentários");
+                if (ImGui::BeginTable("TabelaTextos", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+                    ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
+                    ImGui::TableSetupColumn("Anotação", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableHeadersRow();
+                    for (size_t i = 0; i < m_graph.textAnnotations.size(); ++i) {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        if (ImGui::Button(("X##txt" + std::to_string(i)).c_str())) {
+                            m_graph.textAnnotations.erase(m_graph.textAnnotations.begin() + i);
+                            break;
+                        }
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(m_graph.textAnnotations[i].columnName.c_str());
+                    }
+                    ImGui::EndTable();
+                }
             }
 
             if (ImGui::Button("Remover Gráfico")) {

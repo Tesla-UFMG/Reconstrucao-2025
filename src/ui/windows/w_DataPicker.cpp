@@ -92,9 +92,18 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
         std::string        msg      = "[" + packetId + "] " + fileName;
 
         bool isComments = (packetId == "Comentários");
+        bool isPlayback = (packetId == "PLAYBACK");
         if (isComments) {
             msg = fileName; // Exibe apenas "Comentários" (sem colchetes com ID)
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Amarelo
+            ImVec4 yellowColor = (ImGuiWrapper::currentTheme == LIGHT) 
+                                 ? ImVec4(0.55f, 0.42f, 0.0f, 1.0f) // Amarelo escuro / dourado para tema claro
+                                 : ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Amarelo brilhante para tema escuro
+            ImGui::PushStyleColor(ImGuiCol_Text, yellowColor);
+        } else if (isPlayback) {
+            ImVec4 purpleColor = (ImGuiWrapper::currentTheme == LIGHT)
+                                 ? ImVec4(0.5f, 0.0f, 0.8f, 1.0f) // Roxo escuro
+                                 : ImVec4(0.8f, 0.4f, 1.0f, 1.0f); // Roxo claro
+            ImGui::PushStyleColor(ImGuiCol_Text, purpleColor);
         } else {
             ImGui::PushStyleColor(ImGuiCol_Text, HI(1));
         }
@@ -113,7 +122,10 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
     }
     
     else if (auto textFile = dynamic_cast<const TextFile*>(&file)) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Amarelo
+        ImVec4 yellowColor = (ImGuiWrapper::currentTheme == LIGHT) 
+                             ? ImVec4(0.55f, 0.42f, 0.0f, 1.0f) // Amarelo escuro / dourado para tema claro
+                             : ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Amarelo brilhante para tema escuro
+        ImGui::PushStyleColor(ImGuiCol_Text, yellowColor);
         if (ImGui::TreeNode(fileName.c_str())) {
             this->sendArchivePayload(fileType, fileName);
             for (const std::string& colName : textFile->getColumnNames()) {

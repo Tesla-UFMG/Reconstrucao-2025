@@ -60,6 +60,7 @@ namespace Window {
             // Rastreamento do tempo do último salvamento
             std::chrono::steady_clock::time_point m_lastSaveTime;
             bool                     m_hasSaved = false;
+            int                      m_saveCount = 0;
 
 
 
@@ -67,7 +68,7 @@ namespace Window {
             std::vector<std::string> m_activeCommentDates;
             std::vector<std::string> m_activeComments;
             char                     m_currentCommentBuf[256];
-            int                      m_commentOffsetSec = 30;
+            int                      m_commentOffsetSec = 5;
             std::thread             readerThread;
             std::mutex              queueMutex;
             std::queue<std::string> messageQueue;

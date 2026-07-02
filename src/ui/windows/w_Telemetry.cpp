@@ -24,7 +24,7 @@ Window::Telemetry::Telemetry(bool* isOpen) : IWindow(isOpen) {
     this->outputPacketFolder.resize(COLUMN_NAME_SIZE);
 
     // Pilotos e Testes
-    this->m_pilots                = {"Mike", "Miguel", "Pedro", "Outro"};
+    this->m_pilots                = {"miguel", "pedro", "boson", "RafaFreios", "Outro"};
     this->m_testTypes             = {"Aceleração", "Skidpad", "Autocross", "Endurance", "Calibração", "Outro"};
     this->m_selectedPilotIndex    = 0;
     this->m_selectedTestTypeIndex = 0;
@@ -283,6 +283,7 @@ void Window::Telemetry::renderConfigMenu() {
             this->m_activeCommentDates.clear();
             this->m_activeComments.clear();
             std::memset(this->m_currentCommentBuf, 0, sizeof(this->m_currentCommentBuf));
+            this->m_saveCount = 0; // Reseta o contador de salvamentos
 
             // Limpa a tela de avisos integrada
             if (Window::Warning* warningWin = Window::Warning::getInstance()) {
@@ -439,7 +440,7 @@ void Window::Telemetry::renderPacketConfigMenu() {
         for (int i = 0; i < 8; ++i) {
             ImGui::TableSetupColumn(("Col. " + std::to_string(i + 1)).c_str(), ImGuiTableColumnFlags_WidthStretch);
         }
-        ImGui::TableSetupColumn("Ações", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableSetupColumn("Ações", ImGuiTableColumnFlags_WidthFixed, 150.0f);
         ImGui::TableHeadersRow();
 
         const auto& telemetryFiles = DB::getInstance().getProject().getTelemetryFiles();
@@ -469,6 +470,38 @@ void Window::Telemetry::renderPacketConfigMenu() {
             ImGui::TableSetColumnIndex(10);
             ImGui::PushID(telemetryFile.getPacketId().c_str());
             
+            // Botão SUBIR ("^")
+            if (i == 0) {
+                ImGui::BeginDisabled();
+            }
+            if (ImGui::Button("^")) {
+                DB::getInstance().getProject().swapPackets(i, i - 1);
+            }
+            if (i == 0) {
+                ImGui::EndDisabled();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Mover para cima");
+            }
+
+            ImGui::SameLine();
+
+            // Botão DESCER ("v")
+            if (i == telemetryFiles.size() - 1) {
+                ImGui::BeginDisabled();
+            }
+            if (ImGui::Button("v")) {
+                DB::getInstance().getProject().swapPackets(i, i + 1);
+            }
+            if (i == telemetryFiles.size() - 1) {
+                ImGui::EndDisabled();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Mover para baixo");
+            }
+
+            ImGui::SameLine();
+
             // Botão EDITAR ("E")
             if (ImGui::Button("E")) {
                 m_editMode     = true;
@@ -672,8 +705,10 @@ void Window::Telemetry::renderSavingMenu() {
         std::string pilotName = m_pilots[m_selectedPilotIndex];
         std::string testType  = m_testTypes[m_selectedTestTypeIndex];
 
-        // Cria o nome do projeto adicionando a data no início
-        std::string generatedProjName = dateTimeStr + "_" + pilotName + "_" + testType;
+        this->m_saveCount++; // Incrementa o número de salvamentos
+
+        // Cria o nome do projeto adicionando a data no início e o contador no final
+        std::string generatedProjName = dateTimeStr + "_" + pilotName + "_" + testType + "_V" + std::to_string(this->m_saveCount);
 
         // Atualiza o nome do projeto
         //DB::getInstance().getProject().currentProjectName = generatedProjName;
@@ -711,7 +746,10 @@ void Window::Telemetry::renderSavingMenu() {
                                seconds);
         }
     } else {
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: Nunca");
+        ImVec4 yellowColor = (ImGuiWrapper::currentTheme == LIGHT) 
+                             ? ImVec4(0.55f, 0.42f, 0.0f, 1.0f) // Amarelo escuro / dourado para tema claro
+                             : ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Amarelo brilhante para tema escuro
+        ImGui::TextColored(yellowColor, "Último salvamento: Nunca");
     }
 
     ImGui::Spacing();
@@ -719,9 +757,9 @@ void Window::Telemetry::renderSavingMenu() {
 
     ImGui::Text("Comentário");
     ImGui::SameLine();
-    ImGui::InputText("##comments_input", m_currentCommentBuf, sizeof(m_currentCommentBuf));
+    bool enterPressed = ImGui::InputText("##comments_input", m_currentCommentBuf, sizeof(m_currentCommentBuf), ImGuiInputTextFlags_EnterReturnsTrue);
     ImGui::SameLine();
-    if (ImGui::Button("Adicionar")) {
+    if (ImGui::Button("Adicionar") || enterPressed) {
         auto now          = std::chrono::system_clock::now();
         auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
@@ -752,7 +790,7 @@ void Window::Telemetry::renderSavingMenu() {
 
     ImGui::Spacing();
     ImGui::Text("Comentários Registrados (%d):", (int)m_activeComments.size());
-    ImVec2 childSize = ImVec2(-1, 100.0f);
+    ImVec2 childSize = ImVec2(0, 0); // Ocupa todo o espaço restante
     if (ImGui::BeginChild("##activeCommentsScroll", childSize, true)) {
         for (size_t j = 0; j < m_activeComments.size(); ++j) {
             std::string formattedTime = formatEpochToTimeLocal(m_activeCommentDates[j]);

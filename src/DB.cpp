@@ -1,6 +1,8 @@
 #include "DB.hpp"
 #include "WindowManager.hpp"
 #include "ui/windows/w_Warning.hpp"
+#include <iomanip>
+#include <limits>
 
 DB& DB::getInstance() {
     static DB instance;
@@ -225,6 +227,9 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
             return false;
         }
 
+        // Set max precision for doubles
+        ofs << std::setprecision(std::numeric_limits<double>::max_digits10);
+
         // cabeçalho (only non-empty column names)
         ofs << "index,date,";
         std::vector<std::string> validNames;
@@ -277,10 +282,16 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
 
     // Save TextFiles as CSVs!
     for (const TextFile& textFile : this->getProject().getTextFiles()) {
+        if (textFile.getName() == "Avisos") {
+            continue; // Skip saving the sparse "Avisos" TextFile to avoid duplication
+        }
         std::string filename = (textFile.getName() == "Comentários") ? "comentarios.csv" : "avisos.csv";
         std::filesystem::path outPath = baseDir / filename;
         std::ofstream ofs(outPath, std::ios::trunc);
         if (ofs.is_open()) {
+            // Set max precision for doubles
+            ofs << std::setprecision(std::numeric_limits<double>::max_digits10);
+            
             // Write BOM for Excel UTF-8 compatibility
             ofs << "\xEF\xBB\xBF";
             
@@ -312,7 +323,7 @@ bool DB::saveTelemetryPackets(const std::string& outputFolder) {
 
     auto* warningWin = Window::Warning::getInstance();
     if (warningWin) {
-        std::filesystem::path warnPath = baseDir / "warning_report.csv";
+        std::filesystem::path warnPath = baseDir / "avisos.csv";
         warningWin->exportToCSV(warnPath.string());
     }
 

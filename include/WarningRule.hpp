@@ -15,6 +15,7 @@ struct WarningRule {
     std::string description = "";
     int lastProcessedIndex = -1;
     bool wasTriggered = false;
+    bool playSound = false;
 };
 
 #endif // WARNING_RULE_HPP
