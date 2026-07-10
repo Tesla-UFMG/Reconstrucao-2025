@@ -170,38 +170,100 @@ void Window::Graph::renderGraphPlot() {
                 continue;
 
             const std::vector<double>& y = graphData.getYData();
-            std::vector<double>        yData(y.size());
-            if (graphData.multiplier == 1.0) {
-                yData = y;
-            } else {
-                for (size_t k = 0; k < y.size(); ++k) {
-                    yData[k] = y[k] * graphData.multiplier;
-                }
-            }
-
-            std::vector<double> xData;
-            std::vector<double> alignedY;
-
+            
+            bool canUseDirectPointers = false;
             if (useCustomX) {
-                auto aligned = alignVectors(customX, yData, graphConfig.xyAlignmentMode);
-                xData = aligned.first;
-                alignedY = aligned.second;
+                if (customX.size() == y.size()) canUseDirectPointers = true;
             } else {
-                std::vector<double> baseGrid(axisLength);
-                for (size_t i = 0; i < axisLength; ++i) {
-                    baseGrid[i] = static_cast<double>(i);
-                }
-                auto aligned = alignVectors(baseGrid, yData, graphConfig.xyAlignmentMode);
-                xData = aligned.first;
-                alignedY = aligned.second;
+                if (axisLength == y.size()) canUseDirectPointers = true;
             }
 
-            int safeSize = static_cast<int>(std::min(xData.size(), alignedY.size()));
+            const std::vector<double>* finalX = nullptr;
+            const std::vector<double>* finalY = nullptr;
+
+            if (canUseDirectPointers) {
+                if (graphData.multiplier == 1.0) {
+                    finalY = &y;
+                } else {
+                    graphData.buildMultipliedY();
+                    finalY = &graphData.multipliedY;
+                }
+
+                if (useCustomX) {
+                    finalX = &customX;
+                } else {
+                    graphData.buildXVector();
+                    finalX = &graphData.x;
+                }
+                
+                graphData.lastYSize = y.size();
+                graphData.lastMultiplier = graphData.multiplier;
+                graphData.lastUseCustomX = useCustomX;
+                graphData.lastAlignmentMode = graphConfig.xyAlignmentMode;
+                graphData.lastAxisLength = axisLength;
+                if (useCustomX) {
+                    graphData.lastCustomXColumn = graphConfig.xColumn;
+                    graphData.lastCustomXSize = customX.size();
+                }
+            } else {
+                bool cacheInvalid = false;
+                if (graphData.cachedY.empty() || 
+                    graphData.lastYSize != y.size() ||
+                    graphData.lastMultiplier != graphData.multiplier ||
+                    graphData.lastUseCustomX != useCustomX ||
+                    graphData.lastAlignmentMode != graphConfig.xyAlignmentMode ||
+                    (!useCustomX && graphData.lastAxisLength != axisLength) ||
+                    (useCustomX && (graphData.lastCustomXColumn != graphConfig.xColumn || graphData.lastCustomXSize != customX.size()))) {
+                    cacheInvalid = true;
+                }
+
+                if (cacheInvalid) {
+                    std::vector<double> yData;
+                    if (graphData.multiplier == 1.0) {
+                        yData = y;
+                    } else {
+                        yData.reserve(y.size());
+                        for (size_t k = 0; k < y.size(); ++k) {
+                            yData.push_back(y[k] * graphData.multiplier);
+                        }
+                    }
+
+                    if (useCustomX) {
+                        auto aligned = alignVectors(customX, yData, graphConfig.xyAlignmentMode);
+                        graphData.cachedX = std::move(aligned.first);
+                        graphData.cachedY = std::move(aligned.second);
+                    } else {
+                        std::vector<double> baseGrid;
+                        baseGrid.reserve(axisLength);
+                        for (size_t i = 0; i < axisLength; ++i) {
+                            baseGrid.push_back(static_cast<double>(i));
+                        }
+                        auto aligned = alignVectors(baseGrid, yData, graphConfig.xyAlignmentMode);
+                        graphData.cachedX = std::move(aligned.first);
+                        graphData.cachedY = std::move(aligned.second);
+                    }
+                    
+                    graphData.lastYSize = y.size();
+                    graphData.lastMultiplier = graphData.multiplier;
+                    graphData.lastUseCustomX = useCustomX;
+                    graphData.lastAlignmentMode = graphConfig.xyAlignmentMode;
+                    graphData.lastAxisLength = axisLength;
+                    if (useCustomX) {
+                        graphData.lastCustomXColumn = graphConfig.xColumn;
+                        graphData.lastCustomXSize = customX.size();
+                    }
+                }
+                
+                finalX = &graphData.cachedX;
+                finalY = &graphData.cachedY;
+            }
+
+            int safeSize = static_cast<int>(std::min(finalX->size(), finalY->size()));
             int colStart = graphConfig.followTheEnd ? std::max(0, safeSize - graphConfig.numPoints) : 0;
             int numPoints = graphConfig.followTheEnd ? std::min(safeSize, graphConfig.numPoints) : safeSize;
 
-            const double* xPtr = xData.data() + colStart;
-            const double* yPtr = alignedY.data() + colStart;
+            const double* xPtr = finalX->data() + colStart;
+            const double* yPtr = finalY->data() + colStart;
 
             const char* columnName = graphData.columnName.c_str();
 
@@ -243,8 +305,8 @@ void Window::Graph::renderGraphPlot() {
 
                 ImVec4 lineColor    = ImPlot::GetColormapColor(j);
                 double currentValue = 0.0;
-                if (!yData.empty()) {
-                    currentValue = yData.back();
+                if (!finalY->empty()) {
+                    currentValue = finalY->back();
                 }
 
                 ImPlot::TagY(currentValue, lineColor, fmt, currentValue);

@@ -113,6 +113,42 @@ struct GraphData {
             }
         }
 
+        // Cache para otimização do ImPlot
+        std::vector<double>        cachedX;
+        std::vector<double>        cachedY;
+        size_t                     lastYSize = 0;
+        size_t                     lastAxisLength = 0;
+        double                     lastMultiplier = 1.0;
+        bool                       lastUseCustomX = false;
+        XYAlignmentMode            lastAlignmentMode = ALIGN_LINEAR_INTERPOLATION;
+        std::string                lastCustomXColumn;
+        size_t                     lastCustomXSize = 0;
+
+        std::vector<double> multipliedY;
+
+        void buildMultipliedY() {
+            const std::vector<double>& rawY = getYData();
+            if (multiplier == 1.0) return;
+            
+            size_t newSize = rawY.size();
+            size_t oldSize = multipliedY.size();
+            
+            // Force full rebuild if multiplier changed
+            if (lastMultiplier != multiplier) {
+                multipliedY.clear();
+                oldSize = 0;
+            }
+
+            if (oldSize < newSize) {
+                multipliedY.reserve(newSize);
+                for (size_t i = oldSize; i < newSize; ++i) {
+                    multipliedY.push_back(rawY[i] * multiplier);
+                }
+            } else if (oldSize > newSize) {
+                multipliedY.resize(newSize);
+            }
+        }
+
         void buildXVector() {
             const size_t newSize = getYData().size();
             const size_t oldSize = x.size();

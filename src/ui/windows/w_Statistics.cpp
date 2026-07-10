@@ -55,12 +55,6 @@ void Window::Statistics::addColumn(const std::string& fileType, const std::strin
         }
     }
 
-    if (fileType == "CSV") {
-        new_metric.data = &DB::getInstance().getCSVData(fileName, columnName);
-    } else if (fileType == "Telemetry") {
-        new_metric.data = &DB::getInstance().getTelemetryData(fileName, columnName);
-    }
-
     metrics.push_back(new_metric);
     LOG("INFO", "A coluna " + columnName + " do arquivo " + fileName + " foi adicionada à tabela.");
 }
@@ -127,8 +121,15 @@ void Window::Statistics::renderTable() {
 
                 // Valores
                 ImGui::TableSetColumnIndex(1);
-                if (!metric.data->empty()) {
-                    double value = metric.data->back();
+                const std::vector<double>* data = nullptr;
+                if (metric.fileType == "CSV") {
+                    data = &DB::getInstance().getCSVData(metric.fileName, metric.display_name);
+                } else if (metric.fileType == "Telemetry") {
+                    data = &DB::getInstance().getTelemetryData(metric.fileName, metric.display_name);
+                }
+
+                if (data && !data->empty()) {
+                    double value = data->back();
                     ImGui::Text("%.3f", value);
                 }
 

@@ -19,6 +19,9 @@
 namespace Window {
     class DataPicker : public IWindow {
         private:
+            std::vector<std::filesystem::path> m_csvToRemove;
+            std::vector<std::string> m_telemetryToRemove;
+
             void refreshData();
 
             // Payloads

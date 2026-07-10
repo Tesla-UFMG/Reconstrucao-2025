@@ -32,13 +32,14 @@ class GenericFile {
 class CSVFile : public GenericFile {
     private:
         std::unique_ptr<rapidcsv::Document>                          doc;
+        std::vector<std::string>                                     cachedColumnNames;
         mutable std::unordered_map<std::string, std::vector<double>> columnCache;
 
     public:
         CSVFile(std::filesystem::path p, std::unique_ptr<rapidcsv::Document> d);
-        rapidcsv::Document*        getDocument() const;
-        std::vector<std::string>   getColumnNames() const;
-        const std::vector<double>& getColumnData(const std::string& columnName) const;
+        rapidcsv::Document*             getDocument() const;
+        const std::vector<std::string>& getColumnNames() const;
+        const std::vector<double>&      getColumnData(const std::string& columnName) const;
 };
 
 class VideoFile : public GenericFile {};
@@ -60,6 +61,8 @@ class TelemetryFile : public GenericFile {
         const std::vector<std::string>&         getDate() const;
         bool                                    insertData(const std::vector<double>& newData);
         bool insertDate(const std::string& newDate);
+        void                                    reserveData(size_t capacity);
+        void                                    insertDataSlice(const std::vector<const std::vector<double>*>& sourceColumns, const std::vector<double>& sourceDates, int endIdx);
         void                                    setName(const std::string& newName);
         void                                    setPacketId(const std::string& newPacketId);
         void                                    setColumnNames(const std::vector<std::string>& newCols);

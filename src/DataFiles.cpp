@@ -1,4 +1,5 @@
 #include "DataFiles.hpp"
+#include <cstring>
 
 GenericFile::GenericFile(std::filesystem::path filepath) : filepath(std::move(filepath)) {}
 const std::filesystem::path& GenericFile::getPath() const { return this->filepath; }
@@ -11,9 +12,12 @@ CSVFile::CSVFile(std::filesystem::path filepath, std::unique_ptr<rapidcsv::Docum
     this->doc      = std::move(doc);
     this->fileType = "CSV";
     this->name     = this->filepath.filename().string();
+    if (this->doc) {
+        this->cachedColumnNames = this->doc->GetColumnNames();
+    }
 }
-rapidcsv::Document*      CSVFile::getDocument() const { return this->doc.get(); }
-std::vector<std::string> CSVFile::getColumnNames() const { return this->doc->GetColumnNames(); }
+rapidcsv::Document*             CSVFile::getDocument() const { return this->doc.get(); }
+const std::vector<std::string>& CSVFile::getColumnNames() const { return this->cachedColumnNames; }
 
 const std::vector<double>& CSVFile::getColumnData(const std::string& columnName) const {
     static const std::vector<double> emptyVec{};
@@ -63,6 +67,53 @@ bool TelemetryFile::insertData(const std::vector<double>& newData) {
 bool TelemetryFile::insertDate(const std::string& newDate) {
     this->date.push_back(newDate);
     return true;
+}
+
+void TelemetryFile::reserveData(size_t capacity) {
+    for (auto& col : this->data) {
+        col.reserve(capacity);
+    }
+    this->date.reserve(capacity);
+}
+
+void TelemetryFile::insertDataSlice(const std::vector<const std::vector<double>*>& sourceColumns, const std::vector<double>& sourceDates, int endIdx) {
+    if (endIdx < 0) {
+        this->clearData();
+        return;
+    }
+    
+    size_t newSize = static_cast<size_t>(endIdx + 1);
+    
+    // Resize all vectors to newSize
+    for (size_t i = 0; i < this->data.size(); ++i) {
+        this->data[i].resize(newSize);
+        const std::vector<double>* src = (i < sourceColumns.size()) ? sourceColumns[i] : nullptr;
+        
+        if (src && src->size() >= newSize) {
+            memcpy(this->data[i].data(), src->data(), newSize * sizeof(double));
+        } else if (src && !src->empty()) {
+            size_t srcSize = src->size();
+            memcpy(this->data[i].data(), src->data(), srcSize * sizeof(double));
+            std::fill(this->data[i].begin() + srcSize, this->data[i].end(), 0.0);
+        } else {
+            std::fill(this->data[i].begin(), this->data[i].end(), 0.0);
+        }
+    }
+    
+    // Handle dates
+    size_t oldDateSize = this->date.size();
+    this->date.resize(newSize);
+    
+    // Only convert NEW dates to strings to save massive CPU time
+    if (sourceDates.size() >= newSize) {
+        for (size_t i = oldDateSize; i < newSize; ++i) {
+            this->date[i] = std::to_string(sourceDates[i]);
+        }
+    } else {
+        for (size_t i = oldDateSize; i < newSize; ++i) {
+            this->date[i] = std::to_string(i);
+        }
+    }
 }
 
 const std::string&                      TelemetryFile::getPacketId() const { return this->packetId; }

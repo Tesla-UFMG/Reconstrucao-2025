@@ -54,15 +54,15 @@ void Window::DataPicker::renderArchiveContextPopup(const GenericFile& file, int 
             if (Dialogs::showConfirmationDialog("Você tem certeza que deseja fechar este arquivo?")) {
                 // Se for do tipo CSV File....
                 if (auto csvFile = dynamic_cast<const CSVFile*>(&file)) {
-                    DB::getInstance().deleteCSV(csvFile->getPath());
+                    this->m_csvToRemove.push_back(csvFile->getPath());
                 }
 
                 // Se for do tipo Video File....
-                else if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
+                else if (dynamic_cast<const VideoFile*>(&file)) {
                 }
 
                 else if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
-                    DB::getInstance().getProject().removePacket(telemetryFile->getPacketId());
+                    this->m_telemetryToRemove.push_back(telemetryFile->getPacketId());
                 }
 
 
@@ -118,7 +118,7 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
         ImGui::PopStyleColor();
     }
 
-    else if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
+    else if (dynamic_cast<const VideoFile*>(&file)) {
     }
     
     else if (auto textFile = dynamic_cast<const TextFile*>(&file)) {
@@ -175,5 +175,16 @@ void Window::DataPicker::render() {
 
         ImGui::EndChild();
         ImGui::End();
+        
+        // Executar remoções pendentes após os loops
+        for (const auto& path : this->m_csvToRemove) {
+            DB::getInstance().deleteCSV(path);
+        }
+        this->m_csvToRemove.clear();
+        
+        for (const auto& packetId : this->m_telemetryToRemove) {
+            DB::getInstance().getProject().removePacket(packetId);
+        }
+        this->m_telemetryToRemove.clear();
     }
 }

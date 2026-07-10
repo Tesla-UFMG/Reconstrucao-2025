@@ -174,27 +174,18 @@ void Window::Playback::updatePlaybackData() {
     }
 
     if (this->currentIndex > this->lastUpdatedIndex) {
-        int startIdx = this->lastUpdatedIndex + 1;
-        int endIdx = this->currentIndex;
-        
-        size_t numCols = this->cachedColumns.size();
-        std::vector<double> rowData(numCols, 0.0);
-
-        for (int i = startIdx; i <= endIdx; i++) {
-            for (size_t c = 0; c < numCols; ++c) {
-                if (this->cachedColumns[c] && i < static_cast<int>(this->cachedColumns[c]->size())) {
-                    rowData[c] = (*this->cachedColumns[c])[i];
-                } else {
-                    rowData[c] = 0.0;
-                }
-            }
-            targetPacket->insertData(rowData);
-            if (this->selectedTimestampCol != "") {
-                targetPacket->insertDate(std::to_string(this->timestampData[i]));
+        // Obter pointers mais recentes das colunas para prevenir falha caso o CSV tenha sido atualizado
+        size_t numCols = this->cachedColNames.size();
+        std::vector<const std::vector<double>*> currentColumns(numCols, nullptr);
+        for (size_t c = 0; c < numCols; ++c) {
+            if (this->selectedFileType == "CSV") {
+                currentColumns[c] = &DB::getInstance().getCSVData(this->selectedFileName, this->cachedColNames[c]);
             } else {
-                targetPacket->insertDate(std::to_string(i));
+                currentColumns[c] = &DB::getInstance().getTelemetryData(this->selectedFileName, this->cachedColNames[c]);
             }
         }
+        
+        targetPacket->insertDataSlice(currentColumns, this->timestampData, this->currentIndex);
         this->lastUpdatedIndex = this->currentIndex;
     }
 }

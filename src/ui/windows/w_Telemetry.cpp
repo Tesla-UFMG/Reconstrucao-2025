@@ -126,17 +126,29 @@ void Window::Telemetry::getAvailablePorts() {
     for (int i = 0; i < 25; i++) {
 #if defined(_WIN32) || defined(_WIN64)
         device_port = std::string("\\\\.\\COM") + std::to_string(i);
-#elif defined(__linux__)
-        device_port = std::string("/dev/ttyACM") + std::to_string(i - 1);
-#else
-#error "Unsupported operating system"
-#endif
-
         if (temp_device.openDevice(device_port.c_str(), 115200) == 1) {
             this->serialPorts.push_back(device_port);
             LOG("INFO", "Porta encontrada: " + device_port);
             temp_device.closeDevice();
         }
+#elif defined(__linux__)
+        // Verificar ttyACM
+        device_port = std::string("/dev/ttyACM") + std::to_string(i);
+        if (temp_device.openDevice(device_port.c_str(), 115200) == 1) {
+            this->serialPorts.push_back(device_port);
+            LOG("INFO", "Porta encontrada: " + device_port);
+            temp_device.closeDevice();
+        }
+        // Verificar ttyUSB
+        device_port = std::string("/dev/ttyUSB") + std::to_string(i);
+        if (temp_device.openDevice(device_port.c_str(), 115200) == 1) {
+            this->serialPorts.push_back(device_port);
+            LOG("INFO", "Porta encontrada: " + device_port);
+            temp_device.closeDevice();
+        }
+#else
+#error "Unsupported operating system"
+#endif
     }
 }
 
@@ -738,7 +750,7 @@ void Window::Telemetry::renderSavingMenu() {
         auto now     = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - this->m_lastSaveTime).count();
         if (elapsed < 60) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: %lds atrás", elapsed);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: %llds atrás", elapsed);
         } else {
             long long minutes = elapsed / 60;
             long long seconds = elapsed % 60;
