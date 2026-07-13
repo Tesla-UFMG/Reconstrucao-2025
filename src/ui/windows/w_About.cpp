@@ -11,7 +11,8 @@ Window::About::About(bool* isOpen) : IWindow(isOpen) {
 
 void Window::About::render() {
     if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+        ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
         ImGui::SeparatorText("Reconstrução de Pista");
         ImGui::Text("Formula Tesla");

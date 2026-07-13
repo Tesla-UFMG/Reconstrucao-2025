@@ -41,6 +41,7 @@ void Window::WheelControl::render() {
     // Variáveis de estado do volante
     static float anguloVolante = 0.0f;
 
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
     // --- Definir a área inteira da janela como Drag and Drop Target (Estratégia idêntica à janela Statistics) ---
@@ -51,21 +52,28 @@ void Window::WheelControl::render() {
 
     // --- Menu de contexto no clique com o botão direito ---
     if (ImGui::BeginPopupContextWindow()) {
-        ImGui::Text("Dados Selecionados:");
-        ImGui::Separator();
-        if (!isLoaded()) {
-            ImGui::TextDisabled("(Nenhum dado carregado)");
-        } else {
-            ImGui::PushID(0);
-            if (ImGui::Button("Remover Dados (X)")) {
-                removeColumn(m_steerIndex);
-                ImGui::CloseCurrentPopup();
+        if (ImGui::BeginMenu("Dados & Exibição")) {
+            if (!isLoaded()) {
+                ImGui::TextDisabled("(Nenhum dado carregado)");
             } else {
-                ImGui::SameLine();
+                ImGui::Text("Colunas Carregadas:");
+                ImGui::PushID(0);
                 std::string label = m_dataList[m_steerIndex].archive + ": " + m_dataList[m_steerIndex].column;
                 ImGui::TextUnformatted(label.c_str());
+                ImGui::SameLine();
+                if (ImGui::SmallButton("X##removeData")) {
+                    removeColumn(m_steerIndex);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::PopID();
+                
+                ImGui::Separator();
+                if (ImGui::Button("Limpar Todas as Colunas")) {
+                    removeColumn(m_steerIndex);
+                    ImGui::CloseCurrentPopup();
+                }
             }
-            ImGui::PopID();
+            ImGui::EndMenu();
         }
         ImGui::EndPopup();
     }

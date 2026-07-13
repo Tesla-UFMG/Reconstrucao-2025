@@ -66,6 +66,11 @@ bool TelemetryFile::insertData(const std::vector<double>& newData) {
 
 bool TelemetryFile::insertDate(const std::string& newDate) {
     this->date.push_back(newDate);
+    try {
+        this->numericDate.push_back(std::stod(newDate));
+    } catch (...) {
+        this->numericDate.push_back(0.0);
+    }
     return true;
 }
 
@@ -74,6 +79,7 @@ void TelemetryFile::reserveData(size_t capacity) {
         col.reserve(capacity);
     }
     this->date.reserve(capacity);
+    this->numericDate.reserve(capacity);
 }
 
 void TelemetryFile::insertDataSlice(const std::vector<const std::vector<double>*>& sourceColumns, const std::vector<double>& sourceDates, int endIdx) {
@@ -83,35 +89,50 @@ void TelemetryFile::insertDataSlice(const std::vector<const std::vector<double>*
     }
     
     size_t newSize = static_cast<size_t>(endIdx + 1);
-    
-    // Resize all vectors to newSize
+
+    // Resize all vectors to newSize and copy only the new data slice
     for (size_t i = 0; i < this->data.size(); ++i) {
+        size_t oldSize = this->data[i].size();
+        if (newSize <= oldSize) continue;
+        
         this->data[i].resize(newSize);
         const std::vector<double>* src = (i < sourceColumns.size()) ? sourceColumns[i] : nullptr;
         
         if (src && src->size() >= newSize) {
-            memcpy(this->data[i].data(), src->data(), newSize * sizeof(double));
-        } else if (src && !src->empty()) {
-            size_t srcSize = src->size();
-            memcpy(this->data[i].data(), src->data(), srcSize * sizeof(double));
-            std::fill(this->data[i].begin() + srcSize, this->data[i].end(), 0.0);
+            memcpy(this->data[i].data() + oldSize, src->data() + oldSize, (newSize - oldSize) * sizeof(double));
+        } else if (src && src->size() > oldSize) {
+            size_t copySize = src->size() - oldSize;
+            memcpy(this->data[i].data() + oldSize, src->data() + oldSize, copySize * sizeof(double));
+            std::fill(this->data[i].begin() + src->size(), this->data[i].end(), 0.0);
         } else {
-            std::fill(this->data[i].begin(), this->data[i].end(), 0.0);
+            std::fill(this->data[i].begin() + oldSize, this->data[i].end(), 0.0);
         }
     }
     
     // Handle dates
     size_t oldDateSize = this->date.size();
+    if (newSize <= oldDateSize) return;
+
     this->date.resize(newSize);
+    this->numericDate.resize(newSize);
     
     // Only convert NEW dates to strings to save massive CPU time
     if (sourceDates.size() >= newSize) {
+        memcpy(this->numericDate.data() + oldDateSize, sourceDates.data() + oldDateSize, (newSize - oldDateSize) * sizeof(double));
         for (size_t i = oldDateSize; i < newSize; ++i) {
             this->date[i] = std::to_string(sourceDates[i]);
         }
     } else {
-        for (size_t i = oldDateSize; i < newSize; ++i) {
+        size_t copySize = (sourceDates.size() > oldDateSize) ? (sourceDates.size() - oldDateSize) : 0;
+        if (copySize > 0) {
+            memcpy(this->numericDate.data() + oldDateSize, sourceDates.data() + oldDateSize, copySize * sizeof(double));
+            for (size_t i = oldDateSize; i < oldDateSize + copySize; ++i) {
+                this->date[i] = std::to_string(sourceDates[i]);
+            }
+        }
+        for (size_t i = oldDateSize + copySize; i < newSize; ++i) {
             this->date[i] = std::to_string(i);
+            this->numericDate[i] = static_cast<double>(i);
         }
     }
 }
@@ -120,6 +141,7 @@ const std::string&                      TelemetryFile::getPacketId() const { ret
 const std::vector<std::string>&         TelemetryFile::getColumnNames() const { return this->columnNames; }
 const std::vector<std::vector<double>>& TelemetryFile::getData() const { return this->data; }
 const std::vector<std::string>& TelemetryFile::getDate() const { return this->date; }
+const std::vector<double>& TelemetryFile::getNumericDate() const { return this->numericDate; }
 
 const std::vector<double>& TelemetryFile::getColumnData(const std::string& columnName) const {
     static const std::vector<double> emptyVec{};
@@ -154,6 +176,7 @@ void TelemetryFile::clearData() {
     this->data.clear();
     this->data.resize(this->columnNames.size());
     this->date.clear();
+    this->numericDate.clear();
 }
 
 // TEXT FILE
@@ -176,9 +199,18 @@ TextFile::TextFile(std::filesystem::path filepath, const std::vector<std::string
     : GenericFile(std::move(filepath)), dates(dates), data(data), columnNames(columnNames) {
     this->fileType = "Text";
     this->name     = this->filepath.filename().string();
+    this->numericDates.reserve(dates.size());
+    for (const auto& d : dates) {
+        try {
+            this->numericDates.push_back(std::stod(d));
+        } catch (...) {
+            this->numericDates.push_back(0.0);
+        }
+    }
 }
 
 const std::vector<std::string>& TextFile::getDates() const { return this->dates; }
+const std::vector<double>& TextFile::getNumericDates() const { return this->numericDates; }
 const std::vector<std::vector<std::string>>& TextFile::getData() const { return this->data; }
 
 const std::vector<std::string>& TextFile::getComments() const {
@@ -191,6 +223,11 @@ const std::vector<std::string>& TextFile::getColumnNames() const { return this->
 
 void TextFile::addRow(const std::string& date, const std::vector<std::string>& rowData) {
     this->dates.push_back(date);
+    try {
+        this->numericDates.push_back(std::stod(date));
+    } catch (...) {
+        this->numericDates.push_back(0.0);
+    }
     for (size_t i = 0; i < this->columnNames.size(); ++i) {
         if (i < rowData.size()) {
             this->data[i].push_back(rowData[i]);
@@ -206,6 +243,7 @@ void TextFile::addComment(const std::string& date, const std::string& comment) {
 
 void TextFile::clear() {
     this->dates.clear();
+    this->numericDates.clear();
     for (auto& col : this->data) {
         col.clear();
     }

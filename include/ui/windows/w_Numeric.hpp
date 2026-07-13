@@ -89,7 +89,9 @@ namespace Window {
             double m_gradMinVal = 20.0;
             double m_gradMaxVal = 80.0;
             float m_gradMinColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // Blue
-            float m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // Red
+            float m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // kept for serialization compat
+            int m_colormap = 0; // ImPlotColormap
+            bool m_reverseColormap = false;
 
             float m_fontScale = 1.0f;
             bool m_showColumnName = true;

@@ -7,23 +7,41 @@ Window::Numeric::Numeric(const std::string& title) : IWindow() {
     this->setupVisibility(&this->m_isOpen);
 
     // Default color threshold configurations
-    m_confLL.enabled = false;
-    m_confL.enabled = false;
+    m_confLL.enabled     = false;
+    m_confL.enabled      = false;
     m_confNormal.enabled = false;
-    m_confH.enabled = false;
-    m_confHH.enabled = false;
+    m_confH.enabled      = false;
+    m_confHH.enabled     = false;
 
     // Solid default colors for warnings to avoid invisible/transparent bug
-    m_confLL.bg[0] = 0.7f; m_confLL.bg[1] = 0.1f; m_confLL.bg[2] = 0.1f; m_confLL.bg[3] = 1.0f; // Solid Dark Red
-    m_confL.bg[0]  = 0.7f; m_confL.bg[1]  = 0.4f; m_confL.bg[2]  = 0.0f; m_confL.bg[3]  = 1.0f; // Solid Orange
-    m_confH.bg[0]  = 0.7f; m_confH.bg[1]  = 0.4f; m_confH.bg[2]  = 0.0f; m_confH.bg[3]  = 1.0f; // Solid Orange
-    m_confHH.bg[0] = 0.7f; m_confHH.bg[1] = 0.1f; m_confHH.bg[2] = 0.1f; m_confHH.bg[3] = 1.0f; // Solid Dark Red
+    m_confLL.bg[0] = 0.7f;
+    m_confLL.bg[1] = 0.1f;
+    m_confLL.bg[2] = 0.1f;
+    m_confLL.bg[3] = 1.0f; // Solid Dark Red
+    m_confL.bg[0]  = 0.7f;
+    m_confL.bg[1]  = 0.4f;
+    m_confL.bg[2]  = 0.0f;
+    m_confL.bg[3]  = 1.0f; // Solid Orange
+    m_confH.bg[0]  = 0.7f;
+    m_confH.bg[1]  = 0.4f;
+    m_confH.bg[2]  = 0.0f;
+    m_confH.bg[3]  = 1.0f; // Solid Orange
+    m_confHH.bg[0] = 0.7f;
+    m_confHH.bg[1] = 0.1f;
+    m_confHH.bg[2] = 0.1f;
+    m_confHH.bg[3] = 1.0f; // Solid Dark Red
 
     // Normal safe zone defaults to transparent background (default panel style) and white text
-    m_confNormal.bg[0] = 0.0f; m_confNormal.bg[1] = 0.0f; m_confNormal.bg[2] = 0.0f; m_confNormal.bg[3] = 0.0f;
-    m_confNormal.fg[0] = 1.0f; m_confNormal.fg[1] = 1.0f; m_confNormal.fg[2] = 1.0f; m_confNormal.fg[3] = 1.0f;
+    m_confNormal.bg[0] = 0.0f;
+    m_confNormal.bg[1] = 0.0f;
+    m_confNormal.bg[2] = 0.0f;
+    m_confNormal.bg[3] = 0.0f;
+    m_confNormal.fg[0] = 1.0f;
+    m_confNormal.fg[1] = 1.0f;
+    m_confNormal.fg[2] = 1.0f;
+    m_confNormal.fg[3] = 1.0f;
 
-    m_fontScale = 1.0f;
+    m_fontScale      = 1.0f;
     m_showColumnName = true;
     memset(m_stripPattern, 0, sizeof(m_stripPattern));
     memset(m_customLabel, 0, sizeof(m_customLabel));
@@ -34,9 +52,9 @@ void Window::Numeric::render() {
         return;
 
     // Calculate value and styling overrides before ImGui::Begin so background color applies correctly
-    double val = 0.0;
-    bool hasVal = false;
-    std::string hoveredColumnName = "";
+    double      val                = 0.0;
+    bool        hasVal             = false;
+    std::string hoveredColumnName  = "";
     std::string hoveredArchiveName = "";
 
     bool anyData = false;
@@ -53,7 +71,7 @@ void Window::Numeric::render() {
             bool found = false;
             for (auto it = m_loadedColumns.rbegin(); it != m_loadedColumns.rend(); ++it) {
                 if (it->data && !it->data->empty()) {
-                    val = it->data->back();
+                    val   = it->data->back();
                     found = true;
                     break;
                 }
@@ -64,41 +82,41 @@ void Window::Numeric::render() {
         } else {
             if (m_statModeAll) {
                 if (m_currentMetric == MetricType::MIN) {
-                    double minVal = std::numeric_limits<double>::max();
-                    std::string bestCol = "";
+                    double      minVal   = std::numeric_limits<double>::max();
+                    std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
                             double colMin = *std::min_element(col.data->begin(), col.data->end());
                             if (colMin < minVal) {
-                                minVal = colMin;
-                                bestCol = col.column;
+                                minVal   = colMin;
+                                bestCol  = col.column;
                                 bestArch = col.archive;
                             }
                         }
                     }
-                    val = minVal;
-                    hoveredColumnName = bestCol;
+                    val                = minVal;
+                    hoveredColumnName  = bestCol;
                     hoveredArchiveName = bestArch;
                 } else if (m_currentMetric == MetricType::MAX) {
-                    double maxVal = -std::numeric_limits<double>::max();
-                    std::string bestCol = "";
+                    double      maxVal   = -std::numeric_limits<double>::max();
+                    std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
                             double colMax = *std::max_element(col.data->begin(), col.data->end());
                             if (colMax > maxVal) {
-                                maxVal = colMax;
-                                bestCol = col.column;
+                                maxVal   = colMax;
+                                bestCol  = col.column;
                                 bestArch = col.archive;
                             }
                         }
                     }
-                    val = maxVal;
-                    hoveredColumnName = bestCol;
+                    val                = maxVal;
+                    hoveredColumnName  = bestCol;
                     hoveredArchiveName = bestArch;
                 } else if (m_currentMetric == MetricType::AVERAGE) {
-                    double sum = 0.0;
+                    double sum   = 0.0;
                     size_t count = 0;
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
@@ -112,45 +130,45 @@ void Window::Numeric::render() {
                 }
             } else {
                 if (m_currentMetric == MetricType::MIN) {
-                    double minVal = std::numeric_limits<double>::max();
-                    std::string bestCol = "";
+                    double      minVal   = std::numeric_limits<double>::max();
+                    std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
                             double lastVal = col.data->back();
                             if (lastVal < minVal) {
-                                minVal = lastVal;
-                                bestCol = col.column;
+                                minVal   = lastVal;
+                                bestCol  = col.column;
                                 bestArch = col.archive;
                             }
                         }
                     }
                     if (minVal != std::numeric_limits<double>::max()) {
-                        val = minVal;
-                        hoveredColumnName = bestCol;
+                        val                = minVal;
+                        hoveredColumnName  = bestCol;
                         hoveredArchiveName = bestArch;
                     }
                 } else if (m_currentMetric == MetricType::MAX) {
-                    double maxVal = -std::numeric_limits<double>::max();
-                    std::string bestCol = "";
+                    double      maxVal   = -std::numeric_limits<double>::max();
+                    std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
                             double lastVal = col.data->back();
                             if (lastVal > maxVal) {
-                                maxVal = lastVal;
-                                bestCol = col.column;
+                                maxVal   = lastVal;
+                                bestCol  = col.column;
                                 bestArch = col.archive;
                             }
                         }
                     }
                     if (maxVal != -std::numeric_limits<double>::max()) {
-                        val = maxVal;
-                        hoveredColumnName = bestCol;
+                        val                = maxVal;
+                        hoveredColumnName  = bestCol;
                         hoveredArchiveName = bestArch;
                     }
                 } else if (m_currentMetric == MetricType::AVERAGE) {
-                    double sum = 0.0;
+                    double sum   = 0.0;
                     size_t count = 0;
                     for (const auto& col : m_loadedColumns) {
                         if (col.data && !col.data->empty()) {
@@ -166,10 +184,10 @@ void Window::Numeric::render() {
 
     double computedVal = m_useFormula ? (val * m_multiplier + m_offset) : val;
 
-    float* targetBg = nullptr;
-    float* targetFg = nullptr;
-    float interpolatedBg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
-    float interpolatedFg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float* targetBg          = nullptr;
+    float* targetFg          = nullptr;
+    float  interpolatedBg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
+    float  interpolatedFg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
     if (hasVal && m_colorMode > 0) {
         if (m_colorMode == 1) {
@@ -197,22 +215,49 @@ void Window::Numeric::render() {
                     break;
                 }
             }
-        } else if (m_colorMode == 3) {
+        } else if (m_colorMode == 3 || m_colorMode == 4) {
             double t = 0.0;
             if (m_gradMaxVal > m_gradMinVal) {
                 t = (computedVal - m_gradMinVal) / (m_gradMaxVal - m_gradMinVal);
-                if (t < 0.0) t = 0.0;
-                if (t > 1.0) t = 1.0;
+                if (t < 0.0)
+                    t = 0.0;
+                if (t > 1.0)
+                    t = 1.0;
             }
-            interpolatedBg[0] = m_gradMinColor[0] * (1.0f - t) + m_gradMaxColor[0] * t;
-            interpolatedBg[1] = m_gradMinColor[1] * (1.0f - t) + m_gradMaxColor[1] * t;
-            interpolatedBg[2] = m_gradMinColor[2] * (1.0f - t) + m_gradMaxColor[2] * t;
-            interpolatedBg[3] = m_gradMinColor[3] * (1.0f - t) + m_gradMaxColor[3] * t;
+            if (m_colorMode == 3) {
+                double sampleT    = m_reverseColormap ? (1.0 - t) : t;
+                ImVec4 col        = ImPlot::SampleColormap((float)sampleT, m_colormap);
+                interpolatedBg[0] = col.x;
+                interpolatedBg[1] = col.y;
+                interpolatedBg[2] = col.z;
+                interpolatedBg[3] = col.w;
+            } else {
+                interpolatedBg[0] = m_gradMinColor[0] * (1.0f - t) + m_gradMaxColor[0] * t;
+                interpolatedBg[1] = m_gradMinColor[1] * (1.0f - t) + m_gradMaxColor[1] * t;
+                interpolatedBg[2] = m_gradMinColor[2] * (1.0f - t) + m_gradMaxColor[2] * t;
+                interpolatedBg[3] = m_gradMinColor[3] * (1.0f - t) + m_gradMaxColor[3] * t;
+            }
             targetBg = interpolatedBg;
+        }
+
+        if (m_colorMode == 3 || m_colorMode == 4) {
+            float luminance = 0.299f * targetBg[0] + 0.587f * targetBg[1] + 0.114f * targetBg[2];
+            if (luminance > 0.5f) {
+                interpolatedFg[0] = 0.0f;
+                interpolatedFg[1] = 0.0f;
+                interpolatedFg[2] = 0.0f;
+                interpolatedFg[3] = 1.0f;
+            } else {
+                interpolatedFg[0] = 1.0f;
+                interpolatedFg[1] = 1.0f;
+                interpolatedFg[2] = 1.0f;
+                interpolatedFg[3] = 1.0f;
+            }
             targetFg = interpolatedFg;
         }
     }
 
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
     // Begin a full-screen child window that natively holds the content
@@ -220,11 +265,11 @@ void Window::Numeric::render() {
 
     // Custom background drawing directly into child window draw list (fully covering the child area)
     if (targetBg && targetBg[3] > 0.01f) {
-        ImU32 bgColor = ImGui::ColorConvertFloat4ToU32(ImVec4(targetBg[0], targetBg[1], targetBg[2], targetBg[3]));
-        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImU32  bgColor    = ImGui::ColorConvertFloat4ToU32(ImVec4(targetBg[0], targetBg[1], targetBg[2], targetBg[3]));
+        ImVec2 windowPos  = ImGui::GetWindowPos();
         ImVec2 windowSize = ImGui::GetWindowSize();
-        ImVec2 rectMin = windowPos;
-        ImVec2 rectMax = ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y);
+        ImVec2 rectMin    = windowPos;
+        ImVec2 rectMax    = ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y);
         ImGui::GetWindowDrawList()->AddRectFilled(rectMin, rectMax, bgColor, ImGui::GetStyle().WindowRounding);
     }
 
@@ -236,7 +281,7 @@ void Window::Numeric::render() {
 
     // Menu de contexto no clique com o botão direito (organizado em submenus estilo Windows)
     if (ImGui::BeginPopupContextWindow()) {
-        
+
         // 1. Submenu: Dados & Exibição
         if (ImGui::BeginMenu("Dados & Exibição")) {
             if (m_loadedColumns.empty()) {
@@ -293,27 +338,27 @@ void Window::Numeric::render() {
             ImGui::EndMenu();
         }
 
-
         // 3. Submenu: Textos
         if (ImGui::BeginMenu("Textos")) {
             ImGui::PushItemWidth(150.0f);
-            
-            // Sufixo
+
+            // Prefixo / Sufixo
+            ImGui::InputText("Prefixo", m_prefix, sizeof(m_prefix));
             ImGui::InputText("Sufixo", m_suffix, sizeof(m_suffix));
-            
+
             ImGui::Separator();
-            
+
             // Rótulo Personalizado e Exibição do Nome
             ImGui::Checkbox("Exibir Nome da Coluna", &m_showColumnName);
             if (m_showColumnName) {
                 ImGui::InputText("Rótulo Personalizado", m_customLabel, sizeof(m_customLabel));
             }
-            
+
             ImGui::Separator();
-            
+
             // Tamanho / Escala do Texto
             ImGui::SliderFloat("Escala do Texto", &m_fontScale, 0.5f, 5.0f, "%.1fx");
-            
+
             ImGui::PushItemWidth(120.0f); // Restore default push width style
             ImGui::PopItemWidth();
             ImGui::EndMenu();
@@ -374,16 +419,21 @@ void Window::Numeric::render() {
             ImGui::RadioButton("Nenhuma", &m_colorMode, 0);
             ImGui::RadioButton("Por Faixas (L, LL, H, HH)", &m_colorMode, 1);
             ImGui::RadioButton("Valores Específicos", &m_colorMode, 2);
-            ImGui::RadioButton("Gradiente Dinâmico", &m_colorMode, 3);
+            ImGui::RadioButton("Gradiente", &m_colorMode, 3);
+            ImGui::RadioButton("Gradiente Manual", &m_colorMode, 4);
 
             if (m_colorMode == 1) {
                 ImGui::Separator();
-                auto renderThresholdConf = [](const char* label, double* thresh, ColorThresholdConfig& conf, bool hasThresh = true) {
+                auto renderThresholdConf = [](const char* label, double* thresh, ColorThresholdConfig& conf,
+                                              bool hasThresh = true) {
                     ImGui::PushID(label);
                     ImGui::Checkbox("Habilitar", &conf.enabled);
                     if (conf.enabled) {
                         if (conf.bg[3] < 0.01f) {
-                            conf.bg[0] = 0.15f; conf.bg[1] = 0.15f; conf.bg[2] = 0.15f; conf.bg[3] = 1.0f;
+                            conf.bg[0] = 0.15f;
+                            conf.bg[1] = 0.15f;
+                            conf.bg[2] = 0.15f;
+                            conf.bg[3] = 1.0f;
                         }
                         if (hasThresh && thresh) {
                             ImGui::PushItemWidth(100.0f);
@@ -392,9 +442,11 @@ void Window::Numeric::render() {
                         } else {
                             ImGui::TextUnformatted(label);
                         }
-                        ImGui::ColorEdit4("Bg##col", conf.bg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                        ImGui::ColorEdit4("Bg##col", conf.bg,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                         ImGui::SameLine();
-                        ImGui::ColorEdit4("Fg##col", conf.fg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                        ImGui::ColorEdit4("Fg##col", conf.fg,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                     } else {
                         ImGui::TextDisabled("%s (Desativado)", label);
                     }
@@ -416,9 +468,11 @@ void Window::Numeric::render() {
                     ImGui::InputDouble("##val", &m_specificRules[i].value, 0.0, 0.0, "%.2f");
                     ImGui::PopItemWidth();
                     ImGui::SameLine();
-                    ImGui::ColorEdit4("Bg##col", m_specificRules[i].bg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                    ImGui::ColorEdit4("Bg##col", m_specificRules[i].bg,
+                                      ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                     ImGui::SameLine();
-                    ImGui::ColorEdit4("Fg##col", m_specificRules[i].fg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                    ImGui::ColorEdit4("Fg##col", m_specificRules[i].fg,
+                                      ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                     ImGui::SameLine();
                     if (ImGui::Button("X##del")) {
                         m_specificRules.erase(m_specificRules.begin() + i);
@@ -428,20 +482,43 @@ void Window::Numeric::render() {
                     ImGui::PopID();
                 }
                 if (ImGui::Button("Adicionar Regra")) {
-                    m_specificRules.push_back({0.0, {0.15f, 0.15f, 0.15f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}});
+                    m_specificRules.push_back({
+                        0.0, {0.15f, 0.15f, 0.15f, 1.0f},
+                         {1.0f,  1.0f,  1.0f,  1.0f}
+                    });
                 }
-            } else if (m_colorMode == 3) {
+            } else if (m_colorMode == 3 || m_colorMode == 4) {
                 ImGui::Separator();
                 ImGui::Text("Limites do Gradiente:");
                 ImGui::PushItemWidth(120.0f);
-                ImGui::InputDouble("Valor Mínimo##num", &m_gradMinVal, 0.1, 1.0, "%.2f");
-                ImGui::SameLine();
-                ImGui::ColorEdit4("##gradMinColor_num", m_gradMinColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
-                
-                ImGui::InputDouble("Valor Máximo##num", &m_gradMaxVal, 0.1, 1.0, "%.2f");
-                ImGui::SameLine();
-                ImGui::ColorEdit4("##gradMaxColor_num", m_gradMaxColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                ImGui::InputDouble("Min Val", &m_gradMinVal);
+                ImGui::InputDouble("Max Val", &m_gradMaxVal);
                 ImGui::PopItemWidth();
+
+                if (m_colorMode == 3) {
+                    ImGui::Separator();
+                    ImGui::Text("Mapa de Cores (ImPlot):");
+                    if (ImPlot::ColormapButton(ImPlot::GetColormapName(m_colormap), ImVec2(225, 0), m_colormap)) {
+                        m_colormap = (m_colormap + 1) % ImPlot::GetColormapCount();
+                        ImPlot::BustItemCache();
+                    }
+                    ImGui::SetNextItemWidth(225.0f);
+                    ImPlotColormap prev_cmap    = ImPlot::GetStyle().Colormap;
+                    ImPlot::GetStyle().Colormap = m_colormap;
+                    if (ImPlot::ShowColormapSelector("##colormap_numeric")) {
+                        m_colormap = ImPlot::GetStyle().Colormap;
+                        ImPlot::BustItemCache();
+                    }
+                    ImPlot::GetStyle().Colormap = prev_cmap;
+                    ImGui::Checkbox("Inverter Cores", &m_reverseColormap);
+                } else {
+                    ImGui::Separator();
+                    ImGui::Text("Cores (Manual):");
+                    ImGui::ColorEdit4("Cor Min##num", m_gradMinColor,
+                                      ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                    ImGui::ColorEdit4("Cor Max##num", m_gradMaxColor,
+                                      ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                }
             }
             ImGui::EndMenu();
         }
@@ -453,12 +530,12 @@ void Window::Numeric::render() {
 
     if (!m_hasData || m_loadedColumns.empty()) {
         // Exibe mensagem centralizada pedindo drag and drop
-        std::string placeholder = "(Arraste colunas de dados aqui)";
-        ImVec2      textSize    = ImGui::CalcTextSize(placeholder.c_str());
-        textSize.x             *= m_fontScale;
-        textSize.y             *= m_fontScale;
-        float       x           = ImGui::GetWindowContentRegionMin().x + (avail.x - textSize.x) * 0.5f;
-        float       y           = ImGui::GetWindowContentRegionMin().y + (avail.y - textSize.y) * 0.5f;
+        std::string placeholder  = "(Arraste colunas de dados aqui)";
+        ImVec2      textSize     = ImGui::CalcTextSize(placeholder.c_str());
+        textSize.x              *= m_fontScale;
+        textSize.y              *= m_fontScale;
+        float x                  = ImGui::GetWindowContentRegionMin().x + (avail.x - textSize.x) * 0.5f;
+        float y                  = ImGui::GetWindowContentRegionMin().y + (avail.y - textSize.y) * 0.5f;
         ImGui::SetCursorPos(ImVec2(x, y));
         ImGui::SetWindowFontScale(m_fontScale);
         ImGui::TextDisabled("%s", placeholder.c_str());
@@ -488,12 +565,12 @@ void Window::Numeric::render() {
         }
 
         // Apply translations
-        std::string valStr = "";
-        bool translated = false;
+        std::string valStr     = "";
+        bool        translated = false;
         if (m_useTranslation) {
             for (const auto& rule : m_translationRules) {
                 if (std::abs(rule.value - computedVal) < 1e-5) {
-                    valStr = rule.text;
+                    valStr     = rule.text;
                     translated = true;
                     break;
                 }
@@ -506,7 +583,7 @@ void Window::Numeric::render() {
             valStr = valTextBuf;
         }
 
-        std::string finalValText = valStr + std::string(m_suffix);
+        std::string finalValText = std::string(m_prefix) + valStr + std::string(m_suffix);
 
         // 1. Mostrar o nome da coluna no topo centralizado
         float colTextWidth = ImGui::CalcTextSize(colName.c_str()).x * m_fontScale;
@@ -538,13 +615,12 @@ void Window::Numeric::render() {
             ImGui::TextUnformatted(colName.c_str());
 
             // Renderiza o valor numérico abaixo
-            ImGui::SetCursorPos(
-                ImVec2(localStartX + std::max(0.0f, (avail.x - valTextWidth) * 0.5f), startY + textHeight + 5.0f * m_fontScale));
+            ImGui::SetCursorPos(ImVec2(localStartX + std::max(0.0f, (avail.x - valTextWidth) * 0.5f),
+                                       startY + textHeight + 5.0f * m_fontScale));
             ImGui::TextUnformatted(finalValText.c_str());
         } else {
             // Renderiza apenas o valor numérico centralizado
-            ImGui::SetCursorPos(
-                ImVec2(localStartX + std::max(0.0f, (avail.x - valTextWidth) * 0.5f), startY));
+            ImGui::SetCursorPos(ImVec2(localStartX + std::max(0.0f, (avail.x - valTextWidth) * 0.5f), startY));
             ImGui::TextUnformatted(finalValText.c_str());
         }
 
@@ -584,11 +660,10 @@ void Window::Numeric::processColumnDragDrop() {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
             const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
             this->addColumn(columnPayload->fileType, columnPayload->fileName, columnPayload->columnName);
-        }
-        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
+        } else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
             const ArchivePayload* archivePayload = reinterpret_cast<const ArchivePayload*>(payload->Data);
-            std::string fileType = archivePayload->fileType;
-            std::string fileName = archivePayload->fileName;
+            std::string           fileType       = archivePayload->fileType;
+            std::string           fileName       = archivePayload->fileName;
 
             if (fileType == "CSV") {
                 const auto& csvFiles = DB::getInstance().getProject().getCSVFiles();
@@ -642,5 +717,3 @@ void Window::Numeric::addColumn(const std::string& fileType, const std::string& 
         LOG("ERROR", "[Numérico] Falha ao carregar dados da coluna '" + columnName + "' de '" + fileName + "'.");
     }
 }
-
-

@@ -34,6 +34,7 @@ void Window::Warning::render() {
     if (!this->isOpen || !*this->isOpen)
         return;
 
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
     // Get loaded files

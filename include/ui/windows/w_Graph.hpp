@@ -31,7 +31,7 @@ namespace Window {
 
         private:
             void processColumnDragDrop();
-            void drawLegendPopup();
+            void drawContextMenu();
             void renderGraphPlot();
 
             bool     m_isOpen = true;

@@ -37,6 +37,9 @@ namespace Window {
             explicit Reconstruction(bool* isOpen = nullptr);
             virtual ~Reconstruction();
             virtual void render() override;
+            void drawMenuBar();
+            bool m_followTheEnd = false;
+            int  m_numPointsToShow = 1000;
 
             bool isLoaded() const;
 
@@ -84,6 +87,9 @@ namespace Window {
             bool                     m_autoFitGradient = true;
             float                    m_gradMinColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // Blue
             float                    m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // Red
+            int                      m_colorMode = 1; // 1 = ImPlot, 2 = Manual
+            int                      m_colormap = 0;
+            bool                     m_reverseColormap = false;
 
             // Georeferenced camera center variables (continuous camera target)
             double                   m_centerLat = 0.0;
@@ -95,8 +101,8 @@ namespace Window {
             double                   m_trackOffsetLon = 0.0;
 
             // Track style colors (RGBA) - Coordinated Premium Green Scale Palette
-            float                   m_colorLine[4] = {0.0f, 0.7f, 0.2f, 0.8f};       // Forest green
-            float                   m_colorPoint[4] = {0.2f, 0.9f, 0.4f, 1.0f};      // Mint green
+            float                   m_colorLine[4] = {0.0f, 0.7f, 0.2f, 0.0f};  // Transparent
+            float                   m_colorPoint[4] = {0.2f, 0.9f, 0.4f, 1.0f}; // Mint green
             float                   m_colorLastPoint[4] = {0.7f, 1.0f, 0.0f, 1.0f};  // Neon lime green
 
             void centerOnTrack();

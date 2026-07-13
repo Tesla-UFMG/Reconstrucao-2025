@@ -10,6 +10,7 @@ void Window::Pedal::render() {
         return;
     }
 
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
     // --- Definir a área inteira da janela como Drag and Drop Target ---

@@ -100,6 +100,7 @@ struct GraphData {
         std::string                fileName;         // Nome do arquivo que contém a coluna
         std::string                fileType;         // Tipo do arquivo (CSV ou Telemetry)
         double                     multiplier = 1.0; // Multiplicador para os valores de Y
+        double                     offset     = 0.0; // Soma (B) para os valores de Y
         std::vector<double>        x;                // Valores de X
         const std::vector<double>* y = nullptr;      // Valores de Y (legado, prefira getYData())
 
@@ -119,6 +120,7 @@ struct GraphData {
         size_t                     lastYSize = 0;
         size_t                     lastAxisLength = 0;
         double                     lastMultiplier = 1.0;
+        double                     lastOffset = 0.0;
         bool                       lastUseCustomX = false;
         XYAlignmentMode            lastAlignmentMode = ALIGN_LINEAR_INTERPOLATION;
         std::string                lastCustomXColumn;
@@ -128,13 +130,13 @@ struct GraphData {
 
         void buildMultipliedY() {
             const std::vector<double>& rawY = getYData();
-            if (multiplier == 1.0) return;
-            
+            if (multiplier == 1.0 && offset == 0.0) return;
+
             size_t newSize = rawY.size();
             size_t oldSize = multipliedY.size();
-            
-            // Force full rebuild if multiplier changed
-            if (lastMultiplier != multiplier) {
+
+            // Force full rebuild if multiplier or offset changed
+            if (lastMultiplier != multiplier || lastOffset != offset) {
                 multipliedY.clear();
                 oldSize = 0;
             }
@@ -142,7 +144,7 @@ struct GraphData {
             if (oldSize < newSize) {
                 multipliedY.reserve(newSize);
                 for (size_t i = oldSize; i < newSize; ++i) {
-                    multipliedY.push_back(rawY[i] * multiplier);
+                    multipliedY.push_back(rawY[i] * multiplier + offset);
                 }
             } else if (oldSize > newSize) {
                 multipliedY.resize(newSize);
@@ -174,6 +176,7 @@ struct GraphConfig {
         bool        autoFit          = true;       // Ajustar automaticamente os eixos
         bool        showValueOnYAxis = true;       // Mostra os valores no nome da coluna
         bool        showCursorOnYAxis = true;      // Mostra o cursor no eixo Y
+        int         colormap         = -1;         // -1 para usar o colormap global, senao usar especifico
         std::string xColumn;
         XYAlignmentMode xyAlignmentMode = ALIGN_LINEAR_INTERPOLATION;
 };

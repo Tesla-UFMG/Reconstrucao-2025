@@ -49,7 +49,8 @@ class TelemetryFile : public GenericFile {
         std::string                      packetId;
         std::vector<std::string>         columnNames;
         std::vector<std::vector<double>> data;
-        std::vector<std::string> date;
+        std::vector<std::string>         date;
+        std::vector<double>              numericDate;
 
     public:
         TelemetryFile(const std::string& packetName, const std::string& packetId,
@@ -59,30 +60,35 @@ class TelemetryFile : public GenericFile {
         const std::vector<std::vector<double>>& getData() const;
         const std::vector<double>&              getColumnData(const std::string& columnName) const;
         const std::vector<std::string>&         getDate() const;
+        const std::vector<double>&              getNumericDate() const;
         bool                                    insertData(const std::vector<double>& newData);
-        bool insertDate(const std::string& newDate);
+        bool                                    insertDate(const std::string& newDate);
         void                                    reserveData(size_t capacity);
-        void                                    insertDataSlice(const std::vector<const std::vector<double>*>& sourceColumns, const std::vector<double>& sourceDates, int endIdx);
-        void                                    setName(const std::string& newName);
-        void                                    setPacketId(const std::string& newPacketId);
-        void                                    setColumnNames(const std::vector<std::string>& newCols);
-        void                                    clearData();
-    };
+        void insertDataSlice(const std::vector<const std::vector<double>*>& sourceColumns,
+                             const std::vector<double>& sourceDates, int endIdx);
+        void setName(const std::string& newName);
+        void setPacketId(const std::string& newPacketId);
+        void setColumnNames(const std::vector<std::string>& newCols);
+        void clearData();
+};
 
 class TextFile : public GenericFile {
     private:
-        std::vector<std::string> dates;
+        std::vector<std::string>              dates;
+        std::vector<double>                   numericDates;
         std::vector<std::vector<std::string>> data;
-        std::vector<std::string> columnNames;
+        std::vector<std::string>              columnNames;
 
     public:
         TextFile(std::filesystem::path filepath);
         TextFile(std::filesystem::path filepath, const std::vector<std::string>& columnNames);
-        TextFile(std::filesystem::path filepath, const std::vector<std::string>& columnNames, const std::vector<std::string>& dates, const std::vector<std::vector<std::string>>& data);
-        const std::vector<std::string>& getDates() const;
+        TextFile(std::filesystem::path filepath, const std::vector<std::string>& columnNames,
+                 const std::vector<std::string>& dates, const std::vector<std::vector<std::string>>& data);
+        const std::vector<std::string>&              getDates() const;
+        const std::vector<double>&                   getNumericDates() const;
         const std::vector<std::vector<std::string>>& getData() const;
-        const std::vector<std::string>& getComments() const;
-        const std::vector<std::string>& getColumnNames() const;
+        const std::vector<std::string>&              getComments() const;
+        const std::vector<std::string>&              getColumnNames() const;
         void addRow(const std::string& date, const std::vector<std::string>& rowData);
         void addComment(const std::string& date, const std::string& comment);
         void clear();

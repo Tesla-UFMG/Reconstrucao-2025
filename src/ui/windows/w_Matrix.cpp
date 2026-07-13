@@ -11,27 +11,45 @@ Window::Matrix::Matrix(const std::string& title) : IWindow() {
     this->isOpen = &m_isOpen;
 
     // Solid default colors for safe/warning zones
-    m_confLL.enabled = false;
-    m_confL.enabled = false;
+    m_confLL.enabled     = false;
+    m_confL.enabled      = false;
     m_confNormal.enabled = false;
-    m_confH.enabled = false;
-    m_confHH.enabled = false;
+    m_confH.enabled      = false;
+    m_confHH.enabled     = false;
 
-    m_confLL.bg[0] = 0.7f; m_confLL.bg[1] = 0.1f; m_confLL.bg[2] = 0.1f; m_confLL.bg[3] = 1.0f; // Solid Dark Red
-    m_confL.bg[0]  = 0.7f; m_confL.bg[1]  = 0.4f; m_confL.bg[2]  = 0.0f; m_confL.bg[3]  = 1.0f; // Solid Orange
-    m_confH.bg[0]  = 0.7f; m_confH.bg[1]  = 0.4f; m_confH.bg[2]  = 0.0f; m_confH.bg[3]  = 1.0f; // Solid Orange
-    m_confHH.bg[0] = 0.7f; m_confHH.bg[1] = 0.1f; m_confHH.bg[2] = 0.1f; m_confHH.bg[3] = 1.0f; // Solid Dark Red
+    m_confLL.bg[0] = 0.7f;
+    m_confLL.bg[1] = 0.1f;
+    m_confLL.bg[2] = 0.1f;
+    m_confLL.bg[3] = 1.0f; // Solid Dark Red
+    m_confL.bg[0]  = 0.7f;
+    m_confL.bg[1]  = 0.4f;
+    m_confL.bg[2]  = 0.0f;
+    m_confL.bg[3]  = 1.0f; // Solid Orange
+    m_confH.bg[0]  = 0.7f;
+    m_confH.bg[1]  = 0.4f;
+    m_confH.bg[2]  = 0.0f;
+    m_confH.bg[3]  = 1.0f; // Solid Orange
+    m_confHH.bg[0] = 0.7f;
+    m_confHH.bg[1] = 0.1f;
+    m_confHH.bg[2] = 0.1f;
+    m_confHH.bg[3] = 1.0f; // Solid Dark Red
 
-    m_confNormal.bg[0] = 0.0f; m_confNormal.bg[1] = 0.0f; m_confNormal.bg[2] = 0.0f; m_confNormal.bg[3] = 0.0f; // Transparent
-    m_confNormal.fg[0] = 1.0f; m_confNormal.fg[1] = 1.0f; m_confNormal.fg[2] = 1.0f; m_confNormal.fg[3] = 1.0f; // White
+    m_confNormal.bg[0] = 0.0f;
+    m_confNormal.bg[1] = 0.0f;
+    m_confNormal.bg[2] = 0.0f;
+    m_confNormal.bg[3] = 0.0f; // Transparent
+    m_confNormal.fg[0] = 1.0f;
+    m_confNormal.fg[1] = 1.0f;
+    m_confNormal.fg[2] = 1.0f;
+    m_confNormal.fg[3] = 1.0f; // White
 
-    m_fontScale = 1.0f;
+    m_fontScale        = 1.0f;
     m_showVariableName = true;
 
-    m_suffix[0] = '\0';
-    m_useFormula = false;
-    m_multiplier = 1.0;
-    m_offset = 0.0;
+    m_suffix[0]      = '\0';
+    m_useFormula     = false;
+    m_multiplier     = 1.0;
+    m_offset         = 0.0;
     m_useTranslation = false;
     m_translationRules.clear();
 }
@@ -41,9 +59,9 @@ Window::Matrix::Matrix(const std::string& title) : IWindow() {
 // ─────────────────────────────────────────────
 
 ImVec4 Window::Matrix::getCellColor(double val) const {
-    float bg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
-    const float* targetBg = bg;
-    float interpolatedBg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
+    float        bg[4]             = {0.15f, 0.15f, 0.15f, 1.0f};
+    const float* targetBg          = bg;
+    float        interpolatedBg[4] = {0.15f, 0.15f, 0.15f, 1.0f};
 
     if (m_colorMode > 0) {
         if (m_colorMode == 1) { // Por Faixas
@@ -65,17 +83,28 @@ ImVec4 Window::Matrix::getCellColor(double val) const {
                     break;
                 }
             }
-        } else if (m_colorMode == 3) { // Gradiente Dinâmico
+        } else if (m_colorMode == 3 || m_colorMode == 4) {
             double t = 0.0;
             if (m_maxVal > m_minVal) {
                 t = (val - m_minVal) / (m_maxVal - m_minVal);
-                if (t < 0.0) t = 0.0;
-                if (t > 1.0) t = 1.0;
+                if (t < 0.0)
+                    t = 0.0;
+                if (t > 1.0)
+                    t = 1.0;
             }
-            interpolatedBg[0] = m_minColor[0] * (1.0f - t) + m_maxColor[0] * t;
-            interpolatedBg[1] = m_minColor[1] * (1.0f - t) + m_maxColor[1] * t;
-            interpolatedBg[2] = m_minColor[2] * (1.0f - t) + m_maxColor[2] * t;
-            interpolatedBg[3] = 1.0f;
+            if (m_colorMode == 3) {
+                double sampleT    = m_reverseColormap ? (1.0 - t) : t;
+                ImVec4 col        = ImPlot::SampleColormap((float)sampleT, m_colormap);
+                interpolatedBg[0] = col.x;
+                interpolatedBg[1] = col.y;
+                interpolatedBg[2] = col.z;
+                interpolatedBg[3] = col.w;
+            } else {
+                interpolatedBg[0] = m_minColor[0] * (1.0f - t) + m_maxColor[0] * t;
+                interpolatedBg[1] = m_minColor[1] * (1.0f - t) + m_maxColor[1] * t;
+                interpolatedBg[2] = m_minColor[2] * (1.0f - t) + m_maxColor[2] * t;
+                interpolatedBg[3] = m_minColor[3] * (1.0f - t) + m_maxColor[3] * t;
+            }
             targetBg = interpolatedBg;
         }
     }
@@ -83,7 +112,7 @@ ImVec4 Window::Matrix::getCellColor(double val) const {
 }
 
 ImVec4 Window::Matrix::getCellTextColor(double val) const {
-    float fg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float        fg[4]    = {1.0f, 1.0f, 1.0f, 1.0f};
     const float* targetFg = fg;
 
     if (m_colorMode > 0) {
@@ -116,13 +145,14 @@ ImVec4 Window::Matrix::getCellTextColor(double val) const {
 // ─────────────────────────────────────────────
 
 void Window::Matrix::processDragDrop() {
-    if (!ImGui::BeginDragDropTarget()) return;
+    if (!ImGui::BeginDragDropTarget())
+        return;
 
     // Drop ARCHIVE/ID -> Add column and auto-import all its variables into m_rowVariables
     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
-        const ArchivePayload* ap = reinterpret_cast<const ArchivePayload*>(payload->Data);
-        std::string ft   = ap->fileType;
-        std::string name = ap->fileName;
+        const ArchivePayload* ap   = reinterpret_cast<const ArchivePayload*>(payload->Data);
+        std::string           ft   = ap->fileType;
+        std::string           name = ap->fileName;
 
         if (ft == "Text") {
             ImGui::EndDragDropTarget();
@@ -130,7 +160,7 @@ void Window::Matrix::processDragDrop() {
         }
 
         bool colExists = std::any_of(m_columns.begin(), m_columns.end(),
-            [&](const MatrixColumn& c){ return c.archiveName == name; });
+                                     [&](const MatrixColumn& c) { return c.archiveName == name; });
 
         if (!colExists) {
             MatrixColumn col;
@@ -138,15 +168,21 @@ void Window::Matrix::processDragDrop() {
             col.archiveName = name;
             m_columns.push_back(col);
 
-            auto& project = DB::getInstance().getProject();
+            auto&                    project = DB::getInstance().getProject();
             std::vector<std::string> newVars;
             if (ft == "CSV") {
                 for (const auto& f : project.csvFiles) {
-                    if (f.getName() == name) { newVars = f.getColumnNames(); break; }
+                    if (f.getName() == name) {
+                        newVars = f.getColumnNames();
+                        break;
+                    }
                 }
             } else if (ft == "Telemetry") {
                 for (const auto& f : project.telemetryFiles) {
-                    if (f.getPacketId() == name) { newVars = f.getColumnNames(); break; }
+                    if (f.getPacketId() == name) {
+                        newVars = f.getColumnNames();
+                        break;
+                    }
                 }
             }
 
@@ -160,10 +196,10 @@ void Window::Matrix::processDragDrop() {
     }
     // Drop COLUMN/variable -> Check if it was dropped precisely on a cell, else fallback
     else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-        const ColumnPayload* cp = reinterpret_cast<const ColumnPayload*>(payload->Data);
-        std::string ft   = cp->fileType;
-        std::string name = cp->fileName;
-        std::string var  = cp->columnName;
+        const ColumnPayload* cp   = reinterpret_cast<const ColumnPayload*>(payload->Data);
+        std::string          ft   = cp->fileType;
+        std::string          name = cp->fileName;
+        std::string          var  = cp->columnName;
 
         if (ft == "Text") {
             ImGui::EndDragDropTarget();
@@ -171,12 +207,12 @@ void Window::Matrix::processDragDrop() {
         }
 
         // Try to map to specific cell if hovering plot
-        bool mappedToCell = false;
-        ImVec2 mousePos = ImGui::GetMousePos();
-        
+        bool   mappedToCell = false;
+        ImVec2 mousePos     = ImGui::GetMousePos();
+
         int numCols = static_cast<int>(m_columns.size());
         int numRows = static_cast<int>(m_rowVariables.size());
-        
+
         if (numCols > 0 && numRows > 0 && m_lastPlotSize.x > 0.0f && m_lastPlotSize.y > 0.0f) {
             float px = (mousePos.x - m_lastPlotPos.x) / m_lastPlotSize.x;
             float py = (mousePos.y - m_lastPlotPos.y) / m_lastPlotSize.y;
@@ -184,18 +220,20 @@ void Window::Matrix::processDragDrop() {
             if (px >= 0.0f && px <= 1.0f && py >= 0.0f && py <= 1.0f) {
                 int c = static_cast<int>(px * numCols);
                 int r = static_cast<int>(py * numRows);
-                
+
                 if (c >= 0 && c < numCols && r >= 0 && r < numRows) {
                     m_columns[c].customCells[m_rowVariables[r]] = {ft, name, var};
-                    mappedToCell = true;
-                    LOG("INFO", "[Matriz] Variável '" + var + "' mapeada para célula (" + m_columns[c].customName + ", " + m_rowVariables[r] + ").");
+                    mappedToCell                                = true;
+                    LOG("INFO", "[Matriz] Variável '" + var + "' mapeada para célula (" + m_columns[c].customName +
+                                    ", " + m_rowVariables[r] + ").");
                 }
             }
         }
 
         if (!mappedToCell) {
-            bool colExists = std::any_of(m_columns.begin(), m_columns.end(),
-                [&](const MatrixColumn& c){ return c.archiveName == name && !c.isArtificial; });
+            bool colExists = std::any_of(m_columns.begin(), m_columns.end(), [&](const MatrixColumn& c) {
+                return c.archiveName == name && !c.isArtificial;
+            });
 
             if (!colExists) {
                 MatrixColumn col;
@@ -243,13 +281,13 @@ std::string Window::Matrix::getIDDisplayName(const std::string& archiveName, con
 
 void Window::Matrix::renderGrid() {
     if (m_columns.empty() || m_rowVariables.empty()) {
-        const char* placeholder = "(Arraste IDs ou colunas de dados aqui)";
-        ImVec2 avail    = ImGui::GetContentRegionAvail();
-        ImVec2 textSize = ImGui::CalcTextSize(placeholder);
-        textSize.x     *= m_fontScale;
-        textSize.y     *= m_fontScale;
-        float x = ImGui::GetWindowContentRegionMin().x + (avail.x - textSize.x) * 0.5f;
-        float y = ImGui::GetWindowContentRegionMin().y + (avail.y - textSize.y) * 0.5f;
+        const char* placeholder  = "(Arraste IDs ou colunas de dados aqui)";
+        ImVec2      avail        = ImGui::GetContentRegionAvail();
+        ImVec2      textSize     = ImGui::CalcTextSize(placeholder);
+        textSize.x              *= m_fontScale;
+        textSize.y              *= m_fontScale;
+        float x                  = ImGui::GetWindowContentRegionMin().x + (avail.x - textSize.x) * 0.5f;
+        float y                  = ImGui::GetWindowContentRegionMin().y + (avail.y - textSize.y) * 0.5f;
         ImGui::SetCursorPos(ImVec2(x, y));
         ImGui::SetWindowFontScale(m_fontScale);
         ImGui::TextDisabled("%s", placeholder);
@@ -297,7 +335,9 @@ void Window::Matrix::renderGrid() {
     }
 
     ImPlotAxisFlags xFlags = ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks;
-    ImPlotAxisFlags yFlags = m_showVariableName ? (ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks) : (ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_Lock);
+    ImPlotAxisFlags yFlags = m_showVariableName
+                                 ? (ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks)
+                                 : (ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_Lock);
 
     ImGui::SetWindowFontScale(m_fontScale);
 
@@ -313,7 +353,7 @@ void Window::Matrix::renderGrid() {
 
         ImPlot::SetupAxesLimits(0.0, 1.0, 0.0, 1.0, ImPlotCond_Always);
 
-        m_lastPlotPos = ImPlot::GetPlotPos();
+        m_lastPlotPos  = ImPlot::GetPlotPos();
         m_lastPlotSize = ImPlot::GetPlotSize();
 
         for (int r = 0; r < numRows; ++r) {
@@ -322,7 +362,7 @@ void Window::Matrix::renderGrid() {
                 const auto& col = m_columns[c];
 
                 const std::vector<double>* data = nullptr;
-                
+
                 if (col.customCells.count(varName)) {
                     const auto& src = col.customCells.at(varName);
                     if (src.fileType == "CSV") {
@@ -338,12 +378,16 @@ void Window::Matrix::renderGrid() {
                     }
                 }
 
-                bool hasData = (data && !data->empty());
-                double val = hasData ? data->back() : 0.0;
+                bool   hasData     = (data && !data->empty());
+                double val         = hasData ? data->back() : 0.0;
                 double computedVal = m_useFormula ? (val * m_multiplier + m_offset) : val;
 
                 ImVec4 bgCol = hasData ? getCellColor(computedVal) : ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
                 ImVec4 fgCol = hasData ? getCellTextColor(computedVal) : ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+                if (hasData && (m_colorMode == 3 || m_colorMode == 4)) {
+                    float luminance = 0.299f * bgCol.x + 0.587f * bgCol.y + 0.114f * bgCol.z;
+                    fgCol = (luminance > 0.5f) ? ImVec4(0.0f, 0.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                }
 
                 double x_min = (double)c / numCols;
                 double x_max = (double)(c + 1) / numCols;
@@ -362,18 +406,17 @@ void Window::Matrix::renderGrid() {
                     if (m_useTranslation) {
                         for (const auto& rule : m_translationRules) {
                             if (std::abs(rule.value - computedVal) < 1e-5) {
-                                cellText = rule.text;
+                                cellText   = rule.text;
                                 translated = true;
                                 break;
                             }
                         }
                     }
                     if (!translated) {
-                        char buf[64];
-                        snprintf(buf, sizeof(buf), "%.4f", computedVal);
-                        cellText = buf;
+                        char valTextBuf[64];
+                        snprintf(valTextBuf, sizeof(valTextBuf), "%.2f", computedVal);
+                        cellText = std::string(m_prefix) + valTextBuf + std::string(m_suffix);
                     }
-                    cellText += m_suffix;
                 } else {
                     cellText = "N/D";
                 }
@@ -389,12 +432,15 @@ void Window::Matrix::renderGrid() {
                     ImPlotPoint mousePos = ImPlot::GetPlotMousePos();
                     if (mousePos.x >= x_min && mousePos.x <= x_max && mousePos.y >= y_min && mousePos.y <= y_max) {
                         ImGui::BeginTooltip();
-                        std::string displayName = col.isArtificial ? col.customName : getIDDisplayName(col.archiveName, col.fileType);
-                        ImGui::Text("[%s] %s - %s", col.isArtificial ? "Artificial" : col.archiveName.c_str(), displayName.c_str(), varName.c_str());
+                        std::string displayName =
+                            col.isArtificial ? col.customName : getIDDisplayName(col.archiveName, col.fileType);
+                        ImGui::Text("[%s] %s - %s", col.isArtificial ? "Artificial" : col.archiveName.c_str(),
+                                    displayName.c_str(), varName.c_str());
                         if (hasData) {
                             ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "Valor original: %.6f", val);
                             if (m_useFormula) {
-                                ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.8f, 1.0f), "Valor pós-fórmula: %.6f", computedVal);
+                                ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.8f, 1.0f), "Valor pós-fórmula: %.6f",
+                                                   computedVal);
                             }
                             if (m_useTranslation) {
                                 ImGui::Text("Tradução: %s", cellText.c_str());
@@ -419,14 +465,16 @@ void Window::Matrix::renderGrid() {
 // ─────────────────────────────────────────────
 
 void Window::Matrix::render() {
-    if (!this->isOpen || !*this->isOpen) return;
+    if (!this->isOpen || !*this->isOpen)
+        return;
 
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
     // Render Menu Bar
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Configurações")) {
-            
+
             // 1. Submenu: Dados & Exibição
             if (ImGui::BeginMenu("Dados & Exibição")) {
                 if (m_columns.empty() && m_rowVariables.empty()) {
@@ -436,7 +484,8 @@ void Window::Matrix::render() {
                         ImGui::Text("Colunas (IDs) Carregadas:");
                         for (size_t i = 0; i < m_columns.size(); ++i) {
                             ImGui::PushID(static_cast<int>(i));
-                            std::string dispName = m_columns[i].isArtificial ? m_columns[i].customName : m_columns[i].archiveName;
+                            std::string dispName =
+                                m_columns[i].isArtificial ? m_columns[i].customName : m_columns[i].archiveName;
                             ImGui::TextUnformatted(dispName.c_str());
                             ImGui::SameLine();
                             if (ImGui::SmallButton("X##removeCol")) {
@@ -447,7 +496,7 @@ void Window::Matrix::render() {
                             ImGui::PopID();
                         }
                     }
-                    
+
                     if (!m_rowVariables.empty()) {
                         ImGui::Separator();
                         ImGui::Text("Linhas (Variáveis) Carregadas:");
@@ -464,9 +513,15 @@ void Window::Matrix::render() {
                         }
                     }
                 } // Fecha o else de 'Nenhum dado carregado'
-                
+
                 ImGui::Separator();
-                
+                if (ImGui::Button("Limpar Todas as Colunas")) {
+                    m_columns.clear();
+                    m_rowVariables.clear();
+                }
+
+                ImGui::Separator();
+
                 if (ImGui::Button("Adicionar Coluna Artificial")) {
                     ImGui::OpenPopup("AddArtificialColPopup");
                 }
@@ -477,8 +532,8 @@ void Window::Matrix::render() {
                         std::string cn = colNameBuf;
                         if (!cn.empty()) {
                             MatrixColumn col;
-                            col.customName = cn;
-                            col.archiveName = cn;
+                            col.customName   = cn;
+                            col.archiveName  = cn;
                             col.isArtificial = true;
                             m_columns.push_back(col);
                         }
@@ -496,7 +551,8 @@ void Window::Matrix::render() {
                     ImGui::InputText("Nome da Linha", rowNameBuf, sizeof(rowNameBuf));
                     if (ImGui::Button("Criar")) {
                         std::string rn = rowNameBuf;
-                        if (!rn.empty() && std::find(m_rowVariables.begin(), m_rowVariables.end(), rn) == m_rowVariables.end()) {
+                        if (!rn.empty() &&
+                            std::find(m_rowVariables.begin(), m_rowVariables.end(), rn) == m_rowVariables.end()) {
                             m_rowVariables.push_back(rn);
                         }
                         rowNameBuf[0] = '\0';
@@ -516,20 +572,21 @@ void Window::Matrix::render() {
             // 2. Submenu: Textos
             if (ImGui::BeginMenu("Textos")) {
                 ImGui::PushItemWidth(150.0f);
-                
-                // Sufixo
+
+                // Prefixo / Sufixo
+                ImGui::InputText("Prefixo", m_prefix, sizeof(m_prefix));
                 ImGui::InputText("Sufixo", m_suffix, sizeof(m_suffix));
-                
+
                 ImGui::Separator();
-                
+
                 // Exibir Nome da Variável / Linha
                 ImGui::Checkbox("Exibir Nome da Variável", &m_showVariableName);
-                
+
                 ImGui::Separator();
-                
+
                 // Tamanho / Escala do Texto
                 ImGui::SliderFloat("Escala do Texto", &m_fontScale, 0.5f, 5.0f, "%.1fx");
-                
+
                 ImGui::PopItemWidth();
                 ImGui::EndMenu();
             }
@@ -548,7 +605,7 @@ void Window::Matrix::render() {
             }
 
             // 4. Submenu: Tradução de Valores
-            if (ImGui::BeginMenu("Tradução de Valores")) {
+            if (ImGui::BeginMenu("Traducão de Valores")) {
                 ImGui::Checkbox("Traduzir Valores", &m_useTranslation);
                 if (m_useTranslation) {
                     ImGui::Separator();
@@ -583,22 +640,27 @@ void Window::Matrix::render() {
                 ImGui::EndMenu();
             }
 
-            // 5. Submenu: Customização de Cores (Same as Numeric)
+            // 5. Submenu: Customização de Cores
             if (ImGui::BeginMenu("Customização de Cores")) {
                 ImGui::Text("Modo de Cores:");
                 ImGui::RadioButton("Nenhuma", &m_colorMode, 0);
                 ImGui::RadioButton("Por Faixas (L, LL, H, HH)", &m_colorMode, 1);
                 ImGui::RadioButton("Valores Específicos", &m_colorMode, 2);
-                ImGui::RadioButton("Gradiente Dinâmico", &m_colorMode, 3);
+                ImGui::RadioButton("Gradiente", &m_colorMode, 3);
+                ImGui::RadioButton("Gradiente Manual", &m_colorMode, 4);
 
                 if (m_colorMode == 1) {
                     ImGui::Separator();
-                    auto renderThresholdConf = [](const char* label, double* thresh, ColorThresholdConfig& conf, bool hasThresh = true) {
+                    auto renderThresholdConf = [](const char* label, double* thresh, ColorThresholdConfig& conf,
+                                                  bool hasThresh = true) {
                         ImGui::PushID(label);
                         ImGui::Checkbox("Habilitar", &conf.enabled);
                         if (conf.enabled) {
                             if (conf.bg[3] < 0.01f) {
-                                conf.bg[0] = 0.15f; conf.bg[1] = 0.15f; conf.bg[2] = 0.15f; conf.bg[3] = 1.0f;
+                                conf.bg[0] = 0.15f;
+                                conf.bg[1] = 0.15f;
+                                conf.bg[2] = 0.15f;
+                                conf.bg[3] = 1.0f;
                             }
                             if (hasThresh && thresh) {
                                 ImGui::PushItemWidth(100.0f);
@@ -607,9 +669,11 @@ void Window::Matrix::render() {
                             } else {
                                 ImGui::TextUnformatted(label);
                             }
-                            ImGui::ColorEdit4("Bg##col", conf.bg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                            ImGui::ColorEdit4("Bg##col", conf.bg,
+                                              ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                             ImGui::SameLine();
-                            ImGui::ColorEdit4("Fg##col", conf.fg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                            ImGui::ColorEdit4("Fg##col", conf.fg,
+                                              ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                         } else {
                             ImGui::TextDisabled("%s (Desativado)", label);
                         }
@@ -631,9 +695,11 @@ void Window::Matrix::render() {
                         ImGui::InputDouble("##val", &m_specificRules[i].value, 0.0, 0.0, "%.2f");
                         ImGui::PopItemWidth();
                         ImGui::SameLine();
-                        ImGui::ColorEdit4("Bg##col", m_specificRules[i].bg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                        ImGui::ColorEdit4("Bg##col", m_specificRules[i].bg,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                         ImGui::SameLine();
-                        ImGui::ColorEdit4("Fg##col", m_specificRules[i].fg, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                        ImGui::ColorEdit4("Fg##col", m_specificRules[i].fg,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
                         ImGui::SameLine();
                         if (ImGui::Button("X##del")) {
                             m_specificRules.erase(m_specificRules.begin() + i);
@@ -643,20 +709,43 @@ void Window::Matrix::render() {
                         ImGui::PopID();
                     }
                     if (ImGui::Button("Adicionar Regra")) {
-                        m_specificRules.push_back({0.0, {0.15f, 0.15f, 0.15f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}});
+                        m_specificRules.push_back({
+                            0.0, {0.15f, 0.15f, 0.15f, 1.0f},
+                             {1.0f,  1.0f,  1.0f,  1.0f}
+                        });
                     }
-                } else if (m_colorMode == 3) {
+                } else if (m_colorMode == 3 || m_colorMode == 4) {
                     ImGui::Separator();
                     ImGui::Text("Limites do Gradiente:");
                     ImGui::PushItemWidth(120.0f);
-                    ImGui::InputDouble("Valor Mínimo##num", &m_minVal, 0.1, 1.0, "%.2f");
-                    ImGui::SameLine();
-                    ImGui::ColorEdit4("##gradMinColor_num", m_minColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
-                    
-                    ImGui::InputDouble("Valor Máximo##num", &m_maxVal, 0.1, 1.0, "%.2f");
-                    ImGui::SameLine();
-                    ImGui::ColorEdit4("##gradMaxColor_num", m_maxColor, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                    ImGui::InputDouble("Min Val", &m_minVal);
+                    ImGui::InputDouble("Max Val", &m_maxVal);
                     ImGui::PopItemWidth();
+
+                    if (m_colorMode == 3) {
+                        ImGui::Separator();
+                        ImGui::Text("Mapa de Cores (ImPlot):");
+                        if (ImPlot::ColormapButton(ImPlot::GetColormapName(m_colormap), ImVec2(225, 0), m_colormap)) {
+                            m_colormap = (m_colormap + 1) % ImPlot::GetColormapCount();
+                            ImPlot::BustItemCache();
+                        }
+                        ImGui::SetNextItemWidth(225.0f);
+                        ImPlotColormap prev_cmap    = ImPlot::GetStyle().Colormap;
+                        ImPlot::GetStyle().Colormap = m_colormap;
+                        if (ImPlot::ShowColormapSelector("##colormap_matrix")) {
+                            m_colormap = ImPlot::GetStyle().Colormap;
+                            ImPlot::BustItemCache();
+                        }
+                        ImPlot::GetStyle().Colormap = prev_cmap;
+                        ImGui::Checkbox("Inverter Cores", &m_reverseColormap);
+                    } else {
+                        ImGui::Separator();
+                        ImGui::Text("Cores (Manual):");
+                        ImGui::ColorEdit4("Cor Min##mat", m_minColor,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                        ImGui::ColorEdit4("Cor Max##mat", m_maxColor,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                    }
                 }
                 ImGui::EndMenu();
             }
@@ -667,7 +756,8 @@ void Window::Matrix::render() {
     }
 
     // Full-area child window so drag and drop targets the entire area
-    ImGui::BeginChild("##mat_child", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    ImGui::BeginChild("##mat_child", ImVec2(0, 0), false,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     ImVec2 avail = ImGui::GetContentRegionAvail();
     ImGui::Dummy(avail);

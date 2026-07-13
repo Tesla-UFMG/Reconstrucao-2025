@@ -7,7 +7,8 @@ Window::Terminal::Terminal(bool* isOpen) : IWindow(isOpen) {
 
 void Window::Terminal::render() {
     if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+        ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
         {
             ImVec2 available_size  = ImGui::GetContentRegionAvail();
             available_size.y      -= ImGui::GetFrameHeightWithSpacing(); // Subtraindo o tamanho do botão

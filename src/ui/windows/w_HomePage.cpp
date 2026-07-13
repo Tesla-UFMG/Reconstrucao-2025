@@ -14,6 +14,7 @@ void Window::HomePage::render() {
     ImVec2 textPos    = ImVec2((screenSize.x - textSize.x) / 2, (screenSize.y - textSize.y) / 2);
 
     ImGui::SetNextWindowPos(textPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), nullptr, this->flags);
     ImGui::Text(text.c_str());
     ImGui::End();

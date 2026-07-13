@@ -58,9 +58,14 @@ namespace Window {
             bool m_showPercentage = true;
             bool m_showValue = true;
             bool m_showColumnName = true;
-            char m_stripPattern[64] = "";
+            char m_customLabel[128] = "";
             char m_prefix[64] = "";
             char m_suffix[64] = "";
+
+            // Formula
+            bool m_useFormula = false;
+            double m_multiplier = 1.0;
+            double m_offset = 0.0;
 
             // Thresholds
             bool m_useThresholds = false;
@@ -80,7 +85,9 @@ namespace Window {
             double m_gradMinVal = 0.0;
             double m_gradMaxVal = 100.0;
             float m_gradMinColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // Blue/Cyan
-            float m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // Red
+            float m_gradMaxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // kept for serialization compat
+            int m_colormap = 0; // ImPlotColormap
+            bool m_reverseColormap = false;
 
         private:
             void processColumnDragDrop();

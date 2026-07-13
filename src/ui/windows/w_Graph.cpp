@@ -17,11 +17,12 @@ void Window::Graph::render() {
 
     ImVec2 avail = ImGui::GetContentRegionAvail();
 
+    // Drag and drop target fills the whole window
+    ImGui::Dummy(avail);
+    processColumnDragDrop();
+    ImGui::SetCursorScreenPos(ImGui::GetItemRectMin());
+
     if (m_graph.data.empty() && m_graph.textAnnotations.empty()) {
-        // Drag and drop target fills the whole empty window
-        ImGui::Dummy(avail);
-        processColumnDragDrop();
-        ImGui::SetCursorScreenPos(ImGui::GetItemRectMin());
 
         // Perfect centered placeholder text
         std::string placeholder = "(Arraste colunas de dados aqui)";
@@ -34,6 +35,8 @@ void Window::Graph::render() {
         renderGraphPlot();
     }
 
+    
+        this->drawContextMenu();
     ImGui::End();
 }
 
@@ -338,10 +341,10 @@ void Window::Graph::renderGraphPlot() {
         // Renderizar anotações textuais (Comentários e Avisos)
         if (!m_graph.textAnnotations.empty()) {
             // Localizar datas para sincronização temporal
-            const std::vector<std::string>* plotDates = nullptr;
+            const std::vector<double>* plotDates = nullptr;
             for (const auto& tf : DB::getInstance().getProject().getTelemetryFiles()) {
-                if (!tf.getDate().empty()) {
-                    plotDates = &tf.getDate();
+                if (!tf.getNumericDate().empty()) {
+                    plotDates = &tf.getNumericDate();
                     break;
                 }
             }
@@ -359,7 +362,7 @@ void Window::Graph::renderGraphPlot() {
                     }
                     
                     if (targetTF) {
-                        const auto& dates = targetTF->getDates();
+                        const auto& dates = targetTF->getNumericDates();
                         const auto& data = targetTF->getData();
                         
                         // Localizar o índice da coluna
@@ -378,13 +381,13 @@ void Window::Graph::renderGraphPlot() {
                                 if (row < colData.size() && !colData[row].empty()) {
                                     std::string text = colData[row];
                                     try {
-                                        double commentTime = std::stod(dates[row]);
+                                        double commentTime = dates[row];
                                         
                                         // Achar o índice numérico mais próximo no traçado do gráfico
                                         int closestIdx = -1;
                                         double minDiff = std::numeric_limits<double>::max();
                                         for (size_t i = 0; i < plotDates->size(); ++i) {
-                                            double t = std::stod((*plotDates)[i]);
+                                            double t = (*plotDates)[i];
                                             double diff = std::abs(t - commentTime);
                                             if (diff < minDiff) {
                                                 minDiff = diff;
@@ -426,62 +429,141 @@ void Window::Graph::renderGraphPlot() {
             }
         }
 
-        this->drawLegendPopup();
+        
         ImPlot::EndPlot();
     }
-
-    this->processColumnDragDrop();
 }
 
-void Window::Graph::drawLegendPopup() {
-    if (!m_graph.data.empty()) {
-        const char* graphTypes[] = {"Linha", "Barra", "Scatter", "Preenchido"};
-
-        bool popupOpen = false;
-        for (const std::string& col : m_graph.getColumnNames()) {
-            if (ImPlot::BeginLegendPopup(col.c_str())) {
-                popupOpen = true;
-                break;
-            }
-        }
-
-        if (popupOpen) {
-            ImGui::SeparatorText("Tipo de Gráfico");
-            int currentType = static_cast<int>(m_graph.config.type);
-            if (ImGui::Combo("##Tipo", &currentType, graphTypes, IM_ARRAYSIZE(graphTypes))) {
-                m_graph.config.type = static_cast<GraphType>(currentType);
-                LOG("DEBUG", "Gráfico dinâmico alterado para " + std::string(graphTypes[currentType]) + ".");
-            }
-
-            ImGui::SeparatorText("Exibição");
-            ImGui::Checkbox("Auto Fit", &m_graph.config.autoFit);
-            ImGui::SameLine();
-            ImGui::Checkbox("Seguir o final", &m_graph.config.followTheEnd);
-            if (m_graph.config.followTheEnd) {
-                ImGui::InputInt("Pontos", &m_graph.config.numPoints, 1, 10);
-            }
-            ImGui::Checkbox("Exibir Valor no Eixo Y", &m_graph.config.showValueOnYAxis);
-
-            ImGui::SeparatorText("Eixos");
-            ImGui::Checkbox("Eixo X", &m_graph.config.showXAxis);
-            ImGui::SameLine();
-            ImGui::Checkbox("Eixo Y", &m_graph.config.showYAxis);
-
-            if (ImGui::BeginCombo("##EixoX",
-                                  m_graph.config.xColumn.empty() ? "Nenhuma" : m_graph.config.xColumn.c_str())) {
-                if (ImGui::Selectable("Nenhuma", m_graph.config.xColumn.empty())) {
-                    m_graph.config.xColumn.clear();
-                }
-                for (const std::string& col : m_graph.getColumnNames()) {
-                    if (ImGui::Selectable(col.c_str(), m_graph.config.xColumn == col)) {
-                        m_graph.config.xColumn = col;
-                        ImPlot::BustItemCache();
+void Window::Graph::drawContextMenu() {
+    if (ImGui::BeginPopupContextWindow()) {
+            if (ImGui::BeginMenu("Dados & Exibição")) {
+                if (m_graph.data.empty() && m_graph.textAnnotations.empty()) {
+                    ImGui::TextDisabled("(Nenhum dado carregado)");
+                } else {
+                    ImGui::Text("Colunas Carregadas:");
+                    for (size_t columnIndex = 0; columnIndex < m_graph.data.size(); columnIndex++) {
+                        GraphData& graphData = m_graph.data[columnIndex];
+                        ImGui::PushID(static_cast<int>(columnIndex));
+                        std::string label = graphData.fileName + ": " + graphData.columnName;
+                        ImGui::TextUnformatted(label.c_str());
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("X##removeData")) {
+                            this->removeColumn(columnIndex);
+                            ImGui::PopID();
+                            break;
+                        }
+                        ImGui::PopID();
+                    }
+                    
+                    ImGui::Separator();
+                    if (ImGui::Button("Limpar Todas as Colunas")) {
+                        m_graph.data.clear();
+                        m_isOpen = false;
                     }
                 }
-                ImGui::EndCombo();
+                ImGui::EndMenu();
             }
 
-            {
+            if (ImGui::BeginMenu("Textos")) {
+                if (m_graph.textAnnotations.empty()) {
+                    ImGui::TextDisabled("(Nenhuma anotação carregada)");
+                } else {
+                    if (ImGui::BeginTable("TabelaTextos", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+                        ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableSetupColumn("Anotação", ImGuiTableColumnFlags_WidthStretch);
+                        ImGui::TableHeadersRow();
+                        for (size_t i = 0; i < m_graph.textAnnotations.size(); ++i) {
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            if (ImGui::Button(("X##txt" + std::to_string(i)).c_str())) {
+                                m_graph.textAnnotations.erase(m_graph.textAnnotations.begin() + i);
+                                break;
+                            }
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::TextUnformatted(m_graph.textAnnotations[i].columnName.c_str());
+                        }
+                        ImGui::EndTable();
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Fórmula Matemática")) {
+                if (m_graph.data.empty()) {
+                    ImGui::TextDisabled("(Nenhum dado carregado)");
+                } else {
+                    for (size_t i = 0; i < m_graph.data.size(); ++i) {
+                        GraphData& graphData = m_graph.data[i];
+                        if (graphData.columnName == m_graph.config.xColumn) continue;
+
+                        ImGui::PushID(static_cast<int>(i));
+                        ImGui::TextUnformatted(graphData.columnName.c_str());
+                        ImGui::PushItemWidth(120.0f);
+                        ImGui::InputDouble("Multiplicador (A)", &graphData.multiplier, 0.1, 1.0, "%.4f");
+                        ImGui::InputDouble("Soma/Offset (B)", &graphData.offset, 0.1, 1.0, "%.4f");
+                        ImGui::PopItemWidth();
+                        ImGui::Separator();
+                        ImGui::PopID();
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Customização de Cores")) {
+                ImPlotContext&  gp       = *GImPlot;
+                ImPlotColormap& colormap = gp.Style.Colormap;
+
+                if (ImPlot::ColormapButton(ImPlot::GetColormapName(colormap), ImVec2(225, 0), colormap)) {
+                    colormap = (colormap + 1) % ImPlot::GetColormapCount();
+                    ImPlot::BustItemCache();
+                }
+
+                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                ImPlot::ShowColormapSelector("##");
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Configuração do Gráfico")) {
+                const char* graphTypes[] = {"Linha", "Barra", "Scatter", "Preenchido"};
+                ImGui::SeparatorText("Tipo de Gráfico");
+                int currentType = static_cast<int>(m_graph.config.type);
+                if (ImGui::Combo("##Tipo", &currentType, graphTypes, IM_ARRAYSIZE(graphTypes))) {
+                    m_graph.config.type = static_cast<GraphType>(currentType);
+                    LOG("DEBUG", "Gráfico dinâmico alterado para " + std::string(graphTypes[currentType]) + ".");
+                }
+
+                ImGui::SeparatorText("Exibição");
+                ImGui::Checkbox("Auto Fit", &m_graph.config.autoFit);
+                ImGui::SameLine();
+                ImGui::Checkbox("Seguir o final", &m_graph.config.followTheEnd);
+                if (m_graph.config.followTheEnd) {
+                    ImGui::InputInt("Pontos", &m_graph.config.numPoints, 1, 10);
+                }
+                ImGui::Checkbox("Exibir Valor no Eixo Y", &m_graph.config.showValueOnYAxis);
+
+                ImGui::SeparatorText("Eixos");
+                ImGui::Checkbox("Eixo X", &m_graph.config.showXAxis);
+                ImGui::SameLine();
+                ImGui::Checkbox("Eixo Y", &m_graph.config.showYAxis);
+
+                if (ImGui::BeginCombo("##EixoX",
+                                      m_graph.config.xColumn.empty() ? "Nenhuma" : m_graph.config.xColumn.c_str())) {
+                    if (ImGui::Selectable("Nenhuma", m_graph.config.xColumn.empty())) {
+                        m_graph.config.xColumn.clear();
+                    }
+                    for (const std::string& col : m_graph.getColumnNames()) {
+                        if (ImGui::Selectable(col.c_str(), m_graph.config.xColumn == col)) {
+                            m_graph.config.xColumn = col;
+                            ImPlot::BustItemCache();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Alinhamento Avançado")) {
                 ImGui::SeparatorText("Alinhamento Temporal / XY");
                 const char* alignmentModes[] = {
                     "Tamanho Mínimo",
@@ -494,64 +576,9 @@ void Window::Graph::drawLegendPopup() {
                     m_graph.config.xyAlignmentMode = static_cast<XYAlignmentMode>(currentMode);
                     ImPlot::BustItemCache();
                 }
+                ImGui::EndMenu();
             }
 
-            ImGui::SeparatorText("Colunas");
-            if (ImGui::BeginTable("TabelaColunas", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-                ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableSetupColumn("Coluna", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Multiplicador", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableHeadersRow();
-                for (size_t columnIndex = 0; columnIndex < m_graph.data.size(); columnIndex++) {
-                    GraphData& graphData = m_graph.data[columnIndex];
-                    if (graphData.columnName == m_graph.config.xColumn)
-                        continue;
-
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    std::string btnLabel = "X##" + std::to_string(columnIndex);
-                    if (ImGui::Button(btnLabel.c_str())) {
-                        this->removeColumn(columnIndex);
-                        break;
-                    }
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::TextUnformatted(graphData.columnName.c_str());
-
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::PushItemWidth(120.0f);
-                    ImGui::InputDouble(("##mult" + std::to_string(columnIndex)).c_str(), &graphData.multiplier, 0.001,
-                                       100.0, "%.15gx");
-                    ImGui::PopItemWidth();
-                }
-                ImGui::EndTable();
-            }
-
-            if (!m_graph.textAnnotations.empty()) {
-                ImGui::SeparatorText("Textos e Comentários");
-                if (ImGui::BeginTable("TabelaTextos", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-                    ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
-                    ImGui::TableSetupColumn("Anotação", ImGuiTableColumnFlags_WidthStretch);
-                    ImGui::TableHeadersRow();
-                    for (size_t i = 0; i < m_graph.textAnnotations.size(); ++i) {
-                        ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(0);
-                        if (ImGui::Button(("X##txt" + std::to_string(i)).c_str())) {
-                            m_graph.textAnnotations.erase(m_graph.textAnnotations.begin() + i);
-                            break;
-                        }
-                        ImGui::TableSetColumnIndex(1);
-                        ImGui::TextUnformatted(m_graph.textAnnotations[i].columnName.c_str());
-                    }
-                    ImGui::EndTable();
-                }
-            }
-
-            if (ImGui::Button("Remover Gráfico")) {
-                m_isOpen = false;
-                ImGui::CloseCurrentPopup();
-            }
-
-            ImPlot::EndLegendPopup();
+            ImGui::EndPopup();
         }
-    }
 }

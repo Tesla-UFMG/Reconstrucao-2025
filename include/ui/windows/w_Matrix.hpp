@@ -47,8 +47,10 @@ namespace Window {
             int    m_colorMode = 0;
             double m_minVal    = 0.0;
             double m_maxVal    = 100.0;
-            float  m_minColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // cold = blue
-            float  m_maxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // hot  = red
+            float  m_minColor[4] = {0.0f, 0.4f, 1.0f, 1.0f}; // kept for serialization compat
+            float  m_maxColor[4] = {1.0f, 0.1f, 0.1f, 1.0f}; // kept for serialization compat
+            int    m_colormap  = 0; // ImPlotColormap
+            bool   m_reverseColormap = false;
 
             double m_threshLL = 3.0;
             double m_threshL  = 3.2;
@@ -68,6 +70,7 @@ namespace Window {
             bool m_isOpen = true;
 
             // Customization Properties
+            char m_prefix[64] = "";
             char m_suffix[64] = "";
             bool m_useFormula = false;
             double m_multiplier = 1.0;

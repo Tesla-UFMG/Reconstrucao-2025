@@ -12,6 +12,7 @@ void Window::Statistics::render() {
         return;
     }
 
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
     ImVec2 avail = ImGui::GetContentRegionAvail();

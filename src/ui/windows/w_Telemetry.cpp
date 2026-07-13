@@ -818,7 +818,8 @@ void Window::Telemetry::render() {
     this->drainQueueIntoRecent();
 
     if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+        ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
         if (ImGui::BeginTabBar("TabTelemetria",
                                ImGuiTabBarFlags_NoCloseWithMiddleMouseButton | ImGuiTabBarFlags_FittingPolicyScroll)) {
             if (ImGui::BeginTabItem("UART")) {

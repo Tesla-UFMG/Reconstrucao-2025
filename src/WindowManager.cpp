@@ -324,6 +324,7 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
         file << reconWin->m_gradMaxVal << "\n";
         file << reconWin->m_gradMinColor[0] << " " << reconWin->m_gradMinColor[1] << " " << reconWin->m_gradMinColor[2] << " " << reconWin->m_gradMinColor[3] << "\n";
         file << reconWin->m_gradMaxColor[0] << " " << reconWin->m_gradMaxColor[1] << " " << reconWin->m_gradMaxColor[2] << " " << reconWin->m_gradMaxColor[3] << "\n";
+
         file << reconWin->m_centerLat << " " << reconWin->m_centerLon << "\n";
         file << reconWin->m_trackOffsetLat << " " << reconWin->m_trackOffsetLon << "\n";
         file << reconWin->m_colorLine[0] << " " << reconWin->m_colorLine[1] << " " << reconWin->m_colorLine[2] << " " << reconWin->m_colorLine[3] << "\n";
@@ -334,6 +335,9 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
             file << ann.archiveName << "\n";
             file << ann.columnName << "\n";
         }
+        file << reconWin->m_colorMode << "\n";
+        file << reconWin->m_colormap << "\n";
+        file << reconWin->m_reverseColormap << "\n";
     } else {
         file << "NO_RECONSTRUCTION_STATE\n";
     }
@@ -448,6 +452,8 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     file << numWin->m_gradMaxColor[0] << " " << numWin->m_gradMaxColor[1] << " " << numWin->m_gradMaxColor[2] << " " << numWin->m_gradMaxColor[3] << "\n";
                     file << numWin->m_statModeAll << "\n";
                     file << numWin->m_customLabel << "\n";
+                    file << numWin->m_colormap << "\n";
+                    file << numWin->m_reverseColormap << "\n";
                 }
             } else if (w->getDynamicType() == "Bar") {
                 auto* barWin = dynamic_cast<Window::Bar*>(w.get());
@@ -471,9 +477,12 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     file << barWin->m_showPercentage << "\n";
                     file << barWin->m_showValue << "\n";
                     file << barWin->m_showColumnName << "\n";
-                    file << barWin->m_stripPattern << "\n";
+                    file << barWin->m_customLabel << "\n";
                     file << barWin->m_prefix << "\n";
                     file << barWin->m_suffix << "\n";
+                    file << barWin->m_useFormula << "\n";
+                    file << barWin->m_multiplier << "\n";
+                    file << barWin->m_offset << "\n";
                     file << barWin->m_useThresholds << "\n";
                     file << barWin->m_threshLL << "\n";
                     file << barWin->m_threshL << "\n";
@@ -497,6 +506,8 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     file << barWin->m_colorBarMode << "\n";
                     file << barWin->m_gradMinVal << "\n";
                     file << barWin->m_gradMaxVal << "\n";
+                    file << barWin->m_colormap << "\n";
+                    file << barWin->m_reverseColormap << "\n";
                 }
             } else if (w->getDynamicType() == "Graph") {
                 auto graphWin = dynamic_cast<Window::Graph*>(w.get());
@@ -595,6 +606,15 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     for (const auto& v : matWin->m_rowVariables) {
                         file << v << "\n";
                     }
+                    file << matWin->m_prefix << "\n";
+                    file << matWin->m_colormap << "\n";
+                    file << matWin->m_reverseColormap << "\n";
+                    file << matWin->m_specificRules.size() << "\n";
+                    for (const auto& rule : matWin->m_specificRules) {
+                        file << rule.value << "\n";
+                        file << rule.bg[0] << " " << rule.bg[1] << " " << rule.bg[2] << " " << rule.bg[3] << "\n";
+                        file << rule.fg[0] << " " << rule.fg[1] << " " << rule.fg[2] << " " << rule.fg[3] << "\n";
+                    }
                 }
             } else if (w->getDynamicType() == "Tabela") {
                 auto* tabWin = dynamic_cast<Window::Statistics*>(w.get());
@@ -635,8 +655,22 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
 
     std::string line, dummy;
 
+    auto seekToBlock = [&](const std::string& blockName) {
+        file.clear();
+        std::string l;
+        // Se a linha atual já for o que procuramos (pode ocorrer se alinhado corretamente), não precisamos avançar.
+        // Como o getline avança, primeiro verificamos a próxima linha real.
+        while (std::getline(file, l)) {
+            if (l.find(blockName) == 0 || l.find("NO_" + blockName) == 0) {
+                line = l;
+                return true;
+            }
+        }
+        return false;
+    };
+
     // Restaurando estado da janela de Reconstrução
-    if (std::getline(file, line)) {
+    if (seekToBlock("RECONSTRUCTION_STATE")) {
         if (line == "RECONSTRUCTION_STATE" && reconWin) {
             file >> reconWin->m_panX >> reconWin->m_panY >> reconWin->m_zoomScale;
             std::getline(file, dummy); // consume newline
@@ -722,6 +756,20 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     reconWin->m_textAnnotations.push_back(ann);
                 }
             }
+            
+            int colorMode = 1;
+            if (file >> colorMode) {
+                reconWin->m_colorMode = colorMode;
+                int colormap = 0;
+                if (file >> colormap) {
+                    reconWin->m_colormap = colormap;
+                    bool rev = false;
+                    if (file >> rev) reconWin->m_reverseColormap = rev;
+                }
+                std::getline(file, dummy); // consume newline
+            } else {
+                file.clear();
+            }
 
             // Validar se latitude/longitude ainda existem
             if (!reconWin->m_selectedLatCol.empty() && 
@@ -748,7 +796,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
     }
 
     // Restaurando estado da janela de Pedais
-    if (std::getline(file, line)) {
+    if (seekToBlock("PEDAL_STATE")) {
         if (line == "PEDAL_STATE" && pedalWin) {
             file >> pedalWin->m_isPlaying;
             file >> pedalWin->m_playbackSpeed;
@@ -796,7 +844,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
     }
 
     // Restaurando estado da janela de Volante
-    if (std::getline(file, line)) {
+    if (seekToBlock("WHEEL_STATE")) {
         if (line == "WHEEL_STATE" && wheelWin) {
             file >> wheelWin->m_isPlaying;
             file >> wheelWin->m_playbackSpeed;
@@ -850,7 +898,10 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
 
     for (int i = 0; i < count; i++) {
         std::string lineType;
-        if (!std::getline(file, lineType)) break;
+        do {
+            if (!std::getline(file, lineType)) break;
+        } while (lineType.empty());
+        if (lineType.empty()) break;
 
         std::string type = "Numeric";
         std::string title;
@@ -859,6 +910,10 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             if (!std::getline(file, title)) break;
         } else {
             title = lineType;
+        }
+
+        if (title.empty()) {
+            title = "Janela Recuperada " + std::to_string(i);
         }
 
         if (type == "Numeric") {
@@ -974,9 +1029,16 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                 if (std::getline(file, customLabel)) {
                     strncpy(numWin->m_customLabel, customLabel.c_str(), sizeof(numWin->m_customLabel));
                 }
-            } else {
-                file.clear();
-            }
+                int colormap = 0;
+                if (file >> colormap) {
+                    numWin->m_colormap = colormap;
+                    bool rev = false;
+                    if (file >> rev) {
+                        numWin->m_reverseColormap = rev;
+                        std::getline(file, dummy);
+                    } else { file.clear(); }
+                } else { file.clear(); }
+            } else { file.clear(); }
 
             windows.emplace_back(std::move(numWin));
         } else if (type == "Bar") {
@@ -1021,13 +1083,17 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             file >> barWin->m_showColumnName;
             std::getline(file, dummy); // consume newline
 
-            std::string stripPattern, prefix, suffix;
-            std::getline(file, stripPattern);
-            strncpy(barWin->m_stripPattern, stripPattern.c_str(), sizeof(barWin->m_stripPattern));
+            std::string customLabel, prefix, suffix;
+            std::getline(file, customLabel);
+            strncpy(barWin->m_customLabel, customLabel.c_str(), sizeof(barWin->m_customLabel));
             std::getline(file, prefix);
             strncpy(barWin->m_prefix, prefix.c_str(), sizeof(barWin->m_prefix));
             std::getline(file, suffix);
             strncpy(barWin->m_suffix, suffix.c_str(), sizeof(barWin->m_suffix));
+
+            file >> barWin->m_useFormula;
+            file >> barWin->m_multiplier;
+            file >> barWin->m_offset;
 
             // Thresholds
             file >> barWin->m_useThresholds;
@@ -1062,9 +1128,18 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     barWin->m_colorBarMode = colorBarMode;
                     file >> barWin->m_gradMinVal;
                     file >> barWin->m_gradMaxVal;
-                    std::getline(file, dummy);
-                }
-            }
+                    
+                    int colormap = 0;
+                    if (file >> colormap) {
+                        barWin->m_colormap = colormap;
+                        bool rev = false;
+                        if (file >> rev) {
+                            barWin->m_reverseColormap = rev;
+                            std::getline(file, dummy);
+                        } else { file.clear(); }
+                    } else { file.clear(); }
+                } else { file.clear(); }
+            } else { file.clear(); }
 
             windows.emplace_back(std::move(barWin));
         } else if (type == "Graph") {
@@ -1262,6 +1337,29 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                         if (!rn.empty() && std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), rn) == matWin->m_rowVariables.end()) {
                             matWin->m_rowVariables.push_back(rn);
                         }
+                    }
+                    
+                    std::string pfx;
+                    if (std::getline(file, pfx)) {
+                        strncpy(matWin->m_prefix, pfx.c_str(), sizeof(matWin->m_prefix));
+                        int colormap = 0;
+                        if (file >> colormap) {
+                            matWin->m_colormap = colormap;
+                            bool rev = false;
+                            if (file >> rev) {
+                                matWin->m_reverseColormap = rev;
+                                size_t spcSize = 0;
+                                if (file >> spcSize) {
+                                    matWin->m_specificRules.resize(spcSize);
+                                    for (size_t k = 0; k < spcSize; ++k) {
+                                        file >> matWin->m_specificRules[k].value;
+                                        file >> matWin->m_specificRules[k].bg[0] >> matWin->m_specificRules[k].bg[1] >> matWin->m_specificRules[k].bg[2] >> matWin->m_specificRules[k].bg[3];
+                                        file >> matWin->m_specificRules[k].fg[0] >> matWin->m_specificRules[k].fg[1] >> matWin->m_specificRules[k].fg[2] >> matWin->m_specificRules[k].fg[3];
+                                    }
+                                    std::getline(file, dummy);
+                                } else { file.clear(); }
+                            } else { file.clear(); }
+                        } else { file.clear(); }
                     }
                 } else {
                     file.clear(); // Clear EOF flag if applicable

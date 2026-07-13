@@ -78,8 +78,9 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
 
     if (auto csvFile = dynamic_cast<const CSVFile*>(&file)) {
         const std::string& filepath = file.getPath().string();
-        if (ImGui::TreeNode(fileName.c_str())) {
+        bool is_open = ImGui::TreeNode(fileName.c_str());
             this->sendArchivePayload(fileType, fileName);
+        if (is_open) {
             for (const std::string& colName : csvFile->getColumnNames()) {
                 this->renderColumnItem(fileType, fileName, colName);
             }
@@ -108,8 +109,9 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
             ImGui::PushStyleColor(ImGuiCol_Text, HI(1));
         }
 
-        if (ImGui::TreeNode(msg.c_str())) {
+        bool is_open = ImGui::TreeNode(msg.c_str());
             this->sendArchivePayload(fileType, packetId);
+        if (is_open) {
             for (const std::string& colName : telemetryFile->getColumnNames()) {
                 this->renderColumnItem(fileType, packetId, colName);
             }
@@ -126,8 +128,9 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
                              ? ImVec4(0.55f, 0.42f, 0.0f, 1.0f) // Amarelo escuro / dourado para tema claro
                              : ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Amarelo brilhante para tema escuro
         ImGui::PushStyleColor(ImGuiCol_Text, yellowColor);
-        if (ImGui::TreeNode(fileName.c_str())) {
+        bool is_open = ImGui::TreeNode(fileName.c_str());
             this->sendArchivePayload(fileType, fileName);
+        if (is_open) {
             for (const std::string& colName : textFile->getColumnNames()) {
                 this->renderColumnItem(fileType, fileName, colName);
             }
@@ -145,7 +148,8 @@ void Window::DataPicker::renderColumnItem(const std::string& fileType, const std
 
 void Window::DataPicker::render() {
     if (this->isOpen && *this->isOpen) {
-        ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
+        ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
         this->renderMenuBar();
         ImGui::BeginChild("##dataPicker", ImGui::GetContentRegionAvail(), true, ImGuiWindowFlags_HorizontalScrollbar);
 
