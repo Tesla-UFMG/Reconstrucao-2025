@@ -21,6 +21,7 @@ namespace Window {
         private:
             std::vector<std::filesystem::path> m_csvToRemove;
             std::vector<std::string> m_telemetryToRemove;
+            std::vector<std::filesystem::path> m_videoToRemove;
 
             void refreshData();
 

@@ -748,9 +748,9 @@ void Window::Telemetry::renderSavingMenu() {
     // Relação com o tempo do último salvamento
     if (this->m_hasSaved) {
         auto now     = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - this->m_lastSaveTime).count();
+        long elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - this->m_lastSaveTime).count();
         if (elapsed < 60) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: %llds atrás", elapsed);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Último salvamento: %lds atrás", elapsed);
         } else {
             long long minutes = elapsed / 60;
             long long seconds = elapsed % 60;

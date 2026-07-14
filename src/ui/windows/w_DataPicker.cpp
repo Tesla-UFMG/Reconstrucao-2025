@@ -10,7 +10,7 @@ void Window::DataPicker::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Arquivos")) {
             if (ImGui::MenuItem("Carregar")) {
-                DB::getInstance().loadCSVDialog();
+                DB::getInstance().loadDataDialog();
             }
             ImGui::EndMenu();
         }
@@ -58,7 +58,8 @@ void Window::DataPicker::renderArchiveContextPopup(const GenericFile& file, int 
                 }
 
                 // Se for do tipo Video File....
-                else if (dynamic_cast<const VideoFile*>(&file)) {
+                else if (auto videoFile = dynamic_cast<const VideoFile*>(&file)) {
+                    this->m_videoToRemove.push_back(videoFile->getPath());
                 }
 
                 else if (auto telemetryFile = dynamic_cast<const TelemetryFile*>(&file)) {
@@ -121,6 +122,13 @@ void Window::DataPicker::renderArchiveNode(const GenericFile& file) {
     }
 
     else if (dynamic_cast<const VideoFile*>(&file)) {
+        ImVec4 blueColor = (ImGuiWrapper::currentTheme == LIGHT) 
+                             ? ImVec4(0.0f, 0.4f, 0.8f, 1.0f)
+                             : ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, blueColor);
+        ImGui::Selectable(fileName.c_str());
+        this->sendArchivePayload(fileType, fileName);
+        ImGui::PopStyleColor();
     }
     
     else if (auto textFile = dynamic_cast<const TextFile*>(&file)) {
@@ -168,6 +176,13 @@ void Window::DataPicker::render() {
             i++;
         }
 
+        const std::vector<VideoFile>& videoFiles = DB::getInstance().getProject().getVideoFiles();
+        for (auto& videoFile : videoFiles) {
+            this->renderArchiveNode(videoFile);
+            this->renderArchiveContextPopup(videoFile, i);
+            i++;
+        }
+
         const std::vector<TextFile>& textFiles = DB::getInstance().getProject().getTextFiles();
         for (auto& textFile : textFiles) {
             this->renderArchiveNode(textFile);
@@ -185,6 +200,11 @@ void Window::DataPicker::render() {
             DB::getInstance().deleteCSV(path);
         }
         this->m_csvToRemove.clear();
+        
+        for (const auto& path : this->m_videoToRemove) {
+            DB::getInstance().deleteVideo(path);
+        }
+        this->m_videoToRemove.clear();
         
         for (const auto& packetId : this->m_telemetryToRemove) {
             DB::getInstance().getProject().removePacket(packetId);

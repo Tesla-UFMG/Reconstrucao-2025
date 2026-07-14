@@ -35,6 +35,12 @@ const std::vector<double>& CSVFile::getColumnData(const std::string& columnName)
     }
 }
 
+// VIDEO
+VideoFile::VideoFile(std::filesystem::path filepath) : GenericFile(std::move(filepath)) {
+    this->fileType = "Video";
+    this->name     = this->filepath.filename().string();
+}
+
 // TELEMETRY
 TelemetryFile::TelemetryFile(const std::string& packetName, const std::string& packetId,
                              const std::vector<std::string>& columnNames)

@@ -1,7 +1,9 @@
 #include "ui/windows/w_Playback.hpp"
 #include "ui/windows/w_Warning.hpp"
+#include "WindowManager.hpp"
 #include <cmath>
 #include <ctime>
+#include <algorithm>
 
 Window::Playback::Playback(bool* isOpen) : IWindow(isOpen) {
     this->title = "Playback";
@@ -16,6 +18,7 @@ Window::Playback::Playback(bool* isOpen) : IWindow(isOpen) {
     this->maxIndex         = 0;
     this->lastUpdatedIndex = -1;
     this->lastFrameTime    = std::chrono::steady_clock::now();
+    this->lastSeekTime     = std::chrono::steady_clock::now();
 }
 
 std::string Window::Playback::formatTime(double timestamp) {
@@ -29,15 +32,13 @@ std::string Window::Playback::formatTime(double timestamp) {
     } else if (this->selectedTimeUnit == TimeUnit::Microseconds) {
         timeInSeconds = timestamp / 1000000.0;
     } else {
-        // TimeUnit::Auto
         if (timestamp > 1e9) { 
             if (timestamp > 1e11) {
                 timeInSeconds = timestamp / 1000.0;
             }
         } else {
-            if (timestamp > 86400.0) { 
-                timeInSeconds = timestamp / 1000.0;
-            }
+            // Usually small timestamp means milliseconds from video
+            timeInSeconds = timestamp / 1000.0;
         }
     }
 
@@ -79,13 +80,38 @@ void Window::Playback::processDragDrop() {
             fileType = columnPayload->fileType;
             fileName = columnPayload->fileName;
             colName  = columnPayload->columnName;
-            accepted = true;
+            if (fileType == "CSV" || fileType == "Telemetry") {
+                accepted = true;
+            }
         } else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ARCHIVE_NAME")) {
             const ArchivePayload* archivePayload = reinterpret_cast<const ArchivePayload*>(payload->Data);
             fileType = archivePayload->fileType;
             fileName = archivePayload->fileName;
             colName  = "timestamp";
-            if (DB::getInstance().columnExists(fileType, fileName, colName)) {
+            if (fileType == "Video") {
+                this->loadedVideoName = fileName;
+                
+                const auto& vFiles = DB::getInstance().getProject().getVideoFiles();
+                for (const auto& vf : vFiles) {
+                    if (vf.getPath().filename().string() == fileName) {
+                        if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
+                            wVideo->setLoadedVideo(vf.getPath().string());
+                            this->videoLengthMs = wVideo->getPlayer()->getLength();
+                            this->videoBlockStart = 0;
+                            this->globalTime = 0.0;
+                            
+                            if (this->selectedFileName.empty()) {
+                                this->csvBlockStart = 0.0;
+                                this->csvBlockEnd = this->videoLengthMs > 0 ? this->videoLengthMs : 10000.0;
+                            } else {
+                                this->csvBlockStart = 0.0;
+                                this->csvBlockEnd = this->videoLengthMs > 0 ? this->videoLengthMs : 10000.0;
+                            }
+                        }
+                        break;
+                    }
+                }
+            } else if (DB::getInstance().columnExists(fileType, fileName, colName)) {
                 accepted = true;
             }
         }
@@ -119,8 +145,17 @@ void Window::Playback::processDragDrop() {
 
             this->lastUpdatedIndex = -1;
             this->isPlaying        = false;
+            
+            if (this->loadedVideoName.empty()) {
+                this->videoBlockStart = 0.0;
+                this->csvBlockStart = 0.0;
+                this->csvBlockEnd = 10000.0;
+            } else {
+                this->csvBlockStart = 0.0;
+                this->csvBlockEnd = this->videoLengthMs > 0 ? this->videoLengthMs : 10000.0;
+            }
+            this->globalTime = 0.0;
 
-            // Cache columns
             this->cachedColNames.clear();
             this->cachedColumns.clear();
 
@@ -148,7 +183,6 @@ void Window::Playback::processDragDrop() {
                 }
             }
 
-            // Força reinicialização do pacote de telemetria baseada no drag-and-drop
             ProjectData& pd    = DB::getInstance().getProject();
             bool         found = false;
             for (auto& tel : pd.telemetryFiles) {
@@ -215,41 +249,63 @@ void Window::Playback::render() {
     if (!this->isOpen || !*this->isOpen)
         return;
 
-    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    // Apply #dbdbdb menu bar color in light mode
+    ImVec4 winBgCheck = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+    float lumCheck = 0.299f * winBgCheck.x + 0.587f * winBgCheck.y + 0.114f * winBgCheck.z;
+    bool isLightMode = lumCheck >= 0.5f;
+    if (isLightMode) {
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(219.0f/255.0f, 219.0f/255.0f, 219.0f/255.0f, 1.0f));
+    }
+
+    ImGui::SetNextWindowSize(ImVec2(800, 500), ImGuiCond_FirstUseEver);
     ImGui::Begin(this->title.c_str(), this->isOpen, this->flags);
 
-    // Drop Target Background
-    if (this->selectedFileName.empty()) {
+    // Sync with Video Window status
+    if (!this->loadedVideoName.empty()) {
+        if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
+            std::string currentVidPath = wVideo->getLoadedVideo();
+            if (currentVidPath.empty() || currentVidPath.find(this->loadedVideoName) == std::string::npos) {
+                this->loadedVideoName.clear();
+                this->videoLengthMs = 0.0;
+                this->isPlaying = false;
+            }
+        }
+    }
+
+    if (this->selectedFileName.empty() && this->loadedVideoName.empty()) {
         ImVec2 avail = ImGui::GetContentRegionAvail();
         if (avail.y < 50.0f)
             avail.y = 50.0f;
         ImGui::Dummy(avail);
         this->processDragDrop();
 
-        ImVec2 text_size   = ImGui::CalcTextSize("Arraste uma base para cá (CSV ou Telemetria)");
+        ImVec2 text_size   = ImGui::CalcTextSize("Arraste uma base para cá (CSV, Telemetria ou Vídeo)");
         ImVec2 window_size = ImGui::GetWindowSize();
         ImVec2 text_pos((window_size.x - text_size.x) * 0.5f, (window_size.y - text_size.y) * 0.5f);
         ImGui::SetCursorPos(text_pos);
-        ImGui::TextDisabled("Arraste uma base para cá (CSV ou Telemetria)");
+        ImGui::TextDisabled("Arraste uma base para cá (CSV, Telemetria ou Vídeo)");
+        if (isLightMode) ImGui::PopStyleColor(); // MenuBarBg
         ImGui::End();
         return;
     }
 
-    // Menu Bar
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Arquivo")) {
             if (ImGui::MenuItem("Limpar / Trocar Base")) {
                 this->selectedFileName.clear();
                 this->timestampData.clear();
+                this->cachedColNames.clear();
+                this->cachedColumns.clear();
+                this->loadedVideoName.clear();
                 this->isPlaying = false;
-
-                // Clear PLAYBACK
-                for (auto& tel : DB::getInstance().getProject().telemetryFiles) {
-                    if (tel.getPacketId() == "PLAYBACK") {
-                        tel.clearData();
-                        break;
-                    }
+                this->lastUpdatedIndex = -1;
+                
+                if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
+                    wVideo->setLoadedVideo("");
                 }
+
+                // Remove the packet entirely so it disappears from the data picker
+                DB::getInstance().getProject().removePacket("PLAYBACK");
             }
             ImGui::EndMenu();
         }
@@ -264,97 +320,455 @@ void Window::Playback::render() {
         }
 
         ImGui::Separator();
-        ImGui::TextDisabled("Base Ativa: %s  |  Coluna Tempo: %s", this->selectedFileName.c_str(),
-                            this->selectedTimestampCol.c_str());
+        ImGui::TextDisabled("CSV: %s | Vídeo: %s", 
+            this->selectedFileName.empty() ? "Nenhum" : this->selectedFileName.c_str(),
+            this->loadedVideoName.empty() ? "Nenhum" : this->loadedVideoName.c_str());
         ImGui::EndMenuBar();
     }
 
-    // Criar Drop Target invisível no fundo para permitir a substituição da base atual
     ImVec2 cursorBefore = ImGui::GetCursorPos();
     ImGui::Dummy(ImGui::GetContentRegionAvail());
     this->processDragDrop();
     ImGui::SetCursorPos(cursorBefore);
 
-    // Logic update
     auto   now          = std::chrono::steady_clock::now();
     double dt           = std::chrono::duration<double>(now - this->lastFrameTime).count();
     this->lastFrameTime = now;
 
-    double timeMultiplier = 1.0;
-    if (this->selectedTimeUnit == TimeUnit::Seconds) {
-        timeMultiplier = 1.0;
-    } else if (this->selectedTimeUnit == TimeUnit::Milliseconds) {
-        timeMultiplier = 1000.0;
-    } else if (this->selectedTimeUnit == TimeUnit::Microseconds) {
-        timeMultiplier = 1000000.0;
-    } else {
-        // Se o timestamp final for > 86400 (24h em s), está em milissegundos!
-        if (this->endTimestamp > 86400.0) {
-            timeMultiplier = 1000.0;
+    if (!this->loadedVideoName.empty()) {
+        if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
+            int64_t len = wVideo->getPlayer()->getLength();
+            if (len > 0) {
+                this->videoLengthMs = static_cast<double>(len);
+            }
         }
     }
 
     if (this->isPlaying) {
-        this->currentTimestamp += dt * timeMultiplier * this->playbackSpeed;
-
-        if (this->currentTimestamp > this->endTimestamp) {
-            this->currentTimestamp = this->endTimestamp;
-            this->isPlaying        = false;
-        }
-
-        // Find the correct index
-        while (this->currentIndex < this->maxIndex &&
-               this->timestampData[this->currentIndex] < this->currentTimestamp) {
-            this->currentIndex++;
+        bool videoIsMaster = (!this->loadedVideoName.empty() && this->globalTime >= this->videoBlockStart && this->globalTime <= this->videoBlockStart + this->videoLengthMs);
+        if (!videoIsMaster) {
+            this->globalTime += dt * 1000.0 * this->playbackSpeed;
         }
     }
 
-    // Centralização Vertical Opcional
-    ImVec2 avail       = ImGui::GetContentRegionAvail();
-    float  totalHeight = 80.0f; // Estimativa da altura dos botões + slider
-    if (avail.y > totalHeight) {
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (avail.y - totalHeight) * 0.4f);
+    double timelineStart = std::min(this->videoBlockStart, this->csvBlockStart);
+    double timelineEnd = std::max(this->videoBlockStart + this->videoLengthMs, this->csvBlockEnd);
+    if (timelineEnd <= timelineStart + 1.0) timelineEnd = timelineStart + 10000.0;
+
+    if (this->globalTime > timelineEnd) {
+        this->globalTime = timelineEnd;
+        this->isPlaying = false;
+    }
+    if (this->globalTime < timelineStart) {
+        this->globalTime = timelineStart;
     }
 
-    // --- 1. SLIDER CENTRALIZADO ---
-    ImGui::Spacing();
+    bool shouldVideoPlay = false;
+    double videoTargetPos = this->globalTime - this->videoBlockStart;
+    if (this->globalTime >= this->videoBlockStart && this->globalTime <= this->videoBlockStart + this->videoLengthMs) {
+        shouldVideoPlay = true;
+    }
 
-    std::string startTimeStr   = this->formatTime(this->startTimestamp);
-    std::string endTimeStr     = this->formatTime(this->endTimestamp);
-    std::string currentTimeStr = this->formatTime(this->currentTimestamp);
+    if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
+        auto* player = wVideo->getPlayer();
+        auto now = std::chrono::steady_clock::now();
+        double msSinceLastSeek = std::chrono::duration<double, std::milli>(now - this->lastSeekTime).count();
 
-    float startW   = ImGui::CalcTextSize(startTimeStr.c_str()).x;
-    float endW     = ImGui::CalcTextSize(endTimeStr.c_str()).x;
-    float sliderW  = ImGui::GetWindowWidth() * 0.75f;
-    float itemSpc  = ImGui::GetStyle().ItemSpacing.x;
-    float rowWidth = startW + sliderW + endW + (itemSpc * 2);
+        // Only try to control video if it has been parsed and has a length
+        if (player->getLength() > 0) {
+            if (this->isScrubbing) {
+                // User is dragging the timeline cursor: seek video to the target position
+                // instead of reading position from it (which would overwrite globalTime).
+                if (this->videoPlayCommandSent) {
+                    player->pause();
+                    this->videoPlayCommandSent = false;
+                }
+                if (shouldVideoPlay && msSinceLastSeek > 80.0) {
+                    player->setTime(static_cast<int64_t>(videoTargetPos));
+                    this->lastSeekTime = now;
+                }
+            } else if (this->isPlaying && shouldVideoPlay) {
+                if (!this->videoPlayCommandSent) {
+                    // BUG FIX: always seek to the correct position BEFORE calling play().
+                    // Without this, VLC resumes from wherever it last stopped instead of
+                    // starting at videoTargetPos (typically 0 at the block start).
+                    if (msSinceLastSeek > 80.0) {
+                        player->setTime(static_cast<int64_t>(videoTargetPos));
+                        this->lastSeekTime = now;
+                    }
+                    player->play();
+                    this->videoPlayCommandSent = true;
+                }
+                int64_t currentVidTime = player->getTime();
+                this->globalTime = this->videoBlockStart + currentVidTime;
+            } else {
+                // Pause if: we sent a play command, OR the video is playing due to
+                // an external trigger (e.g. setLoadedVideo auto-play on drag & drop).
+                if (this->videoPlayCommandSent || player->isPlaying()) {
+                    player->pause();
+                    this->videoPlayCommandSent = false;
+                }
+                if (shouldVideoPlay) {
+                    // Cursor is inside the video block but paused: keep video seeked to cursor.
+                    int64_t currentVidTime = player->getTime();
+                    if (std::abs(currentVidTime - videoTargetPos) > 100.0 && msSinceLastSeek > 200.0) {
+                        player->setTime(static_cast<int64_t>(videoTargetPos));
+                        this->lastSeekTime = now;
+                    }
+                } else if (videoTargetPos < 0.0) {
+                    // BUG FIX: cursor is BEFORE the video block — reset video to position 0
+                    // so the next play() always starts from the beginning.
+                    if (player->getTime() > 150 && msSinceLastSeek > 500.0) {
+                        player->setTime(0);
+                        this->lastSeekTime = now;
+                    }
+                }
+            }
+        }
+    }
 
-    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - rowWidth) * 0.5f);
+    if (!this->selectedFileName.empty() && this->maxIndex > 0) {
+        double csvRatio = 0.0;
+        if (this->csvBlockEnd > this->csvBlockStart) {
+            csvRatio = (this->globalTime - this->csvBlockStart) / (this->csvBlockEnd - this->csvBlockStart);
+        }
+        
+        if (csvRatio < 0.0) csvRatio = 0.0;
+        if (csvRatio > 1.0) csvRatio = 1.0;
 
-    ImGui::Text("%s", startTimeStr.c_str());
-    ImGui::SameLine();
+        this->currentTimestamp = this->startTimestamp + csvRatio * (this->endTimestamp - this->startTimestamp);
 
-    ImGui::SetNextItemWidth(sliderW);
-    float sliderVal = static_cast<float>(this->currentTimestamp - this->startTimestamp);
-    if (ImGui::SliderFloat("##TimeSlider", &sliderVal, 0.0f,
-                           static_cast<float>(this->endTimestamp - this->startTimestamp), currentTimeStr.c_str())) {
-        this->currentTimestamp = this->startTimestamp + static_cast<double>(sliderVal);
-
-        // Find index matching slider
         this->currentIndex = 0;
         while (this->currentIndex < this->maxIndex &&
                this->timestampData[this->currentIndex] < this->currentTimestamp) {
             this->currentIndex++;
         }
     }
-    ImGui::SameLine();
-    ImGui::Text("%s", endTimeStr.c_str());
 
-    ImGui::Spacing();
-    ImGui::Spacing();
+    this->updatePlaybackData();
 
-    // --- 2. CONTROLES DE MÍDIA E VELOCIDADE ---
-    // Calcular larguras para centralização horizontal dos botões
+    if (!this->loadedVideoName.empty() && !this->selectedFileName.empty()) {
+        ImGui::Spacing();
+        
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        float canvasWidth = ImGui::GetContentRegionAvail().x;
+        float canvasHeight = 140.0f; // A bit taller for ruler
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        
+        // Background
+        // --- Adaptive color palette: explicit values per theme for good contrast ---
+        ImVec4 winBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+        float lum = 0.299f * winBg.x + 0.587f * winBg.y + 0.114f * winBg.z;
+        bool isDark = lum < 0.5f;
+
+        ImU32 colBg, colBgBorder, colRulerBg, colRulerLine, colTrackBg, colTick, colTickText;
+        if (isDark) {
+            // Dark theme — original deep-dark palette
+            colBg        = IM_COL32( 30,  30,  30, 255); // main canvas bg
+            colBgBorder  = IM_COL32( 60,  60,  60, 255); // canvas border
+            colRulerBg   = IM_COL32( 45,  45,  45, 255); // ruler strip
+            colRulerLine = IM_COL32( 20,  20,  20, 255); // ruler bottom line
+            colTrackBg   = IM_COL32( 40,  40,  40, 255); // empty track lane
+            colTick      = IM_COL32(150, 150, 150, 255); // ruler tick marks
+            colTickText  = IM_COL32(200, 200, 200, 255); // ruler tick labels
+        } else {
+            // Light theme:
+            //  - colRulerBg  = #dbdbdb (219,219,219): the strip BEHIND the tick texts
+            //  - colBg / colTrackBg: lighter variants of #dbdbdb
+            //  - colBgBorder, colRulerLine, colTick, colTickText: all the same near-black
+            colBg        = IM_COL32(235, 235, 235, 255); // main canvas bg     (lighter variant)
+            colBgBorder  = IM_COL32( 30,  30,  30, 255); // canvas border      (same as tick text)
+            colRulerBg   = IM_COL32(219, 219, 219, 255); // ruler strip bg     (#dbdbdb — behind ticks)
+            colRulerLine = IM_COL32( 30,  30,  30, 255); // ruler separator    (same as tick text)
+            colTrackBg   = IM_COL32(228, 228, 228, 255); // empty track lane   (lighter variant)
+            colTick      = IM_COL32( 30,  30,  30, 255); // ruler tick marks   (same as tick text)
+            colTickText  = IM_COL32( 30,  30,  30, 255); // ruler tick labels  (near-black)
+        }
+
+        drawList->AddRectFilled(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), colBg);
+        // Border is drawn AFTER PopClipRect so it always sits on top of track backgrounds
+
+        // Scale factors with zoom? For now just fit everything with some margin
+        double visibleStart = timelineStart - (timelineEnd - timelineStart) * 0.02;
+        double visibleEnd = timelineEnd + (timelineEnd - timelineStart) * 0.02;
+        double visibleDuration = visibleEnd - visibleStart;
+        if (visibleDuration < 1.0) visibleDuration = 1.0;
+
+        auto timeToX = [&](double t) -> float {
+            return p.x + (float)((t - visibleStart) / visibleDuration * canvasWidth);
+        };
+
+        auto xToTime = [&](float x) -> double {
+            return visibleStart + ((x - p.x) / canvasWidth) * visibleDuration;
+        };
+
+        // Snap threshold: 10 pixels converted to time units
+        double snapThreshMs = 10.0 / canvasWidth * visibleDuration;
+
+        // Returns the value snapped to the nearest snap point if within threshold.
+        // Also sets outSnapX to the screen X of the snap point (for guide line), or -1 if not snapping.
+        double m_lastSnapX = -1.0; // screen X of active snap guide line (or -1)
+        auto trySnap = [&](double value, std::initializer_list<double> snapPoints, double& outSnapX) -> double {
+            outSnapX = -1.0;
+            for (double sp : snapPoints) {
+                if (std::abs(value - sp) < snapThreshMs) {
+                    outSnapX = (double)timeToX(sp);
+                    return sp;
+                }
+            }
+            return value;
+        };
+        (void)m_lastSnapX;
+
+        drawList->PushClipRect(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), true);
+
+        // --- DRAW RULER ---
+        float rulerHeight = 25.0f;
+        drawList->AddRectFilled(p, ImVec2(p.x + canvasWidth, p.y + rulerHeight), colRulerBg);
+        drawList->AddLine(ImVec2(p.x, p.y + rulerHeight), ImVec2(p.x + canvasWidth, p.y + rulerHeight), colRulerLine);
+
+        // Draw ruler ticks
+        double tickStep = visibleDuration / 10.0;
+        double firstTick = std::floor(visibleStart / tickStep) * tickStep;
+        for (double t = firstTick; t < visibleEnd; t += tickStep) {
+            float tx = timeToX(t);
+            if (tx >= p.x && tx <= p.x + canvasWidth) {
+                drawList->AddLine(ImVec2(tx, p.y + rulerHeight - 5), ImVec2(tx, p.y + rulerHeight), colTick);
+                std::string tStr = this->formatTime(t);
+                drawList->AddText(ImVec2(tx + 2, p.y + 2), colTickText, tStr.c_str());
+            }
+        }
+
+        // Tracks Layout
+        float track1Y = p.y + rulerHeight + 10.0f;
+        float trackH = 35.0f;
+        
+        // --- VIDEO TRACK ---
+        float vStartX = timeToX(this->videoBlockStart);
+        float vEndX = timeToX(this->videoBlockStart + this->videoLengthMs);
+        
+        // Draw track background (the empty lane)
+        drawList->AddRectFilled(ImVec2(p.x, track1Y), ImVec2(p.x + canvasWidth, track1Y + trackH), colTrackBg);
+        
+        // Draw the Video Block
+        drawList->AddRectFilled(ImVec2(vStartX, track1Y), ImVec2(vEndX, track1Y + trackH), IM_COL32(20, 90, 60, 255), 3.0f);
+        drawList->AddRect(ImVec2(vStartX, track1Y), ImVec2(vEndX, track1Y + trackH), IM_COL32(40, 160, 100, 255), 3.0f);
+        drawList->AddText(ImVec2(vStartX + 8, track1Y + 10), IM_COL32(180, 255, 200, 255), (std::string("Vídeo: ") + this->loadedVideoName).c_str());
+
+        // Drag Video
+        float vW = vEndX - vStartX;
+        if (vW < 1.0f) vW = 1.0f; // PREVENT CRASH
+        ImGui::SetCursorScreenPos(ImVec2(vStartX, track1Y));
+        ImGui::InvisibleButton("##VideoTrackDrag", ImVec2(vW, trackH));
+        double videoSnapGuideX = -1.0;
+        if (ImGui::IsItemActive()) {
+            if (!this->isDraggingVideo) {
+                this->isDraggingVideo = true;
+                this->dragOffset = ImGui::GetMousePos().x - vStartX;
+            }
+            float newStartX = ImGui::GetMousePos().x - this->dragOffset;
+            double rawVideoStart = xToTime(newStartX);
+            double rawVideoEnd   = rawVideoStart + this->videoLengthMs;
+
+            // Try snapping: video start or video end to CSV edges
+            double snapX = -1.0;
+            double snappedStart = trySnap(rawVideoStart, {this->csvBlockStart, this->csvBlockEnd}, snapX);
+            if (snapX >= 0.0) {
+                rawVideoStart = snappedStart;
+                videoSnapGuideX = snapX;
+            } else {
+                double snappedEnd = trySnap(rawVideoEnd, {this->csvBlockStart, this->csvBlockEnd}, snapX);
+                if (snapX >= 0.0) {
+                    rawVideoStart = snappedEnd - this->videoLengthMs;
+                    videoSnapGuideX = snapX;
+                }
+            }
+
+            this->videoBlockStart = rawVideoStart;
+            if (this->videoBlockStart < 0.0) this->videoBlockStart = 0.0;
+        } else {
+            this->isDraggingVideo = false;
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+
+        // --- CSV TRACK ---
+        float track2Y = track1Y + trackH + 5.0f;
+        
+        float cStartX = timeToX(this->csvBlockStart);
+        float cEndX = timeToX(this->csvBlockEnd);
+
+        // Draw track background
+        drawList->AddRectFilled(ImVec2(p.x, track2Y), ImVec2(p.x + canvasWidth, track2Y + trackH), colTrackBg);
+
+        // Draw the CSV Block
+        drawList->AddRectFilled(ImVec2(cStartX, track2Y), ImVec2(cEndX, track2Y + trackH), IM_COL32(15, 110, 55, 255), 3.0f);
+        drawList->AddRect(ImVec2(cStartX, track2Y), ImVec2(cEndX, track2Y + trackH), IM_COL32(50, 200, 110, 255), 3.0f);
+        drawList->AddText(ImVec2(cStartX + 8, track2Y + 10), IM_COL32(180, 255, 200, 255), (std::string("Dados: ") + this->selectedFileName).c_str());
+
+        float handleW = 8.0f;
+        
+        // Left handle
+        ImGui::SetCursorScreenPos(ImVec2(cStartX - handleW, track2Y));
+        ImGui::InvisibleButton("##CsvLeft", ImVec2(handleW * 2, trackH));
+        double csvLeftSnapGuideX = -1.0;
+        if (ImGui::IsItemActive()) {
+            double rawVal = xToTime(ImGui::GetMousePos().x);
+            double snapX = -1.0;
+            rawVal = trySnap(rawVal, {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs}, snapX);
+            csvLeftSnapGuideX = snapX;
+            this->globalTime = rawVal;
+            if (this->globalTime < 0.0) this->globalTime = 0.0;
+            this->csvBlockStart = rawVal;
+            // Minimum duration 1 ms to prevent crash
+            if (this->csvBlockStart > this->csvBlockEnd - 1.0) this->csvBlockStart = this->csvBlockEnd - 1.0;
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        
+        // Center drag
+        ImGui::SetCursorScreenPos(ImVec2(cStartX + handleW, track2Y));
+        float centerW = (cEndX - cStartX) - handleW * 2;
+        if (centerW < 1.0f) centerW = 1.0f; // PREVENT CRASH
+        ImGui::InvisibleButton("##CsvCenter", ImVec2(centerW, trackH));
+        double csvCenterSnapGuideX = -1.0;
+        if (ImGui::IsItemActive()) {
+            if (!this->isDraggingCsv) {
+                this->isDraggingCsv = true;
+                this->dragOffset = ImGui::GetMousePos().x - cStartX;
+            }
+            float newStartX = ImGui::GetMousePos().x - this->dragOffset;
+            double rawNewCsvStart = xToTime(newStartX);
+            double csvDuration    = this->csvBlockEnd - this->csvBlockStart;
+            double rawNewCsvEnd   = rawNewCsvStart + csvDuration;
+
+            // Try snapping: CSV start or CSV end to Video edges
+            double snapX = -1.0;
+            double snappedStart = trySnap(rawNewCsvStart, {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs}, snapX);
+            if (snapX >= 0.0) {
+                rawNewCsvStart = snappedStart;
+                csvCenterSnapGuideX = snapX;
+            } else {
+                double snappedEnd = trySnap(rawNewCsvEnd, {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs}, snapX);
+                if (snapX >= 0.0) {
+                    rawNewCsvStart = snappedEnd - csvDuration;
+                    csvCenterSnapGuideX = snapX;
+                }
+            }
+
+            double dtMove = rawNewCsvStart - this->csvBlockStart;
+            // Limit left side to 0
+            if (this->csvBlockStart + dtMove < 0.0) {
+                dtMove = -this->csvBlockStart;
+            }
+            this->csvBlockStart += dtMove;
+            this->csvBlockEnd += dtMove;
+        } else {
+            this->isDraggingCsv = false;
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+
+        // Right handle
+        ImGui::SetCursorScreenPos(ImVec2(cEndX - handleW, track2Y));
+        ImGui::InvisibleButton("##CsvRight", ImVec2(handleW * 2, trackH));
+        double csvRightSnapGuideX = -1.0;
+        if (ImGui::IsItemActive()) {
+            double rawVal = xToTime(ImGui::GetMousePos().x);
+            double snapX = -1.0;
+            rawVal = trySnap(rawVal, {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs}, snapX);
+            csvRightSnapGuideX = snapX;
+            this->csvBlockEnd = rawVal;
+            // Minimum duration 1 ms to prevent crash
+            if (this->csvBlockEnd < this->csvBlockStart + 1.0) this->csvBlockEnd = this->csvBlockStart + 1.0;
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+
+        // --- SNAP GUIDE LINES (drawn after all drag logic, before playhead) ---
+        // Show a bright yellow vertical line at the active snap point
+        {
+            auto drawSnapGuide = [&](double guideX) {
+                if (guideX >= 0.0) {
+                    float gx = (float)guideX;
+                    drawList->AddLine(ImVec2(gx, p.y + rulerHeight), ImVec2(gx, p.y + canvasHeight),
+                                      IM_COL32(255, 230, 50, 200), 1.0f);
+                    // Small diamond at the top of the guide
+                    drawList->AddTriangleFilled(
+                        ImVec2(gx - 4, p.y + rulerHeight),
+                        ImVec2(gx + 4, p.y + rulerHeight),
+                        ImVec2(gx, p.y + rulerHeight + 7),
+                        IM_COL32(255, 230, 50, 230));
+                }
+            };
+            drawSnapGuide(videoSnapGuideX);
+            drawSnapGuide(csvLeftSnapGuideX);
+            drawSnapGuide(csvCenterSnapGuideX);
+            drawSnapGuide(csvRightSnapGuideX);
+        }
+
+        // Draw Global Playhead Cursor (After Effects Style)
+        float cursorX = timeToX(this->globalTime);
+        
+        // Cursor Line
+        drawList->AddLine(ImVec2(cursorX, p.y), ImVec2(cursorX, p.y + canvasHeight), IM_COL32(50, 220, 120, 255), 1.5f);
+        
+        // Cursor Head (Polygon)
+        ImVec2 head[5] = {
+            ImVec2(cursorX - 6, p.y),
+            ImVec2(cursorX + 6, p.y),
+            ImVec2(cursorX + 6, p.y + 12),
+            ImVec2(cursorX, p.y + 18),
+            ImVec2(cursorX - 6, p.y + 12)
+        };
+        drawList->AddConvexPolyFilled(head, 5, IM_COL32(50, 220, 120, 255));
+        drawList->AddPolyline(head, 5, IM_COL32(200, 255, 220, 200), ImDrawFlags_Closed, 1.0f);
+        
+        drawList->PopClipRect();
+
+        // Draw border on top of all content so track backgrounds can't overdraw it
+        drawList->AddRect(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), colBgBorder);
+
+        // Drag Global Cursor (Clicking anywhere on ruler or background)
+        ImGui::SetCursorScreenPos(p);
+        ImGui::InvisibleButton("##TimelineBg", ImVec2(canvasWidth, canvasHeight));
+        bool timelineBgActive = ImGui::IsItemActive() && !this->isDraggingVideo && !this->isDraggingCsv;
+        if (timelineBgActive) {
+            this->globalTime = xToTime(ImGui::GetMousePos().x);
+            if (this->globalTime < 0.0) this->globalTime = 0.0;
+        }
+        // Update scrubbing state for next frame's video control logic
+        this->isScrubbing = timelineBgActive;
+
+        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + canvasHeight + 10.0f));
+
+    } else {
+        ImGui::Spacing();
+
+        std::string startTimeStr   = this->formatTime(timelineStart);
+        std::string endTimeStr     = this->formatTime(timelineEnd);
+        std::string currentTimeStr = this->formatTime(this->globalTime);
+
+        float startW   = ImGui::CalcTextSize(startTimeStr.c_str()).x;
+        float endW     = ImGui::CalcTextSize(endTimeStr.c_str()).x;
+        float sliderW  = ImGui::GetWindowWidth() * 0.75f;
+        float itemSpc  = ImGui::GetStyle().ItemSpacing.x;
+        float rowWidth = startW + sliderW + endW + (itemSpc * 2);
+
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - rowWidth) * 0.5f);
+
+        ImGui::Text("%s", startTimeStr.c_str());
+        ImGui::SameLine();
+
+        ImGui::SetNextItemWidth(sliderW);
+        float sliderVal = static_cast<float>(this->globalTime);
+        if (ImGui::SliderFloat("##TimeSlider", &sliderVal, static_cast<float>(timelineStart),
+                            static_cast<float>(timelineEnd), currentTimeStr.c_str())) {
+            this->globalTime = static_cast<double>(sliderVal);
+        }
+        ImGui::SameLine();
+        ImGui::Text("%s", endTimeStr.c_str());
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+    }
+
     float pad           = ImGui::GetStyle().FramePadding.x * 2.0f;
     float playBtnW      = ImGui::CalcTextSize("Pause").x + pad + 10.0f;
     float shortBtnW     = ImGui::CalcTextSize("<<").x + pad + 10.0f;
@@ -367,40 +781,30 @@ void Window::Playback::render() {
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(spaceX, 4.0f));
 
     if (ImGui::Button("|<<", ImVec2(medBtnW, 0))) {
-        this->currentTimestamp = this->startTimestamp;
-        this->currentIndex     = 0;
+        this->globalTime = timelineStart;
     }
     ImGui::SameLine();
     if (ImGui::Button("<<", ImVec2(shortBtnW, 0))) {
-        this->currentTimestamp -= 5.0 * timeMultiplier * this->playbackSpeed;
-        if (this->currentTimestamp < this->startTimestamp)
-            this->currentTimestamp = this->startTimestamp;
-        while (this->currentIndex > 0 && this->timestampData[this->currentIndex] > this->currentTimestamp) {
-            this->currentIndex--;
-        }
+        this->globalTime -= 5000.0 * this->playbackSpeed;
+        if (this->globalTime < timelineStart)
+            this->globalTime = timelineStart;
     }
     ImGui::SameLine();
     if (ImGui::Button(this->isPlaying ? "Pause" : "Play", ImVec2(playBtnW, 0))) {
         this->isPlaying = !this->isPlaying;
-        if (this->isPlaying && this->currentIndex >= this->maxIndex) {
-            this->currentIndex     = 0;
-            this->currentTimestamp = this->startTimestamp;
+        if (this->isPlaying && this->globalTime >= timelineEnd) {
+            this->globalTime = timelineStart;
         }
     }
     ImGui::SameLine();
     if (ImGui::Button(">>", ImVec2(shortBtnW, 0))) {
-        this->currentTimestamp += 5.0 * timeMultiplier * this->playbackSpeed;
-        if (this->currentTimestamp > this->endTimestamp)
-            this->currentTimestamp = this->endTimestamp;
-        while (this->currentIndex < this->maxIndex &&
-               this->timestampData[this->currentIndex] < this->currentTimestamp) {
-            this->currentIndex++;
-        }
+        this->globalTime += 5000.0 * this->playbackSpeed;
+        if (this->globalTime > timelineEnd)
+            this->globalTime = timelineEnd;
     }
     ImGui::SameLine();
     if (ImGui::Button(">>|", ImVec2(medBtnW, 0))) {
-        this->currentTimestamp = this->endTimestamp;
-        this->currentIndex     = this->maxIndex;
+        this->globalTime = timelineEnd;
     }
 
     ImGui::PopStyleVar();
@@ -409,16 +813,18 @@ void Window::Playback::render() {
     ImGui::SetNextItemWidth(comboW);
     const char* speeds[]        = {"0.25x", "0.5x", "1.0x", "1.5x", "2.0x", "5.0x"};
     float       speedValues[]   = {0.25f, 0.5f, 1.0f, 1.5f, 2.0f, 5.0f};
-    int         currentSpeedIdx = 2; // Default 1.0x
+    int         currentSpeedIdx = 2;
     for (int i = 0; i < 6; i++) {
         if (this->playbackSpeed == speedValues[i])
             currentSpeedIdx = i;
     }
     if (ImGui::Combo("##Velocidade", &currentSpeedIdx, speeds, IM_ARRAYSIZE(speeds))) {
         this->playbackSpeed = speedValues[currentSpeedIdx];
+        if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
+            wVideo->getPlayer()->setRate(this->playbackSpeed);
+        }
     }
 
-    this->updatePlaybackData();
-
+    if (isLightMode) ImGui::PopStyleColor(); // MenuBarBg
     ImGui::End();
 }

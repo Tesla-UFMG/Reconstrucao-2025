@@ -42,8 +42,10 @@ class CSVFile : public GenericFile {
         const std::vector<double>&      getColumnData(const std::string& columnName) const;
 };
 
-class VideoFile : public GenericFile {};
-
+class VideoFile : public GenericFile {
+    public:
+        VideoFile(std::filesystem::path filepath);
+};
 class TelemetryFile : public GenericFile {
     private:
         std::string                      packetId;

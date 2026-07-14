@@ -14,6 +14,7 @@ DB::DB() { LOG("TRACE", "DB iniciada."); }
 DB::~DB() { LOG("TRACE", "DB encerrado."); }
 
 void DB::deleteCSV(const std::filesystem::path& filepath) { this->projectData.removeCSV(filepath); }
+void DB::deleteVideo(const std::filesystem::path& filepath) { this->projectData.removeVideo(filepath); }
 
 const ProjectData& DB::getProject() const { return this->projectData; }
 
@@ -40,19 +41,32 @@ void DB::saveProjectDialog() {
 }
 
 void DB::loadProjectDialog() {
-    char* filepath = Dialogs::showOpenFileDialog("Carregar Projeto", "*.tesla");
+    std::vector<const char*> filters = {"*.tesla"};
+    char* filepath = Dialogs::showOpenFileDialog("Carregar Projeto", filters, "Projeto Tesla (*.tesla)");
     if (filepath) {
         DB::loadProject(filepath);
     }
 }
 
-void DB::loadCSVDialog() {
-    char* filepath = Dialogs::showOpenFileDialog("Carregar CSV", "*.csv");
+void DB::loadDataDialog() {
+    std::vector<const char*> filters = {"*.csv", "*.mp4", "*.avi", "*.mkv", "*.mov"};
+    char* filepath = Dialogs::showOpenFileDialog("Carregar Dados", filters, "Arquivos Suportados");
     if (!filepath) {
         LOG("ERROR", "Arquivo não encontrado.");
         return;
     }
-    this->projectData.loadCSV(filepath);
+    
+    std::filesystem::path path(filepath);
+    std::string ext = path.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    if (ext == ".csv") {
+        this->projectData.loadCSV(filepath);
+    } else if (ext == ".mp4" || ext == ".avi" || ext == ".mkv" || ext == ".mov") {
+        this->projectData.loadVideo(filepath);
+    } else {
+        LOG("ERROR", "Formato de arquivo não suportado.");
+    }
 }
 
 void DB::saveProject(const std::filesystem::path& filepath) {

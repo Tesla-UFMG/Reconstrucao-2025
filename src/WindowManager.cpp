@@ -43,6 +43,7 @@ void WindowManager::cleanup() {
     m_aboutWindow = nullptr;
     m_updatesWindow = nullptr;
     m_playbackWindow = nullptr;
+    m_videoWindow = nullptr;
     m_renderer = nullptr;
 }
 
@@ -121,6 +122,10 @@ void WindowManager::setup() {
     auto temp_playback_ptr = std::make_unique<Window::Playback>(&visibility.showPlayback);
     m_playbackWindow = temp_playback_ptr.get();
     windows.emplace_back(std::move(temp_playback_ptr));
+
+    auto temp_video_ptr = std::make_unique<Window::Video>(&visibility.showVideo, m_renderer);
+    m_videoWindow = temp_video_ptr.get();
+    windows.emplace_back(std::move(temp_video_ptr));
 }
 
 void WindowManager::homePage() {
@@ -382,6 +387,26 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
         }
     } else {
         file << "NO_WHEEL_STATE\n";
+    }
+
+    // Salvando estado da janela de Vídeo
+    if (m_videoWindow) {
+        file << "VIDEO_STATE\n";
+        file << m_videoWindow->getVolume() << "\n";
+        file << (m_videoWindow->getLoadedVideo().empty() ? "EMPTY" : m_videoWindow->getLoadedVideo()) << "\n";
+    } else {
+        file << "NO_VIDEO_STATE\n";
+    }
+
+    // Salvando estado da janela de Playback
+    if (m_playbackWindow) {
+        file << "PLAYBACK_STATE\n";
+        file << m_playbackWindow->videoLengthMs << "\n";
+        file << m_playbackWindow->videoBlockStart << "\n";
+        file << m_playbackWindow->csvBlockStart << "\n";
+        file << m_playbackWindow->csvBlockEnd << "\n";
+    } else {
+        file << "NO_PLAYBACK_STATE\n";
     }
 
     // 2. Salvando janelas dinâmicas
@@ -838,6 +863,16 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     }
                 }
             }
+            // Restaurando estado da janela de Playback
+            if (seekToBlock("PLAYBACK_STATE")) {
+                if (line == "PLAYBACK_STATE" && m_playbackWindow) {
+                    file >> m_playbackWindow->videoLengthMs;
+                    file >> m_playbackWindow->videoBlockStart;
+                    file >> m_playbackWindow->csvBlockStart;
+                    file >> m_playbackWindow->csvBlockEnd;
+                    std::getline(file, dummy); // consume newline
+                }
+            }
         } else if (line == "NO_PEDAL_STATE") {
             // Nenhuma ação necessária
         }
@@ -883,6 +918,32 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             }
         } else if (line == "NO_WHEEL_STATE") {
             // Nenhuma ação necessária
+        }
+    }
+
+    // Restaurando estado da janela de Vídeo
+    if (seekToBlock("VIDEO_STATE")) {
+        if (line == "VIDEO_STATE" && m_videoWindow) {
+            float vol = 100.0f;
+            file >> vol;
+            std::getline(file, dummy); // consume newline
+            std::string path;
+            std::getline(file, path);
+            m_videoWindow->setVolume(vol);
+            if (path != "EMPTY" && !path.empty()) {
+                m_videoWindow->setLoadedVideo(path);
+            }
+        }
+    }
+
+    // Restaurando estado da janela de Playback
+    if (seekToBlock("PLAYBACK_STATE")) {
+        if (line == "PLAYBACK_STATE" && m_playbackWindow) {
+            file >> m_playbackWindow->videoLengthMs;
+            file >> m_playbackWindow->videoBlockStart;
+            file >> m_playbackWindow->csvBlockStart;
+            file >> m_playbackWindow->csvBlockEnd;
+            std::getline(file, dummy); // consume newline
         }
     }
 
@@ -1290,6 +1351,21 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     }
                     if (!col.variables.empty()) {
                         matWin->m_columns.push_back(col);
+                    }
+                }
+            }
+
+            // Restaurando estado da janela de Vídeo
+            if (seekToBlock("VIDEO_STATE")) {
+                if (line == "VIDEO_STATE" && m_videoWindow) {
+                    float vol = 100.0f;
+                    file >> vol;
+                    std::getline(file, dummy); // consume newline
+                    std::string path;
+                    std::getline(file, path);
+                    m_videoWindow->setVolume(vol);
+                    if (path != "EMPTY" && !path.empty()) {
+                        m_videoWindow->setLoadedVideo(path);
                     }
                 }
             }

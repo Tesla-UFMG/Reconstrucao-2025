@@ -10,9 +10,15 @@ char* Dialogs::showSaveFileDialog(const std::string& title, const std::string& d
     return filepath;
 }
 
-char* Dialogs::showOpenFileDialog(const std::string& title, const char* filter) {
-    const char* filters[] = {filter, nullptr};
-    char*       filepath  = tinyfd_openFileDialog(title.c_str(), "./", 1, filters, filter, 0);
+char* Dialogs::showOpenFileDialog(const std::string& title, const std::vector<const char*>& filters, const char* description) {
+    char* filepath = tinyfd_openFileDialog(
+        title.c_str(), 
+        "./", 
+        static_cast<int>(filters.size()), 
+        filters.data(), 
+        description, 
+        0
+    );
     if (!filepath) {
         LOG("ERROR", "Não foi selecionado nenhum arquivo.");
         return nullptr;

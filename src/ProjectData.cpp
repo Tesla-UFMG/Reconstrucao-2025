@@ -46,6 +46,30 @@ void ProjectData::removeCSV(const std::filesystem::path& filepath) {
     LOG("ERROR", "Arquivo não encontrado para remoção: " + filepath.string());
 }
 
+void ProjectData::loadVideo(const std::filesystem::path& filepath) {
+    for (VideoFile& videoFile : this->videoFiles) {
+        if (videoFile.getPath() == filepath) {
+            LOG("WARN", "Vídeo já carregado: " + filepath.string());
+            return;
+        }
+    }
+    this->videoFiles.emplace_back(filepath);
+    LOG("INFO", "Vídeo carregado com sucesso " + filepath.string());
+}
+
+void ProjectData::removeVideo(const std::filesystem::path& filepath) {
+    for (size_t i = 0; i < videoFiles.size(); ++i) {
+        if (videoFiles[i].getPath() == filepath) {
+            videoFiles.erase(videoFiles.begin() + i);
+            LOG("INFO", "Vídeo removido: " + filepath.string());
+            return;
+        }
+    }
+    LOG("ERROR", "Vídeo não encontrado para remoção: " + filepath.string());
+}
+
+const std::vector<VideoFile>& ProjectData::getVideoFiles() { return this->videoFiles; }
+
 bool ProjectData::loadPacket(const std::string& packetName, const std::string& packetId,
                              const std::vector<std::string>& columnNames) {
     for (const TelemetryFile& telemetryFile : telemetryFiles) {
@@ -164,6 +188,8 @@ bool ProjectData::serialize(const std::filesystem::path& filepath) const {
         file.write(pathStr.data(), pathStrSize);
     }
 
+
+
     // Serializa os pacotes de telemetria
     size_t numTelemetryFiles = this->telemetryFiles.size();
     file.write(reinterpret_cast<const char*>(&numTelemetryFiles), sizeof(numTelemetryFiles));
@@ -267,6 +293,16 @@ bool ProjectData::serialize(const std::filesystem::path& filepath) const {
         file.write(reinterpret_cast<const char*>(&rule.wasTriggered), sizeof(rule.wasTriggered));
     }
 
+    // Serializa os caminhos dos vídeos (No final para retrocompatibilidade)
+    size_t numVideoFiles = this->videoFiles.size();
+    file.write(reinterpret_cast<const char*>(&numVideoFiles), sizeof(numVideoFiles));
+    for (const auto& videoFile : this->videoFiles) {
+        const std::string& pathStr     = videoFile.getPath().string();
+        size_t             pathStrSize = pathStr.size();
+        file.write(reinterpret_cast<const char*>(&pathStrSize), sizeof(pathStrSize));
+        file.write(pathStr.data(), pathStrSize);
+    }
+
     return true;
 }
 
@@ -295,6 +331,8 @@ bool ProjectData::deserialize(const std::filesystem::path& filepath) {
         file.read(&pathStr[0], pathStrSize);
         this->loadCSV(pathStr);
     }
+
+
 
     // Desserializa os pacotes de telemetria
     size_t numTelemetryFiles = 0;
@@ -415,6 +453,18 @@ bool ProjectData::deserialize(const std::filesystem::path& filepath) {
             if (!file.read(reinterpret_cast<char*>(&rule.wasTriggered), sizeof(rule.wasTriggered))) break;
 
             this->warningRules.push_back(rule);
+        }
+    }
+
+    // Desserializa os caminhos dos vídeos (Retrocompatibilidade: só se houver mais conteúdo)
+    size_t numVideoFiles = 0;
+    if (file.read(reinterpret_cast<char*>(&numVideoFiles), sizeof(numVideoFiles))) {
+        for (size_t i = 0; i < numVideoFiles; ++i) {
+            size_t pathStrSize = 0;
+            if (!file.read(reinterpret_cast<char*>(&pathStrSize), sizeof(pathStrSize))) break;
+            std::string pathStr(pathStrSize, '\0');
+            if (!file.read(&pathStr[0], pathStrSize)) break;
+            this->loadVideo(pathStr);
         }
     }
 

@@ -50,7 +50,11 @@ class ProjectData {
         void loadCSV(const std::filesystem::path& filepath);   // Carrega os dados de um arquivo CSV
         void removeCSV(const std::filesystem::path& filepath); // Remove dados
 
+        void loadVideo(const std::filesystem::path& filepath);
+        void removeVideo(const std::filesystem::path& filepath);
+
         const std::vector<CSVFile>&       getCSVFiles();
+        const std::vector<VideoFile>&     getVideoFiles();
         const std::vector<TelemetryFile>& getTelemetryFiles();
         const std::vector<TextFile>&      getTextFiles();
 

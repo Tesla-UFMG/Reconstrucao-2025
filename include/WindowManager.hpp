@@ -23,6 +23,7 @@
 #include "ui/windows/w_Matrix.hpp"
 #include "ui/windows/w_Updates.hpp"
 #include "ui/windows/w_Playback.hpp"
+#include "ui/windows/w_Video.hpp"
 
 #include "ui/menubar/MenuBar.hpp"
 
@@ -49,6 +50,7 @@ struct VisibilityFlags {
         bool showTelemetry      = false;
         bool showWarnings       = false;
         bool showPlayback       = false;
+        bool showVideo          = false;
 };
 
 namespace Window {
@@ -68,6 +70,7 @@ class WindowManager {
         Window::About* m_aboutWindow = nullptr;
         Window::Updates* m_updatesWindow = nullptr;
         Window::Playback* m_playbackWindow = nullptr;
+        Window::Video* m_videoWindow = nullptr;
         void saveWindowCustomStates(const std::string& filepath);
         void loadWindowCustomStates(const std::string& filepath);
 
@@ -93,6 +96,8 @@ public:
         void createBarWindow();
         void createMatrixWindow();
         void createTabelaWindow();
+
+        Window::Video* getVideoWindow() { return m_videoWindow; }
 };
 
 #endif // WINDOW_HPP

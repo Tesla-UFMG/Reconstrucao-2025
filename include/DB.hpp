@@ -46,10 +46,11 @@ class DB {
         void saveProjectDialog();
         void loadProjectDialog();
 
-        // Dialogo carregar um CSV
-        void loadCSVDialog();
+        // Dialogo carregar dados (CSV ou Vídeo)
+        void loadDataDialog();
 
         void deleteCSV(const std::filesystem::path& filepath);
+        void deleteVideo(const std::filesystem::path& filepath);
 
         bool columnExists(const std::string& fileType, const std::string& fileName, const std::string& columnName) const;
 
