@@ -24,6 +24,7 @@ namespace Window {
         private:
             void        processDragDrop();
             void        updatePlaybackData();
+            void        refreshData();
             std::string formatTime(double timestamp);
 
             friend class ::WindowManager;
@@ -74,6 +75,7 @@ namespace Window {
             // Scrubbing: true when user is clicking/dragging the timeline cursor
             // Updated at end of frame; used by video control logic at start of next frame
             bool isScrubbing = false;
+            double lastSeekTarget = -1.0;
     };
 } // namespace Window
 

@@ -7,13 +7,13 @@
 #include "ui/windows/w_Demo.hpp"
 #include "ui/windows/w_HomePage.hpp"
 #include "ui/windows/w_Pedal.hpp"
+#include "ui/windows/w_Playback.hpp"
+#include "ui/windows/w_Reconstruction.hpp"
 #include "ui/windows/w_Statistics.hpp"
 #include "ui/windows/w_Telemetry.hpp"
 #include "ui/windows/w_Terminal.hpp"
-#include "ui/windows/w_WheelControl.hpp"
-#include "ui/windows/w_Reconstruction.hpp" 
 #include "ui/windows/w_Updates.hpp"
-#include "ui/windows/w_Playback.hpp"
+#include "ui/windows/w_WheelControl.hpp"
 
 WindowManager& WindowManager::getInstance() {
     static WindowManager instance;
@@ -27,7 +27,7 @@ WindowManager::~WindowManager() { LOG("TRACE", "Window Manager encerrado."); }
 void WindowManager::init(SDL_Renderer* renderer) {
     this->m_renderer = renderer;
     this->setup();
-    
+
     // Abre a janela de atualizações se o arquivo oculto local não existir
     if (!std::filesystem::exists(std::filesystem::current_path() / ".tesla_updates_seen")) {
         this->showUpdates = true;
@@ -40,11 +40,11 @@ void WindowManager::cleanup() {
     windows.clear();
     home.reset();
     m_reconstructionWindow = nullptr;
-    m_aboutWindow = nullptr;
-    m_updatesWindow = nullptr;
-    m_playbackWindow = nullptr;
-    m_videoWindow = nullptr;
-    m_renderer = nullptr;
+    m_aboutWindow          = nullptr;
+    m_updatesWindow        = nullptr;
+    m_playbackWindow       = nullptr;
+    m_videoWindow          = nullptr;
+    m_renderer             = nullptr;
 }
 
 void WindowManager::saveWindowVisibility(const std::filesystem::path& filepath) {
@@ -84,30 +84,30 @@ void WindowManager::setup() {
 
     // 1. Janela de Reconstrução
     auto temp_reconstruction_ptr = std::make_unique<Window::Reconstruction>(&visibility.showReconstruction);
-    m_reconstructionWindow = temp_reconstruction_ptr.get();
+    m_reconstructionWindow       = temp_reconstruction_ptr.get();
 
-    // 2. Janela de Pedal 
+    // 2. Janela de Pedal
     auto temp_pedal_ptr = std::make_unique<Window::Pedal>(&visibility.showPedal);
 
-    // 3. Janela de Volante 
+    // 3. Janela de Volante
     auto temp_wheel_ptr = std::make_unique<Window::WheelControl>(&visibility.showWheelControl);
 
     // --- Adiciona todos os ponteiros únicos ao vetor principal de janelas ---
-    
+
     windows.emplace_back(std::move(temp_reconstruction_ptr));
     windows.emplace_back(std::move(temp_pedal_ptr));
     windows.emplace_back(std::move(temp_wheel_ptr));
 
     // --- Criação das Outras Janelas (não-reproduzíveis) ---
-    
+
     home = std::make_unique<Window::HomePage>();
-    
+
     auto temp_about_ptr = std::make_unique<Window::About>(&visibility.showAbout);
-    m_aboutWindow = temp_about_ptr.get();
+    m_aboutWindow       = temp_about_ptr.get();
     windows.emplace_back(std::move(temp_about_ptr));
 
     auto temp_updates_ptr = std::make_unique<Window::Updates>(&showUpdates);
-    m_updatesWindow = temp_updates_ptr.get();
+    m_updatesWindow       = temp_updates_ptr.get();
     windows.emplace_back(std::move(temp_updates_ptr));
 
     windows.emplace_back(std::make_unique<Window::DataPicker>(&visibility.showDataPicker));
@@ -120,11 +120,11 @@ void WindowManager::setup() {
     windows.emplace_back(std::make_unique<Window::Warning>(&visibility.showWarnings));
 
     auto temp_playback_ptr = std::make_unique<Window::Playback>(&visibility.showPlayback);
-    m_playbackWindow = temp_playback_ptr.get();
+    m_playbackWindow       = temp_playback_ptr.get();
     windows.emplace_back(std::move(temp_playback_ptr));
 
     auto temp_video_ptr = std::make_unique<Window::Video>(&visibility.showVideo, m_renderer);
-    m_videoWindow = temp_video_ptr.get();
+    m_videoWindow       = temp_video_ptr.get();
     windows.emplace_back(std::move(temp_video_ptr));
 }
 
@@ -136,7 +136,7 @@ void WindowManager::homePage() {
     if (m_updatesWindow) {
         m_updatesWindow->render();
     }
-    home->render();       // Home page
+    home->render(); // Home page
 }
 
 void WindowManager::mainPage() {
@@ -144,9 +144,10 @@ void WindowManager::mainPage() {
 
     // Remove closed dynamic windows
     windows.erase(std::remove_if(windows.begin(), windows.end(),
-        [](const std::unique_ptr<IWindow>& window) {
-            return window->isDynamic() && !window->getIsOpen();
-        }), windows.end());
+                                 [](const std::unique_ptr<IWindow>& window) {
+                                     return window->isDynamic() && !window->getIsOpen();
+                                 }),
+                  windows.end());
 
     for (auto& window : windows) {
         window->render();
@@ -159,15 +160,16 @@ void WindowManager::createNumericWindow() {
         if (w->isDynamic() && w->getDynamicType() == "Numeric") {
             auto* numWin = dynamic_cast<Window::Numeric*>(w.get());
             if (numWin) {
-                std::string wTitle = numWin->getTitle();
-                size_t hashPos = wTitle.find('#');
+                std::string wTitle  = numWin->getTitle();
+                size_t      hashPos = wTitle.find('#');
                 if (hashPos != std::string::npos) {
                     try {
                         int idx = std::stoi(wTitle.substr(hashPos + 1));
                         if (idx > maxIdx) {
                             maxIdx = idx;
                         }
-                    } catch (...) {}
+                    } catch (...) {
+                    }
                 }
             }
         }
@@ -186,15 +188,16 @@ void WindowManager::createGraphWindow() {
         if (w->isDynamic() && w->getDynamicType() == "Graph") {
             auto* graphWin = dynamic_cast<Window::Graph*>(w.get());
             if (graphWin) {
-                std::string wTitle = graphWin->getTitle();
-                size_t hashPos = wTitle.find('#');
+                std::string wTitle  = graphWin->getTitle();
+                size_t      hashPos = wTitle.find('#');
                 if (hashPos != std::string::npos) {
                     try {
                         int idx = std::stoi(wTitle.substr(hashPos + 1));
                         if (idx > maxIdx) {
                             maxIdx = idx;
                         }
-                    } catch (...) {}
+                    } catch (...) {
+                    }
                 }
             }
         }
@@ -213,15 +216,16 @@ void WindowManager::createBarWindow() {
         if (w->isDynamic() && w->getDynamicType() == "Bar") {
             auto* barWin = dynamic_cast<Window::Bar*>(w.get());
             if (barWin) {
-                std::string wTitle = barWin->getTitle();
-                size_t hashPos = wTitle.find('#');
+                std::string wTitle  = barWin->getTitle();
+                size_t      hashPos = wTitle.find('#');
                 if (hashPos != std::string::npos) {
                     try {
                         int idx = std::stoi(wTitle.substr(hashPos + 1));
                         if (idx > maxIdx) {
                             maxIdx = idx;
                         }
-                    } catch (...) {}
+                    } catch (...) {
+                    }
                 }
             }
         }
@@ -240,15 +244,16 @@ void WindowManager::createMatrixWindow() {
         if (w->isDynamic() && w->getDynamicType() == "Matrix") {
             auto* matWin = dynamic_cast<Window::Matrix*>(w.get());
             if (matWin) {
-                std::string wTitle = matWin->getTitle();
-                size_t hashPos = wTitle.find('#');
+                std::string wTitle  = matWin->getTitle();
+                size_t      hashPos = wTitle.find('#');
                 if (hashPos != std::string::npos) {
                     try {
                         int idx = std::stoi(wTitle.substr(hashPos + 1));
                         if (idx > maxIdx) {
                             maxIdx = idx;
                         }
-                    } catch (...) {}
+                    } catch (...) {
+                    }
                 }
             }
         }
@@ -267,15 +272,16 @@ void WindowManager::createTabelaWindow() {
         if (w->isDynamic() && w->getDynamicType() == "Tabela") {
             auto* tabWin = dynamic_cast<Window::Statistics*>(w.get());
             if (tabWin) {
-                std::string wTitle = tabWin->getTitle();
-                size_t hashPos = wTitle.find('#');
+                std::string wTitle  = tabWin->getTitle();
+                size_t      hashPos = wTitle.find('#');
                 if (hashPos != std::string::npos) {
                     try {
                         int idx = std::stoi(wTitle.substr(hashPos + 1));
                         if (idx > maxIdx) {
                             maxIdx = idx;
                         }
-                    } catch (...) {}
+                    } catch (...) {
+                    }
                 }
             }
         }
@@ -297,8 +303,8 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
 
     // 1. Encontrar ponteiros para janelas estáticas
     Window::Reconstruction* reconWin = nullptr;
-    Window::Pedal* pedalWin = nullptr;
-    Window::WheelControl* wheelWin = nullptr;
+    Window::Pedal*          pedalWin = nullptr;
+    Window::WheelControl*   wheelWin = nullptr;
 
     for (const auto& w : windows) {
         if (auto* r = dynamic_cast<Window::Reconstruction*>(w.get())) {
@@ -327,14 +333,19 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
         file << reconWin->m_selectedColorFileType << "\n";
         file << reconWin->m_gradMinVal << "\n";
         file << reconWin->m_gradMaxVal << "\n";
-        file << reconWin->m_gradMinColor[0] << " " << reconWin->m_gradMinColor[1] << " " << reconWin->m_gradMinColor[2] << " " << reconWin->m_gradMinColor[3] << "\n";
-        file << reconWin->m_gradMaxColor[0] << " " << reconWin->m_gradMaxColor[1] << " " << reconWin->m_gradMaxColor[2] << " " << reconWin->m_gradMaxColor[3] << "\n";
+        file << reconWin->m_gradMinColor[0] << " " << reconWin->m_gradMinColor[1] << " " << reconWin->m_gradMinColor[2]
+             << " " << reconWin->m_gradMinColor[3] << "\n";
+        file << reconWin->m_gradMaxColor[0] << " " << reconWin->m_gradMaxColor[1] << " " << reconWin->m_gradMaxColor[2]
+             << " " << reconWin->m_gradMaxColor[3] << "\n";
 
         file << reconWin->m_centerLat << " " << reconWin->m_centerLon << "\n";
         file << reconWin->m_trackOffsetLat << " " << reconWin->m_trackOffsetLon << "\n";
-        file << reconWin->m_colorLine[0] << " " << reconWin->m_colorLine[1] << " " << reconWin->m_colorLine[2] << " " << reconWin->m_colorLine[3] << "\n";
-        file << reconWin->m_colorPoint[0] << " " << reconWin->m_colorPoint[1] << " " << reconWin->m_colorPoint[2] << " " << reconWin->m_colorPoint[3] << "\n";
-        file << reconWin->m_colorLastPoint[0] << " " << reconWin->m_colorLastPoint[1] << " " << reconWin->m_colorLastPoint[2] << " " << reconWin->m_colorLastPoint[3] << "\n";
+        file << reconWin->m_colorLine[0] << " " << reconWin->m_colorLine[1] << " " << reconWin->m_colorLine[2] << " "
+             << reconWin->m_colorLine[3] << "\n";
+        file << reconWin->m_colorPoint[0] << " " << reconWin->m_colorPoint[1] << " " << reconWin->m_colorPoint[2] << " "
+             << reconWin->m_colorPoint[3] << "\n";
+        file << reconWin->m_colorLastPoint[0] << " " << reconWin->m_colorLastPoint[1] << " "
+             << reconWin->m_colorLastPoint[2] << " " << reconWin->m_colorLastPoint[3] << "\n";
         file << reconWin->m_textAnnotations.size() << "\n";
         for (const auto& ann : reconWin->m_textAnnotations) {
             file << ann.archiveName << "\n";
@@ -343,6 +354,7 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
         file << reconWin->m_colorMode << "\n";
         file << reconWin->m_colormap << "\n";
         file << reconWin->m_reverseColormap << "\n";
+        file << (reconWin->m_currentMapName.empty() ? "EMPTY" : reconWin->m_currentMapName) << "\n";
     } else {
         file << "NO_RECONSTRUCTION_STATE\n";
     }
@@ -405,8 +417,20 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
         file << m_playbackWindow->videoBlockStart << "\n";
         file << m_playbackWindow->csvBlockStart << "\n";
         file << m_playbackWindow->csvBlockEnd << "\n";
+
+        file << "PLAYBACK_FILES_STATE\n";
+        file << (m_playbackWindow->selectedFileType.empty() ? "EMPTY" : m_playbackWindow->selectedFileType) << "\n";
+        file << (m_playbackWindow->selectedFileName.empty() ? "EMPTY" : m_playbackWindow->selectedFileName) << "\n";
+        file << (m_playbackWindow->selectedTimestampCol.empty() ? "EMPTY" : m_playbackWindow->selectedTimestampCol)
+             << "\n";
+        file << (m_playbackWindow->loadedVideoName.empty() ? "EMPTY" : m_playbackWindow->loadedVideoName) << "\n";
+
+        file << "PLAYBACK_CURSOR_STATE\n";
+        file << m_playbackWindow->globalTime << "\n";
     } else {
         file << "NO_PLAYBACK_STATE\n";
+        file << "NO_PLAYBACK_FILES_STATE\n";
+        file << "NO_PLAYBACK_CURSOR_STATE\n";
     }
 
     // 2. Salvando janelas dinâmicas
@@ -473,8 +497,10 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
 
                     file << numWin->m_gradMinVal << "\n";
                     file << numWin->m_gradMaxVal << "\n";
-                    file << numWin->m_gradMinColor[0] << " " << numWin->m_gradMinColor[1] << " " << numWin->m_gradMinColor[2] << " " << numWin->m_gradMinColor[3] << "\n";
-                    file << numWin->m_gradMaxColor[0] << " " << numWin->m_gradMaxColor[1] << " " << numWin->m_gradMaxColor[2] << " " << numWin->m_gradMaxColor[3] << "\n";
+                    file << numWin->m_gradMinColor[0] << " " << numWin->m_gradMinColor[1] << " "
+                         << numWin->m_gradMinColor[2] << " " << numWin->m_gradMinColor[3] << "\n";
+                    file << numWin->m_gradMaxColor[0] << " " << numWin->m_gradMaxColor[1] << " "
+                         << numWin->m_gradMaxColor[2] << " " << numWin->m_gradMaxColor[3] << "\n";
                     file << numWin->m_statModeAll << "\n";
                     file << numWin->m_customLabel << "\n";
                     file << numWin->m_colormap << "\n";
@@ -495,9 +521,12 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     file << barWin->m_useManualLimits << "\n";
                     file << barWin->m_minVal << "\n";
                     file << barWin->m_maxVal << "\n";
-                    file << barWin->m_barColor[0] << " " << barWin->m_barColor[1] << " " << barWin->m_barColor[2] << " " << barWin->m_barColor[3] << "\n";
-                    file << barWin->m_bgColor[0] << " " << barWin->m_bgColor[1] << " " << barWin->m_bgColor[2] << " " << barWin->m_bgColor[3] << "\n";
-                    file << barWin->m_fgColor[0] << " " << barWin->m_fgColor[1] << " " << barWin->m_fgColor[2] << " " << barWin->m_fgColor[3] << "\n";
+                    file << barWin->m_barColor[0] << " " << barWin->m_barColor[1] << " " << barWin->m_barColor[2] << " "
+                         << barWin->m_barColor[3] << "\n";
+                    file << barWin->m_bgColor[0] << " " << barWin->m_bgColor[1] << " " << barWin->m_bgColor[2] << " "
+                         << barWin->m_bgColor[3] << "\n";
+                    file << barWin->m_fgColor[0] << " " << barWin->m_fgColor[1] << " " << barWin->m_fgColor[2] << " "
+                         << barWin->m_fgColor[3] << "\n";
                     file << barWin->m_fontScale << "\n";
                     file << barWin->m_showPercentage << "\n";
                     file << barWin->m_showValue << "\n";
@@ -516,7 +545,8 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
 
                     auto saveBarConf = [&](const BarThresholdConfig& conf) {
                         file << conf.enabled << "\n";
-                        file << conf.color[0] << " " << conf.color[1] << " " << conf.color[2] << " " << conf.color[3] << "\n";
+                        file << conf.color[0] << " " << conf.color[1] << " " << conf.color[2] << " " << conf.color[3]
+                             << "\n";
                     };
 
                     saveBarConf(barWin->m_confLL);
@@ -526,8 +556,10 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     saveBarConf(barWin->m_confHH);
 
                     file << barWin->m_useGradient << "\n";
-                    file << barWin->m_gradMinColor[0] << " " << barWin->m_gradMinColor[1] << " " << barWin->m_gradMinColor[2] << " " << barWin->m_gradMinColor[3] << "\n";
-                    file << barWin->m_gradMaxColor[0] << " " << barWin->m_gradMaxColor[1] << " " << barWin->m_gradMaxColor[2] << " " << barWin->m_gradMaxColor[3] << "\n";
+                    file << barWin->m_gradMinColor[0] << " " << barWin->m_gradMinColor[1] << " "
+                         << barWin->m_gradMinColor[2] << " " << barWin->m_gradMinColor[3] << "\n";
+                    file << barWin->m_gradMaxColor[0] << " " << barWin->m_gradMaxColor[1] << " "
+                         << barWin->m_gradMaxColor[2] << " " << barWin->m_gradMaxColor[3] << "\n";
                     file << barWin->m_colorBarMode << "\n";
                     file << barWin->m_gradMinVal << "\n";
                     file << barWin->m_gradMaxVal << "\n";
@@ -537,7 +569,7 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
             } else if (w->getDynamicType() == "Graph") {
                 auto graphWin = dynamic_cast<Window::Graph*>(w.get());
                 if (graphWin) {
-                    auto& graph = graphWin->getGraph();
+                    auto& graph  = graphWin->getGraph();
                     auto& config = graph.config;
                     file << graphWin->getTitle() << "\n";
                     file << static_cast<int>(config.type) << "\n";
@@ -551,7 +583,7 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     file << config.showCursorOnYAxis << "\n";
                     file << config.xColumn << "\n";
                     file << "XYALIGN:" << static_cast<int>(config.xyAlignmentMode) << "\n";
-                    
+
                     file << graph.textAnnotations.size() << "\n";
                     for (const auto& ann : graph.textAnnotations) {
                         file << ann.archiveName << "\n";
@@ -573,8 +605,10 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
                     file << matWin->m_colorMode << "\n";
                     file << matWin->m_minVal << "\n";
                     file << matWin->m_maxVal << "\n";
-                    file << matWin->m_minColor[0] << " " << matWin->m_minColor[1] << " " << matWin->m_minColor[2] << " " << matWin->m_minColor[3] << "\n";
-                    file << matWin->m_maxColor[0] << " " << matWin->m_maxColor[1] << " " << matWin->m_maxColor[2] << " " << matWin->m_maxColor[3] << "\n";
+                    file << matWin->m_minColor[0] << " " << matWin->m_minColor[1] << " " << matWin->m_minColor[2] << " "
+                         << matWin->m_minColor[3] << "\n";
+                    file << matWin->m_maxColor[0] << " " << matWin->m_maxColor[1] << " " << matWin->m_maxColor[2] << " "
+                         << matWin->m_maxColor[3] << "\n";
                     file << matWin->m_threshLL << "\n";
                     file << matWin->m_threshL << "\n";
                     file << matWin->m_threshH << "\n";
@@ -665,8 +699,8 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
 
     // 1. Encontrar ponteiros para janelas estáticas
     Window::Reconstruction* reconWin = nullptr;
-    Window::Pedal* pedalWin = nullptr;
-    Window::WheelControl* wheelWin = nullptr;
+    Window::Pedal*          pedalWin = nullptr;
+    Window::WheelControl*   wheelWin = nullptr;
 
     for (const auto& w : windows) {
         if (auto* r = dynamic_cast<Window::Reconstruction*>(w.get())) {
@@ -705,9 +739,9 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             std::getline(file, str3);
             std::getline(file, str4);
 
-            bool isOldFormat = true;
+            bool        isOldFormat = true;
             std::string line5;
-            
+
             if (str4 == "CSV" || str4 == "Telemetry") {
                 isOldFormat = false;
                 std::getline(file, line5);
@@ -722,11 +756,11 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             if (isOldFormat) {
                 reconWin->m_selectedLatFileType = str1;
                 reconWin->m_selectedLatFileName = str2;
-                reconWin->m_selectedLatCol = str3;
+                reconWin->m_selectedLatCol      = str3;
                 reconWin->m_selectedLonFileType = str1;
                 reconWin->m_selectedLonFileName = str2;
-                reconWin->m_selectedLonCol = str4;
-                
+                reconWin->m_selectedLonCol      = str4;
+
                 if (!line5.empty()) {
                     try {
                         alignVal = std::stoi(line5);
@@ -743,11 +777,11 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             } else {
                 reconWin->m_selectedLatFileType = str1;
                 reconWin->m_selectedLatFileName = str2;
-                reconWin->m_selectedLatCol = str3;
+                reconWin->m_selectedLatCol      = str3;
                 reconWin->m_selectedLonFileType = str4;
                 reconWin->m_selectedLonFileName = line5;
                 std::getline(file, reconWin->m_selectedLonCol);
-                
+
                 file >> alignVal;
                 reconWin->m_alignmentMode = static_cast<XYAlignmentMode>(alignVal);
                 file >> colorAlignVal;
@@ -759,13 +793,18 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             std::getline(file, reconWin->m_selectedColorFileType);
             file >> reconWin->m_gradMinVal;
             file >> reconWin->m_gradMaxVal;
-            file >> reconWin->m_gradMinColor[0] >> reconWin->m_gradMinColor[1] >> reconWin->m_gradMinColor[2] >> reconWin->m_gradMinColor[3];
-            file >> reconWin->m_gradMaxColor[0] >> reconWin->m_gradMaxColor[1] >> reconWin->m_gradMaxColor[2] >> reconWin->m_gradMaxColor[3];
+            file >> reconWin->m_gradMinColor[0] >> reconWin->m_gradMinColor[1] >> reconWin->m_gradMinColor[2] >>
+                reconWin->m_gradMinColor[3];
+            file >> reconWin->m_gradMaxColor[0] >> reconWin->m_gradMaxColor[1] >> reconWin->m_gradMaxColor[2] >>
+                reconWin->m_gradMaxColor[3];
             file >> reconWin->m_centerLat >> reconWin->m_centerLon;
             file >> reconWin->m_trackOffsetLat >> reconWin->m_trackOffsetLon;
-            file >> reconWin->m_colorLine[0] >> reconWin->m_colorLine[1] >> reconWin->m_colorLine[2] >> reconWin->m_colorLine[3];
-            file >> reconWin->m_colorPoint[0] >> reconWin->m_colorPoint[1] >> reconWin->m_colorPoint[2] >> reconWin->m_colorPoint[3];
-            file >> reconWin->m_colorLastPoint[0] >> reconWin->m_colorLastPoint[1] >> reconWin->m_colorLastPoint[2] >> reconWin->m_colorLastPoint[3];
+            file >> reconWin->m_colorLine[0] >> reconWin->m_colorLine[1] >> reconWin->m_colorLine[2] >>
+                reconWin->m_colorLine[3];
+            file >> reconWin->m_colorPoint[0] >> reconWin->m_colorPoint[1] >> reconWin->m_colorPoint[2] >>
+                reconWin->m_colorPoint[3];
+            file >> reconWin->m_colorLastPoint[0] >> reconWin->m_colorLastPoint[1] >> reconWin->m_colorLastPoint[2] >>
+                reconWin->m_colorLastPoint[3];
             size_t annSize = 0;
             file >> annSize;
             std::getline(file, dummy); // consume newline
@@ -781,36 +820,55 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     reconWin->m_textAnnotations.push_back(ann);
                 }
             }
-            
+
             int colorMode = 1;
             if (file >> colorMode) {
                 reconWin->m_colorMode = colorMode;
-                int colormap = 0;
+                int colormap          = 0;
                 if (file >> colormap) {
                     reconWin->m_colormap = colormap;
-                    bool rev = false;
-                    if (file >> rev) reconWin->m_reverseColormap = rev;
+                    bool rev             = false;
+                    if (file >> rev) {
+                        reconWin->m_reverseColormap = rev;
+                        std::getline(file, dummy); // consume newline
+                        
+                        std::streampos pos = file.tellg();
+                        std::string mapName;
+                        if (std::getline(file, mapName)) {
+                            if (mapName.find("_STATE") != std::string::npos) {
+                                file.seekg(pos); // Rewind because it's the next block header, not a map name
+                            } else if (mapName != "EMPTY" && !mapName.empty()) {
+                                reconWin->setMap(mapName);
+                            }
+                        }
+                    } else {
+                        file.clear();
+                    }
+                } else {
+                    file.clear();
                 }
-                std::getline(file, dummy); // consume newline
             } else {
                 file.clear();
             }
 
             // Validar se latitude/longitude ainda existem
-            if (!reconWin->m_selectedLatCol.empty() && 
-                !DB::getInstance().columnExists(reconWin->m_selectedLatFileType, reconWin->m_selectedLatFileName, reconWin->m_selectedLatCol)) {
+            if (!reconWin->m_selectedLatCol.empty() &&
+                !DB::getInstance().columnExists(reconWin->m_selectedLatFileType, reconWin->m_selectedLatFileName,
+                                                reconWin->m_selectedLatCol)) {
                 reconWin->m_selectedLatCol.clear();
                 reconWin->m_selectedLatFileName.clear();
             }
-            if (!reconWin->m_selectedLonCol.empty() && 
-                !DB::getInstance().columnExists(reconWin->m_selectedLonFileType, reconWin->m_selectedLonFileName, reconWin->m_selectedLonCol)) {
+            if (!reconWin->m_selectedLonCol.empty() &&
+                !DB::getInstance().columnExists(reconWin->m_selectedLonFileType, reconWin->m_selectedLonFileName,
+                                                reconWin->m_selectedLonCol)) {
                 reconWin->m_selectedLonCol.clear();
                 reconWin->m_selectedLonFileName.clear();
             }
 
             // Validar se coluna de gradiente ainda existe
-            if (!reconWin->m_selectedColorCol.empty() && 
-                !DB::getInstance().columnExists(reconWin->m_selectedColorFileType, reconWin->m_selectedColorFileName, reconWin->m_selectedColorCol)) {
+            if (!reconWin->m_selectedColorCol.empty() &&
+                !DB::getInstance().columnExists(reconWin->m_selectedColorFileType, reconWin->m_selectedColorFileName,
+                                                reconWin->m_selectedColorCol)) {
                 reconWin->m_selectedColorCol.clear();
                 reconWin->m_selectedColorFileName.clear();
                 reconWin->m_selectedColorFileType.clear();
@@ -833,10 +891,10 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             size_t dataListSize = 0;
             file >> dataListSize;
             std::getline(file, dummy); // consume newline
-            int origThrottle = pedalWin->m_throttleIndex;
-            int origBrake = pedalWin->m_brakeIndex;
+            int origThrottle          = pedalWin->m_throttleIndex;
+            int origBrake             = pedalWin->m_brakeIndex;
             pedalWin->m_throttleIndex = -1;
-            pedalWin->m_brakeIndex = -1;
+            pedalWin->m_brakeIndex    = -1;
             pedalWin->m_dataList.clear();
             for (size_t d = 0; d < dataListSize; ++d) {
                 PedalData pd;
@@ -863,16 +921,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     }
                 }
             }
-            // Restaurando estado da janela de Playback
-            if (seekToBlock("PLAYBACK_STATE")) {
-                if (line == "PLAYBACK_STATE" && m_playbackWindow) {
-                    file >> m_playbackWindow->videoLengthMs;
-                    file >> m_playbackWindow->videoBlockStart;
-                    file >> m_playbackWindow->csvBlockStart;
-                    file >> m_playbackWindow->csvBlockEnd;
-                    std::getline(file, dummy); // consume newline
-                }
-            }
+
         } else if (line == "NO_PEDAL_STATE") {
             // Nenhuma ação necessária
         }
@@ -890,7 +939,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             size_t dataListSize = 0;
             file >> dataListSize;
             std::getline(file, dummy); // consume newline
-            int origSteer = wheelWin->m_steerIndex;
+            int origSteer          = wheelWin->m_steerIndex;
             wheelWin->m_steerIndex = -1;
             wheelWin->m_dataList.clear();
             for (size_t d = 0; d < dataListSize; ++d) {
@@ -947,28 +996,67 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
         }
     }
 
+    // Tentamos ler os arquivos do playback se existirem (pode não existir em layouts antigos)
+    std::streampos beforeFiles = file.tellg();
+    if (seekToBlock("PLAYBACK_FILES_STATE")) {
+        if (line == "PLAYBACK_FILES_STATE" && m_playbackWindow) {
+            std::string temp;
+            std::getline(file, temp);
+            m_playbackWindow->selectedFileType = (temp == "EMPTY" ? "" : temp);
+            std::getline(file, temp);
+            m_playbackWindow->selectedFileName = (temp == "EMPTY" ? "" : temp);
+            std::getline(file, temp);
+            m_playbackWindow->selectedTimestampCol = (temp == "EMPTY" ? "" : temp);
+            std::getline(file, temp);
+            m_playbackWindow->loadedVideoName = (temp == "EMPTY" ? "" : temp);
+            
+            // Re-populate timestamp data and bounds based on loaded file/column
+            m_playbackWindow->refreshData();
+        }
+    } else {
+        // Se não achou PLAYBACK_FILES_STATE, volta o ponteiro para continuarmos procurando as janelas dinâmicas
+        file.clear();
+        file.seekg(beforeFiles);
+    }
+
+    // Tentamos ler o cursor do playback
+    std::streampos beforeCursor = file.tellg();
+    if (seekToBlock("PLAYBACK_CURSOR_STATE")) {
+        if (line == "PLAYBACK_CURSOR_STATE" && m_playbackWindow) {
+            file >> m_playbackWindow->globalTime;
+            std::getline(file, dummy); // Consume newline
+        }
+    } else {
+        file.clear();
+        file.seekg(beforeCursor);
+    }
+
     // 2. Remove todas as janelas dinâmicas existentes
     windows.erase(std::remove_if(windows.begin(), windows.end(),
-        [](const std::unique_ptr<IWindow>& w) {
-            return w->isDynamic();
-        }), windows.end());
+                                 [](const std::unique_ptr<IWindow>& w) { return w->isDynamic(); }),
+                  windows.end());
 
     int count = 0;
-    if (!(file >> count)) return;
+    if (!(file >> count))
+        return;
     std::getline(file, dummy); // Consome o newline
 
     for (int i = 0; i < count; i++) {
         std::string lineType;
         do {
-            if (!std::getline(file, lineType)) break;
+            if (!std::getline(file, lineType))
+                break;
         } while (lineType.empty());
-        if (lineType.empty()) break;
+        if (lineType.empty())
+            break;
 
         std::string type = "Numeric";
         std::string title;
-        if (lineType == "Numeric" || lineType == "Graph" || lineType == "Bar" || lineType == "Matrix" || lineType == "Tabela") {
+        if (lineType == "Numeric" || lineType == "Graph" || lineType == "Bar" || lineType == "Matrix" ||
+            lineType == "Tabela") {
             type = lineType;
-            if (!std::getline(file, title)) break;
+            if (!std::getline(file, title))
+                break;
         } else {
             title = lineType;
         }
@@ -1015,7 +1103,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             std::getline(file, dummy); // consume newline
             numWin->m_translationRules.clear();
             for (size_t r = 0; r < transSize; r++) {
-                double rVal = 0.0;
+                double      rVal = 0.0;
                 std::string rTxt;
                 file >> rVal;
                 std::getline(file, dummy); // consume newline
@@ -1076,8 +1164,10 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             if (file >> gradMinVal) {
                 numWin->m_gradMinVal = gradMinVal;
                 file >> numWin->m_gradMaxVal;
-                file >> numWin->m_gradMinColor[0] >> numWin->m_gradMinColor[1] >> numWin->m_gradMinColor[2] >> numWin->m_gradMinColor[3];
-                file >> numWin->m_gradMaxColor[0] >> numWin->m_gradMaxColor[1] >> numWin->m_gradMaxColor[2] >> numWin->m_gradMaxColor[3];
+                file >> numWin->m_gradMinColor[0] >> numWin->m_gradMinColor[1] >> numWin->m_gradMinColor[2] >>
+                    numWin->m_gradMinColor[3];
+                file >> numWin->m_gradMaxColor[0] >> numWin->m_gradMaxColor[1] >> numWin->m_gradMaxColor[2] >>
+                    numWin->m_gradMaxColor[3];
                 std::getline(file, dummy); // consume newline
             }
 
@@ -1085,7 +1175,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             if (file >> statModeAll) {
                 numWin->m_statModeAll = statModeAll;
                 std::getline(file, dummy); // consume newline
-                
+
                 std::string customLabel;
                 if (std::getline(file, customLabel)) {
                     strncpy(numWin->m_customLabel, customLabel.c_str(), sizeof(numWin->m_customLabel));
@@ -1093,13 +1183,19 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                 int colormap = 0;
                 if (file >> colormap) {
                     numWin->m_colormap = colormap;
-                    bool rev = false;
+                    bool rev           = false;
                     if (file >> rev) {
                         numWin->m_reverseColormap = rev;
                         std::getline(file, dummy);
-                    } else { file.clear(); }
-                } else { file.clear(); }
-            } else { file.clear(); }
+                    } else {
+                        file.clear();
+                    }
+                } else {
+                    file.clear();
+                }
+            } else {
+                file.clear();
+            }
 
             windows.emplace_back(std::move(numWin));
         } else if (type == "Bar") {
@@ -1179,8 +1275,10 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             bool useGradient = false;
             if (file >> useGradient) {
                 barWin->m_useGradient = useGradient;
-                file >> barWin->m_gradMinColor[0] >> barWin->m_gradMinColor[1] >> barWin->m_gradMinColor[2] >> barWin->m_gradMinColor[3];
-                file >> barWin->m_gradMaxColor[0] >> barWin->m_gradMaxColor[1] >> barWin->m_gradMaxColor[2] >> barWin->m_gradMaxColor[3];
+                file >> barWin->m_gradMinColor[0] >> barWin->m_gradMinColor[1] >> barWin->m_gradMinColor[2] >>
+                    barWin->m_gradMinColor[3];
+                file >> barWin->m_gradMaxColor[0] >> barWin->m_gradMaxColor[1] >> barWin->m_gradMaxColor[2] >>
+                    barWin->m_gradMaxColor[3];
                 std::getline(file, dummy); // consume newline
 
                 // Safe check for new unified color mode
@@ -1189,24 +1287,32 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     barWin->m_colorBarMode = colorBarMode;
                     file >> barWin->m_gradMinVal;
                     file >> barWin->m_gradMaxVal;
-                    
+
                     int colormap = 0;
                     if (file >> colormap) {
                         barWin->m_colormap = colormap;
-                        bool rev = false;
+                        bool rev           = false;
                         if (file >> rev) {
                             barWin->m_reverseColormap = rev;
                             std::getline(file, dummy);
-                        } else { file.clear(); }
-                    } else { file.clear(); }
-                } else { file.clear(); }
-            } else { file.clear(); }
+                        } else {
+                            file.clear();
+                        }
+                    } else {
+                        file.clear();
+                    }
+                } else {
+                    file.clear();
+                }
+            } else {
+                file.clear();
+            }
 
             windows.emplace_back(std::move(barWin));
         } else if (type == "Graph") {
-            auto graphWin = std::make_unique<Window::Graph>(title);
-            auto& graph = graphWin->getGraph();
-            auto& config = graph.config;
+            auto  graphWin = std::make_unique<Window::Graph>(title);
+            auto& graph    = graphWin->getGraph();
+            auto& config   = graph.config;
 
             int typeVal = 0;
             file >> typeVal;
@@ -1223,16 +1329,17 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             std::getline(file, dummy); // Consome newline
             std::getline(file, config.xColumn);
 
-            size_t dataSize = 0;
+            size_t dataSize        = 0;
             config.xyAlignmentMode = ALIGN_MIN_SIZE;
             std::string nextLine;
             if (std::getline(file, nextLine)) {
                 if (nextLine.rfind("XYALIGN:", 0) == 0) {
                     try {
-                        int alignVal = std::stoi(nextLine.substr(8));
+                        int alignVal           = std::stoi(nextLine.substr(8));
                         config.xyAlignmentMode = static_cast<XYAlignmentMode>(alignVal);
-                    } catch (...) {}
-                    
+                    } catch (...) {
+                    }
+
                     // Carregar anotações
                     size_t annSize = 0;
                     file >> annSize;
@@ -1255,13 +1362,14 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                 } else {
                     try {
                         dataSize = std::stoull(nextLine);
-                    } catch (...) {}
+                    } catch (...) {
+                    }
                 }
             }
 
             for (size_t d = 0; d < dataSize; d++) {
                 std::string colName, fileName, fileType;
-                double multiplier = 1.0;
+                double      multiplier = 1.0;
 
                 std::getline(file, colName);
                 std::getline(file, fileName);
@@ -1325,10 +1433,11 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                         std::getline(file, src.fileType);
                         std::getline(file, src.archiveName);
                         std::getline(file, src.columnName);
-                        
+
                         if (DB::getInstance().columnExists(src.fileType, src.archiveName, src.columnName)) {
                             col.customCells[rowName] = src;
-                            if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), rowName) == matWin->m_rowVariables.end()) {
+                            if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), rowName) ==
+                                matWin->m_rowVariables.end()) {
                                 matWin->m_rowVariables.push_back(rowName);
                             }
                         }
@@ -1344,28 +1453,14 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                         std::getline(file, var);
                         if (DB::getInstance().columnExists(col.fileType, col.archiveName, var)) {
                             col.variables.push_back(var);
-                            if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), var) == matWin->m_rowVariables.end()) {
+                            if (std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), var) ==
+                                matWin->m_rowVariables.end()) {
                                 matWin->m_rowVariables.push_back(var);
                             }
                         }
                     }
                     if (!col.variables.empty()) {
                         matWin->m_columns.push_back(col);
-                    }
-                }
-            }
-
-            // Restaurando estado da janela de Vídeo
-            if (seekToBlock("VIDEO_STATE")) {
-                if (line == "VIDEO_STATE" && m_videoWindow) {
-                    float vol = 100.0f;
-                    file >> vol;
-                    std::getline(file, dummy); // consume newline
-                    std::string path;
-                    std::getline(file, path);
-                    m_videoWindow->setVolume(vol);
-                    if (path != "EMPTY" && !path.empty()) {
-                        m_videoWindow->setLoadedVideo(path);
                     }
                 }
             }
@@ -1391,7 +1486,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                                 std::getline(file, dummy); // consume newline
                                 matWin->m_translationRules.clear();
                                 for (size_t r = 0; r < transSize; r++) {
-                                    double rVal = 0.0;
+                                    double      rVal = 0.0;
                                     std::string rTxt;
                                     file >> rVal;
                                     std::getline(file, dummy); // consume newline
@@ -1402,7 +1497,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                         }
                     }
                 }
-                
+
                 // Read explicit row variables if they exist
                 size_t extraRows = 0;
                 if (file >> extraRows) {
@@ -1410,32 +1505,41 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     for (size_t r = 0; r < extraRows; r++) {
                         std::string rn;
                         std::getline(file, rn);
-                        if (!rn.empty() && std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(), rn) == matWin->m_rowVariables.end()) {
+                        if (!rn.empty() && std::find(matWin->m_rowVariables.begin(), matWin->m_rowVariables.end(),
+                                                     rn) == matWin->m_rowVariables.end()) {
                             matWin->m_rowVariables.push_back(rn);
                         }
                     }
-                    
+
                     std::string pfx;
                     if (std::getline(file, pfx)) {
                         strncpy(matWin->m_prefix, pfx.c_str(), sizeof(matWin->m_prefix));
                         int colormap = 0;
                         if (file >> colormap) {
                             matWin->m_colormap = colormap;
-                            bool rev = false;
+                            bool rev           = false;
                             if (file >> rev) {
                                 matWin->m_reverseColormap = rev;
-                                size_t spcSize = 0;
+                                size_t spcSize            = 0;
                                 if (file >> spcSize) {
                                     matWin->m_specificRules.resize(spcSize);
                                     for (size_t k = 0; k < spcSize; ++k) {
                                         file >> matWin->m_specificRules[k].value;
-                                        file >> matWin->m_specificRules[k].bg[0] >> matWin->m_specificRules[k].bg[1] >> matWin->m_specificRules[k].bg[2] >> matWin->m_specificRules[k].bg[3];
-                                        file >> matWin->m_specificRules[k].fg[0] >> matWin->m_specificRules[k].fg[1] >> matWin->m_specificRules[k].fg[2] >> matWin->m_specificRules[k].fg[3];
+                                        file >> matWin->m_specificRules[k].bg[0] >> matWin->m_specificRules[k].bg[1] >>
+                                            matWin->m_specificRules[k].bg[2] >> matWin->m_specificRules[k].bg[3];
+                                        file >> matWin->m_specificRules[k].fg[0] >> matWin->m_specificRules[k].fg[1] >>
+                                            matWin->m_specificRules[k].fg[2] >> matWin->m_specificRules[k].fg[3];
                                     }
                                     std::getline(file, dummy);
-                                } else { file.clear(); }
-                            } else { file.clear(); }
-                        } else { file.clear(); }
+                                } else {
+                                    file.clear();
+                                }
+                            } else {
+                                file.clear();
+                            }
+                        } else {
+                            file.clear();
+                        }
                     }
                 } else {
                     file.clear(); // Clear EOF flag if applicable

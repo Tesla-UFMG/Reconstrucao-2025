@@ -68,6 +68,8 @@ class TelemetryFile : public GenericFile {
         void                                    reserveData(size_t capacity);
         void insertDataSlice(const std::vector<const std::vector<double>*>& sourceColumns,
                              const std::vector<double>& sourceDates, int endIdx);
+        void shrinkTo(size_t newSize);
+        void setInterpolatedRow(const std::vector<const std::vector<double>*>& sourceColumns, double ratio, int i0, int i1);
         void setName(const std::string& newName);
         void setPacketId(const std::string& newPacketId);
         void setColumnNames(const std::vector<std::string>& newCols);

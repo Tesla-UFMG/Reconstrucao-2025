@@ -136,11 +136,49 @@ void TelemetryFile::insertDataSlice(const std::vector<const std::vector<double>*
                 this->date[i] = std::to_string(sourceDates[i]);
             }
         }
-        for (size_t i = oldDateSize + copySize; i < newSize; ++i) {
-            this->date[i] = std::to_string(i);
-            this->numericDate[i] = static_cast<double>(i);
+        // Set the missing dates
+        if (newSize > oldDateSize + copySize) {
+            for (size_t i = oldDateSize + copySize; i < newSize; ++i) {
+                this->date[i] = std::to_string(i);
+            }
         }
     }
+}
+
+void TelemetryFile::shrinkTo(size_t newSize) {
+    for (auto& col : this->data) {
+        if (col.size() > newSize) col.resize(newSize);
+    }
+    if (this->date.size() > newSize) this->date.resize(newSize);
+    if (this->numericDate.size() > newSize) this->numericDate.resize(newSize);
+}
+
+void TelemetryFile::setInterpolatedRow(const std::vector<const std::vector<double>*>& sourceColumns, double ratio, int i0, int i1) {
+    if (i0 < 0 || i1 < 0) return;
+    
+    size_t targetIdx = static_cast<size_t>(i0 + 1);
+    
+    for (size_t i = 0; i < this->data.size(); ++i) {
+        if (this->data[i].size() <= targetIdx) {
+            this->data[i].resize(targetIdx + 1, 0.0);
+        }
+        
+        const std::vector<double>* src = (i < sourceColumns.size()) ? sourceColumns[i] : nullptr;
+        if (src && src->size() > static_cast<size_t>(i1)) {
+            double v0 = (*src)[i0];
+            double v1 = (*src)[i1];
+            this->data[i][targetIdx] = v0 + ratio * (v1 - v0);
+        }
+    }
+    
+    if (this->numericDate.size() <= targetIdx) {
+        this->numericDate.resize(targetIdx + 1, 0.0);
+        this->date.resize(targetIdx + 1, "");
+    }
+}
+
+void TelemetryFile::setName(const std::string& newName) {
+    this->name = newName;
 }
 
 const std::string&                      TelemetryFile::getPacketId() const { return this->packetId; }
@@ -160,9 +198,7 @@ const std::vector<double>& TelemetryFile::getColumnData(const std::string& colum
     return emptyVec;
 }
 
-void TelemetryFile::setName(const std::string& newName) {
-    this->name = newName;
-}
+
 
 void TelemetryFile::setPacketId(const std::string& newPacketId) {
     this->packetId = newPacketId;

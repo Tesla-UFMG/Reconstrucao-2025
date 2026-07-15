@@ -136,6 +136,30 @@ void Window::Reconstruction::scanAvailableMaps() {
     std::sort(m_availableMaps.begin(), m_availableMaps.end());
 }
 
+void Window::Reconstruction::setMap(const std::string& mapName) {
+    m_currentMapName = mapName;
+    std::string fullPath = "maps/" + mapName;
+    if (m_db) {
+        sqlite3_close(m_db);
+        m_db = nullptr;
+    }
+    
+    // Safety check to avoid creating fake SQLite databases
+    if (mapName.find(".mbtiles") == std::string::npos) {
+        m_statusMessage = "Mapa inválido: " + mapName;
+        return;
+    }
+    
+    int rc = sqlite3_open(fullPath.c_str(), &m_db);
+    if (rc != SQLITE_OK) {
+        m_statusMessage = "Falha ao trocar para banco: " + fullPath + " (Erro: " + std::to_string(rc) + ")";
+        m_db = nullptr;
+    } else {
+        clearCache();
+        findFirstAvailableTile();
+    }
+}
+
 void Window::Reconstruction::findFirstAvailableTile() {
     if (!m_db)
         return;
@@ -691,16 +715,17 @@ void Window::Reconstruction::render() {
 
                         if (!latData.empty() && !lonData.empty()) {
                             size_t numPoints = std::min(latData.size(), lonData.size());
-                            size_t startIdx = 0;
-                            size_t endIdx = numPoints;
+                            size_t startIdx  = 0;
+                            size_t endIdx    = numPoints;
                             if (m_followTheEnd) {
                                 startIdx = (numPoints > (size_t)m_numPointsToShow) ? numPoints - m_numPointsToShow : 0;
                             }
 
-                            double pi = 3.14159265358979323846;
-                            double cx_osm = (m_centerLon + 180.0) / 360.0 * (1 << m_testZ);
-                            double clatRad = m_centerLat * pi / 180.0;
-                            double cy_osm_center = (1.0 - std::log(std::tan(clatRad) + 1.0 / std::cos(clatRad)) / pi) / 2.0 * (1 << m_testZ);
+                            double pi            = 3.14159265358979323846;
+                            double cx_osm        = (m_centerLon + 180.0) / 360.0 * (1 << m_testZ);
+                            double clatRad       = m_centerLat * pi / 180.0;
+                            double cy_osm_center = (1.0 - std::log(std::tan(clatRad) + 1.0 / std::cos(clatRad)) / pi) /
+                                                   2.0 * (1 << m_testZ);
                             double cy_tms_center = (1 << m_testZ) - cy_osm_center;
                             ImVec2 centerScreen(windowPos.x + windowSize.x * 0.5f, windowPos.y + windowSize.y * 0.5f);
 
@@ -710,10 +735,10 @@ void Window::Reconstruction::render() {
                             drawablePoints.reserve(endIdx - startIdx);
 
                             ImVec2 lastDrawnPos(-10000.0f, -10000.0f);
-                            float minX = windowPos.x - 50.0f;
-                            float maxX = windowPos.x + windowSize.x + 50.0f;
-                            float minY = windowPos.y - 50.0f;
-                            float maxY = windowPos.y + windowSize.y + 50.0f;
+                            float  minX = windowPos.x - 50.0f;
+                            float  maxX = windowPos.x + windowSize.x + 50.0f;
+                            float  minY = windowPos.y - 50.0f;
+                            float  maxY = windowPos.y + windowSize.y + 50.0f;
 
                             double powZoom = (1 << m_testZ);
 
@@ -721,20 +746,23 @@ void Window::Reconstruction::render() {
                                 double lat = latData[i] + m_trackOffsetLat;
                                 double lon = lonData[i] + m_trackOffsetLon;
 
-                                double x_osm = (lon + 180.0) / 360.0 * powZoom;
+                                double x_osm  = (lon + 180.0) / 360.0 * powZoom;
                                 double latRad = lat * pi / 180.0;
-                                double y_osm  = (1.0 - std::log(std::tan(latRad) + 1.0 / std::cos(latRad)) / pi) / 2.0 * powZoom;
-                                double y_tms  = powZoom - y_osm;
+                                double y_osm =
+                                    (1.0 - std::log(std::tan(latRad) + 1.0 / std::cos(latRad)) / pi) / 2.0 * powZoom;
+                                double y_tms = powZoom - y_osm;
 
-                                float screenX = centerScreen.x + static_cast<float>(x_osm - cx_osm) * tileSize;
-                                float screenY = centerScreen.y - static_cast<float>(y_tms - cy_tms_center) * tileSize;
+                                float  screenX = centerScreen.x + static_cast<float>(x_osm - cx_osm) * tileSize;
+                                float  screenY = centerScreen.y - static_cast<float>(y_tms - cy_tms_center) * tileSize;
                                 ImVec2 sPos(screenX, screenY);
 
-                                float distSq = (sPos.x - lastDrawnPos.x) * (sPos.x - lastDrawnPos.x) + (sPos.y - lastDrawnPos.y) * (sPos.y - lastDrawnPos.y);
+                                float distSq = (sPos.x - lastDrawnPos.x) * (sPos.x - lastDrawnPos.x) +
+                                               (sPos.y - lastDrawnPos.y) * (sPos.y - lastDrawnPos.y);
 
                                 if (distSq > 4.0f || i == numPoints - 1) {
                                     linePoints.push_back({i, sPos});
-                                    bool isInside = (sPos.x >= minX && sPos.x <= maxX && sPos.y >= minY && sPos.y <= maxY);
+                                    bool isInside =
+                                        (sPos.x >= minX && sPos.x <= maxX && sPos.y >= minY && sPos.y <= maxY);
                                     if (isInside || i == numPoints - 1) {
                                         drawablePoints.push_back({i, sPos});
                                     }
@@ -752,21 +780,25 @@ void Window::Reconstruction::render() {
                             // Desenhar a linha conectando a pista (neon verde premium ou customizado)
                             ImU32 colorLine = ImGui::GetColorU32(
                                 ImVec4(m_colorLine[0], m_colorLine[1], m_colorLine[2], m_colorLine[3]));
-                            
+
                             ImU32 colorPoint = ImGui::GetColorU32(
                                 ImVec4(m_colorPoint[0], m_colorPoint[1], m_colorPoint[2], m_colorPoint[3]));
-                            ImU32 colorLastPoint = ImGui::GetColorU32(
-                                ImVec4(m_colorLastPoint[0], m_colorLastPoint[1], m_colorLastPoint[2], m_colorLastPoint[3]));
+                            ImU32 colorLastPoint = ImGui::GetColorU32(ImVec4(m_colorLastPoint[0], m_colorLastPoint[1],
+                                                                             m_colorLastPoint[2], m_colorLastPoint[3]));
 
                             auto getColorForIndex = [&](size_t idx) -> ImU32 {
-                                if (idx == numPoints - 1) return colorLastPoint;
-                                if (!useGradient) return colorPoint;
+                                if (idx == numPoints - 1)
+                                    return colorLastPoint;
+                                if (!useGradient)
+                                    return colorPoint;
                                 double computedVal = alignedColor[idx];
                                 double t           = 0.0;
                                 if (m_gradMaxVal > m_gradMinVal) {
                                     t = (computedVal - m_gradMinVal) / (m_gradMaxVal - m_gradMinVal);
-                                    if (t < 0.0) t = 0.0;
-                                    if (t > 1.0) t = 1.0;
+                                    if (t < 0.0)
+                                        t = 0.0;
+                                    if (t > 1.0)
+                                        t = 1.0;
                                 }
                                 if (m_colorMode == 1) {
                                     double sampleT = m_reverseColormap ? (1.0 - t) : t;
@@ -785,19 +817,21 @@ void Window::Reconstruction::render() {
                                 if (!useGradient) {
                                     std::vector<ImVec2> rawPoints;
                                     rawPoints.reserve(linePoints.size());
-                                    for (const auto& p : linePoints) rawPoints.push_back(p.second);
+                                    for (const auto& p : linePoints)
+                                        rawPoints.push_back(p.second);
                                     drawList->AddPolyline(rawPoints.data(), rawPoints.size(), colorLine, 0, 3.0f);
                                 } else {
                                     for (size_t k = 0; k < linePoints.size() - 1; ++k) {
                                         ImU32 segmentColor = getColorForIndex(linePoints[k].first);
-                                        drawList->AddLine(linePoints[k].second, linePoints[k+1].second, segmentColor, 3.0f);
+                                        drawList->AddLine(linePoints[k].second, linePoints[k + 1].second, segmentColor,
+                                                          3.0f);
                                     }
                                 }
                             }
 
                             // Desenhar os pontos (scatter plot) - Amarelo para os normais ou com gradiente dinâmico
                             for (const auto& dp : drawablePoints) {
-                                size_t i = dp.first;
+                                size_t i    = dp.first;
                                 ImVec2 sPos = dp.second;
 
                                 if (i == numPoints - 1) {
@@ -866,10 +900,16 @@ void Window::Reconstruction::render() {
                                                                 }
                                                             }
 
-                                                            if (closestIdx != -1 && closestIdx < static_cast<int>(latData.size()) && closestIdx < static_cast<int>(lonData.size())) {
-                                                                double lat_closest = latData[closestIdx] + m_trackOffsetLat;
-                                                                double lon_closest = lonData[closestIdx] + m_trackOffsetLon;
-                                                                ImVec2 p_track = getScreenPosFromLatLon(lat_closest, lon_closest, m_centerLat, m_centerLon, m_testZ, tileSize, windowPos, windowSize);
+                                                            if (closestIdx != -1 &&
+                                                                closestIdx < static_cast<int>(latData.size()) &&
+                                                                closestIdx < static_cast<int>(lonData.size())) {
+                                                                double lat_closest =
+                                                                    latData[closestIdx] + m_trackOffsetLat;
+                                                                double lon_closest =
+                                                                    lonData[closestIdx] + m_trackOffsetLon;
+                                                                ImVec2 p_track = getScreenPosFromLatLon(
+                                                                    lat_closest, lon_closest, m_centerLat, m_centerLon,
+                                                                    m_testZ, tileSize, windowPos, windowSize);
 
                                                                 std::string key = ann.archiveName + "|" +
                                                                                   ann.columnName + "|" +
@@ -1011,366 +1051,357 @@ void Window::Reconstruction::render() {
         }
     }
 
-            if (ImGui::BeginMenuBar()) {
-                this->drawMenuBar();
-                ImGui::EndMenuBar();
-            }
+    if (ImGui::BeginMenuBar()) {
+        this->drawMenuBar();
+        ImGui::EndMenuBar();
+    }
     ImGui::End();
 }
 void Window::Reconstruction::drawMenuBar() {
-    
-                if (ImGui::BeginMenu("Configurações")) {
-                if (ImGui::BeginMenu("Mapa")) {
-                    if (ImGui::MenuItem("Resetar Posição")) {
-                        m_zoomScale = 0.5f;
-                        findFirstAvailableTile();
-                    }
 
-                    ImGui::Separator();
-
-                    if (ImGui::BeginMenu("Configurações do Mapa")) {
-                        // Seletor de Mapa/Circuito
-                        ImGui::Text("Mapa de Fundo:");
-                        ImGui::SetNextItemWidth(160.0f);
-                        if (ImGui::BeginCombo("##MapaSelector", stripMapExtension(m_currentMapName).c_str())) {
-                            for (const auto& mapName : m_availableMaps) {
-                                bool        isSelected = (m_currentMapName == mapName);
-                                std::string cleanName  = stripMapExtension(mapName);
-                                if (ImGui::Selectable(cleanName.c_str(), isSelected)) {
-                                    m_currentMapName     = mapName;
-                                    std::string fullPath = "maps/" + mapName;
-
-                                    clearCache();
-                                    if (m_db) {
-                                        sqlite3_close(m_db);
-                                        m_db = nullptr;
-                                    }
-                                    m_loaded = false;
-
-                                    int rc = sqlite3_open(fullPath.c_str(), &m_db);
-                                    if (rc == SQLITE_OK) {
-                                        m_zoomScale = 0.5f;
-                                        findFirstAvailableTile();
-                                    } else {
-                                        m_statusMessage =
-                                            "Falha ao abrir banco: " + fullPath + " (Erro: " + std::to_string(rc) + ")";
-                                        m_db = nullptr;
-                                    }
-                                }
-                            }
-                            ImGui::EndCombo();
-                        }
-
-                        ImGui::Separator();
-
-                        // Seletor de Zoom
-                        ImGui::Text("Nível de Zoom (Z):");
-                        ImGui::SetNextItemWidth(80.0f);
-                        std::string currentZoomStr = std::to_string(m_testZ);
-                        if (ImGui::BeginCombo("##ZoomSelector", currentZoomStr.c_str())) {
-                            for (int z = 12; z <= 18; ++z) {
-                                bool        isSelected = (m_testZ == z);
-                                std::string zStr       = std::to_string(z);
-                                if (ImGui::Selectable(zStr.c_str(), isSelected)) {
-                                    m_testZ = z;
-                                }
-                            }
-                            ImGui::EndCombo();
-                        }
-
-                        ImGui::Separator();
-
-                        // Slider de tamanho de blocos
-                        ImGui::Text("Escala Visual Blocos:");
-                        ImGui::SetNextItemWidth(160.0f);
-                        ImGui::SliderFloat("##BlockScale", &m_zoomScale, 0.5f, 2.0f, "%.1fx");
-
-                        ImGui::EndMenu();
-                    }
-
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Estilo")) {
-                    ImGui::Text("Cores dos Símbolos:");
-                    ImGui::ColorEdit4("Linha", m_colorLine);
-                    ImGui::ColorEdit4("Pontos", m_colorPoint);
-                    ImGui::ColorEdit4("Último Ponto", m_colorLastPoint);
-
-                    ImGui::Separator();
-
-                    if (ImGui::BeginMenu("Gradiente de Cores (Pontos)")) {
-                        ImGui::Text("Arraste a coluna de gradiente para o campo abaixo:");
-                        ImGui::Spacing();
-
-                        // --- COLUNA DE GRADIENTE ---
-                        std::string colorLabel = m_selectedColorCol.empty() ? "(Nenhuma - Arraste aqui)##ColorButton"
-                                                                            : (m_selectedColorCol + "##ColorButton");
-
-                        ImGui::PushStyleColor(ImGuiCol_Button, m_selectedColorCol.empty()
-                                                                   ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f)
-                                                                   : ImVec4(0.1f, 0.35f, 0.45f, 0.6f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedColorCol.empty()
-                                                                          ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f)
-                                                                          : ImVec4(0.15f, 0.45f, 0.55f, 0.7f));
-                        ImGui::Button(colorLabel.c_str(), ImVec2(200.0f, 0.0f));
-                        ImGui::PopStyleColor(2);
-
-                        if (ImGui::BeginDragDropTarget()) {
-                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-                                const ColumnPayload* columnPayload =
-                                    reinterpret_cast<const ColumnPayload*>(payload->Data);
-                                m_selectedColorCol      = columnPayload->columnName;
-                                m_selectedColorFileName = columnPayload->fileName;
-                                m_selectedColorFileType = columnPayload->fileType;
-                                autoFitColorLimits();
-                            }
-                            ImGui::EndDragDropTarget();
-                        }
-
-                        if (!m_selectedColorCol.empty()) {
-                            ImGui::SameLine();
-                            if (ImGui::Button("X##ClearColor")) {
-                                m_selectedColorCol      = "";
-                                m_selectedColorFileName = "";
-                                m_selectedColorFileType = "";
-                            }
-                        }
-
-                        if (!m_selectedColorCol.empty()) {
-                            ImGui::Spacing();
-                            ImGui::Separator();
-                            ImGui::TextDisabled("Origem do Gradiente:");
-                            std::string originColorText = m_selectedColorFileName;
-                            originColorText += (m_selectedColorFileType == "CSV") ? " (CSV)" : " (Telemetria)";
-                            ImGui::TextWrapped("%s", originColorText.c_str());
-                            ImGui::Separator();
-                            ImGui::Text("Estilo do Gradiente:");
-                            ImGui::RadioButton("ImPlot Colormap", &m_colorMode, 1);
-                            ImGui::SameLine();
-                            ImGui::RadioButton("Manual", &m_colorMode, 2);
-
-                            ImGui::Separator();
-                            ImGui::Text("Limites do Gradiente:");
-                            ImGui::PushItemWidth(140.0f);
-                            ImGui::InputDouble("Mín##rec", &m_gradMinVal, 0.1, 1.0, "%.2f");
-                            ImGui::InputDouble("Máx##rec", &m_gradMaxVal, 0.1, 1.0, "%.2f");
-
-                            if (m_colorMode == 1) {
-                                ImGui::Separator();
-                                ImGui::Text("Mapa de Cores:");
-                                if (ImPlot::ColormapButton(ImPlot::GetColormapName(m_colormap), ImVec2(200, 0),
-                                                           m_colormap)) {
-                                    m_colormap = (m_colormap + 1) % ImPlot::GetColormapCount();
-                                    ImPlot::BustItemCache();
-                                }
-                                ImGui::SetNextItemWidth(200.0f);
-                                ImPlotColormap prev_cmap    = ImPlot::GetStyle().Colormap;
-                                ImPlot::GetStyle().Colormap = m_colormap;
-                                if (ImPlot::ShowColormapSelector("##colormap_rec")) {
-                                    m_colormap = ImPlot::GetStyle().Colormap;
-                                    ImPlot::BustItemCache();
-                                }
-                                ImPlot::GetStyle().Colormap = prev_cmap;
-                                ImGui::Checkbox("Inverter Cores", &m_reverseColormap);
-                            } else {
-                                ImGui::Separator();
-                                ImGui::Text("Cores Manuais:");
-                                ImGui::ColorEdit4("Cor Min##gradMinColor_rec", m_gradMinColor,
-                                                  ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
-                                ImGui::ColorEdit4("Cor Max##gradMaxColor_rec", m_gradMaxColor,
-                                                  ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
-                            }
-                            ImGui::PopItemWidth();
-
-                            if (ImGui::Button("Auto-ajustar Limites", ImVec2(200.0f, 0.0f))) {
-                                autoFitColorLimits();
-                            }
-                            ImGui::Checkbox("Auto Atualizar Gradiente", &m_autoFitGradient);
-
-                            ImGui::Separator();
-                            ImGui::Text("Alinhamento do Gradiente:");
-                            ImGui::SetNextItemWidth(200.0f);
-                            const char* colorAlignmentModes[] = {"Tamanho Mínimo", "Valor Mais Próximo",
-                                                                 "Interpolação Linear (Técnico)"};
-                            int         currentColorMode      = static_cast<int>(m_colorAlignmentMode);
-                            if (ImGui::Combo("##ColorAlignMode", &currentColorMode, colorAlignmentModes,
-                                             IM_ARRAYSIZE(colorAlignmentModes))) {
-                                m_colorAlignmentMode = static_cast<XYAlignmentMode>(currentColorMode);
-                            }
-                        }
-                        ImGui::EndMenu();
-                    }
-
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Calibração")) {
-                    ImGui::Checkbox("Ajustar Pista com Mouse", &m_moveTrackMode);
-                    if (m_moveTrackMode) {
-                        ImGui::TextDisabled("(Use o mouse ou as setas)");
-                        ImGui::Text("Offset Lat: %.6f", m_trackOffsetLat);
-                        ImGui::Text("Offset Lon: %.6f", m_trackOffsetLon);
-                        if (ImGui::Button("Zerar Ajuste")) {
-                            m_trackOffsetLat = 0.0;
-                            m_trackOffsetLon = 0.0;
-                        }
-                    }
-                    ImGui::EndMenu();
-                }
-                    ImGui::EndMenu();
-                }
-
-                if (ImGui::BeginMenu("Dados")) {
-                if (ImGui::BeginMenu("Trajeto")) {
-                    // Botão de centralizar no trajeto
-                    bool hasTrack = !m_selectedLatFileName.empty() && !m_selectedLatCol.empty() &&
-                                    !m_selectedLonFileName.empty() && !m_selectedLonCol.empty();
-                    if (hasTrack) {
-                        if (ImGui::MenuItem("Centralizar no Trajeto")) {
-                            centerOnTrack();
-                        }
-                    } else {
-                        ImGui::TextDisabled("(Arraste colunas Lat/Lon)");
-                    }
-
-                    ImGui::Separator();
-
-                    if (ImGui::BeginMenu("Dados da Trajetória")) {
-                        ImGui::Text("Arraste colunas de coordenadas para os campos abaixo:");
-                        ImGui::Spacing();
-
-                        // --- LATITUDE ---
-                        ImGui::Text("Latitude:");
-                        std::string latLabel = m_selectedLatCol.empty() ? "(Nenhuma - Arraste aqui)##LatButton"
-                                                                        : (m_selectedLatCol + "##LatButton");
-
-                        ImGui::PushStyleColor(ImGuiCol_Button, m_selectedLatCol.empty()
-                                                                   ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f)
-                                                                   : ImVec4(0.1f, 0.4f, 0.2f, 0.6f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedLatCol.empty()
-                                                                          ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f)
-                                                                          : ImVec4(0.15f, 0.5f, 0.25f, 0.7f));
-                        ImGui::Button(latLabel.c_str(), ImVec2(200.0f, 0.0f));
-                        ImGui::PopStyleColor(2);
-
-                        if (ImGui::BeginDragDropTarget()) {
-                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-                                const ColumnPayload* columnPayload =
-                                    reinterpret_cast<const ColumnPayload*>(payload->Data);
-                                m_selectedLatFileType = columnPayload->fileType;
-                                m_selectedLatFileName = columnPayload->fileName;
-                                m_selectedLatCol      = columnPayload->columnName;
-                                centerOnTrack();
-                            }
-                            ImGui::EndDragDropTarget();
-                        }
-
-                        if (!m_selectedLatCol.empty()) {
-                            ImGui::SameLine();
-                            if (ImGui::Button("X##ClearLat")) {
-                                m_selectedLatCol      = "";
-                                m_selectedLatFileName = "";
-                            }
-                        }
-
-                        ImGui::Spacing();
-
-                        ImGui::Separator();
-                        ImGui::Checkbox("Seguir o Final", &m_followTheEnd);
-                        if (m_followTheEnd) {
-                            ImGui::InputInt("Pontos", &m_numPointsToShow, 1, 10);
-                        }
-                        ImGui::Separator();
-
-                        // --- LONGITUDE ---
-                        ImGui::Text("Longitude:");
-                        std::string lonLabel = m_selectedLonCol.empty() ? "(Nenhuma - Arraste aqui)##LonButton"
-                                                                        : (m_selectedLonCol + "##LonButton");
-
-                        ImGui::PushStyleColor(ImGuiCol_Button, m_selectedLonCol.empty()
-                                                                   ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f)
-                                                                   : ImVec4(0.1f, 0.4f, 0.2f, 0.6f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedLonCol.empty()
-                                                                          ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f)
-                                                                          : ImVec4(0.15f, 0.5f, 0.25f, 0.7f));
-                        ImGui::Button(lonLabel.c_str(), ImVec2(200.0f, 0.0f));
-                        ImGui::PopStyleColor(2);
-
-                        if (ImGui::BeginDragDropTarget()) {
-                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
-                                const ColumnPayload* columnPayload =
-                                    reinterpret_cast<const ColumnPayload*>(payload->Data);
-                                m_selectedLonFileType = columnPayload->fileType;
-                                m_selectedLonFileName = columnPayload->fileName;
-                                m_selectedLonCol      = columnPayload->columnName;
-                                centerOnTrack();
-                            }
-                            ImGui::EndDragDropTarget();
-                        }
-
-                        if (!m_selectedLonCol.empty()) {
-                            ImGui::SameLine();
-                            if (ImGui::Button("X##ClearLon")) {
-                                m_selectedLonCol      = "";
-                                m_selectedLonFileName = "";
-                            }
-                        }
-
-                        if (!m_selectedLatCol.empty() || !m_selectedLonCol.empty()) {
-                            ImGui::Spacing();
-                            ImGui::Separator();
-                            ImGui::TextDisabled("Origem dos dados:");
-                            if (!m_selectedLatCol.empty()) {
-                                std::string latOriginText =
-                                    "Lat: " + m_selectedLatFileName +
-                                    ((m_selectedLatFileType == "CSV") ? " (CSV)" : " (Telemetria)");
-                                ImGui::TextWrapped("%s", latOriginText.c_str());
-                            }
-                            if (!m_selectedLonCol.empty()) {
-                                std::string lonOriginText =
-                                    "Lon: " + m_selectedLonFileName +
-                                    ((m_selectedLonFileType == "CSV") ? " (CSV)" : " (Telemetria)");
-                                ImGui::TextWrapped("%s", lonOriginText.c_str());
-                            }
-                        }
-
-                        ImGui::Separator();
-                        ImGui::Text("Alinhamento Lat/Lon:");
-                        ImGui::SetNextItemWidth(200.0f);
-                        const char* alignmentModes[] = {"Tamanho Mínimo", "Proximidade Temporal",
-                                                        "Interpolação Linear (Técnico)"};
-                        int         currentMode      = static_cast<int>(m_alignmentMode);
-                        if (ImGui::Combo("##AlignMode", &currentMode, alignmentModes, IM_ARRAYSIZE(alignmentModes))) {
-                            m_alignmentMode = static_cast<XYAlignmentMode>(currentMode);
-                        }
-
-                        ImGui::EndMenu();
-                    }
-
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Anotações Textuais")) {
-                    if (m_textAnnotations.empty()) {
-                        ImGui::TextDisabled("Nenhuma anotação (Arraste colunas de Texto)");
-                    } else {
-                        if (ImGui::BeginTable("TabelaTextosRec", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-                            ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
-                            ImGui::TableSetupColumn("Anotação", ImGuiTableColumnFlags_WidthStretch);
-                            ImGui::TableHeadersRow();
-                            for (size_t i = 0; i < m_textAnnotations.size(); ++i) {
-                                ImGui::TableNextRow();
-                                ImGui::TableSetColumnIndex(0);
-                                if (ImGui::Button(("X##txtRec" + std::to_string(i)).c_str())) {
-                                    m_textAnnotations.erase(m_textAnnotations.begin() + i);
-                                    break;
-                                }
-                                ImGui::TableSetColumnIndex(1);
-                                ImGui::TextUnformatted(m_textAnnotations[i].columnName.c_str());
-                            }
-                            ImGui::EndTable();
-                        }
-                    }
-                    ImGui::EndMenu(); // Closes Anotações Textuais
-                }
-                ImGui::EndMenu(); // Closes Dados
+    if (ImGui::BeginMenu("Configurações")) {
+        if (ImGui::BeginMenu("Mapa")) {
+            if (ImGui::MenuItem("Resetar Posição")) {
+                m_zoomScale = 0.5f;
+                findFirstAvailableTile();
             }
+
+            ImGui::Separator();
+
+            if (ImGui::BeginMenu("Configurações do Mapa")) {
+                // Seletor de Mapa/Circuito
+                ImGui::Text("Mapa de Fundo:");
+                ImGui::SetNextItemWidth(160.0f);
+                if (ImGui::BeginCombo("##MapaSelector", stripMapExtension(m_currentMapName).c_str())) {
+                    for (const auto& mapName : m_availableMaps) {
+                        bool        isSelected = (m_currentMapName == mapName);
+                        std::string cleanName  = stripMapExtension(mapName);
+                        if (ImGui::Selectable(cleanName.c_str(), isSelected)) {
+                            m_currentMapName     = mapName;
+                            std::string fullPath = "maps/" + mapName;
+
+                            clearCache();
+                            if (m_db) {
+                                sqlite3_close(m_db);
+                                m_db = nullptr;
+                            }
+                            m_loaded = false;
+
+                            int rc = sqlite3_open(fullPath.c_str(), &m_db);
+                            if (rc == SQLITE_OK) {
+                                m_zoomScale = 0.5f;
+                                findFirstAvailableTile();
+                            } else {
+                                m_statusMessage =
+                                    "Falha ao abrir banco: " + fullPath + " (Erro: " + std::to_string(rc) + ")";
+                                m_db = nullptr;
+                            }
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ImGui::Separator();
+
+                // Seletor de Zoom
+                ImGui::Text("Nível de Zoom (Z):");
+                ImGui::SetNextItemWidth(80.0f);
+                std::string currentZoomStr = std::to_string(m_testZ);
+                if (ImGui::BeginCombo("##ZoomSelector", currentZoomStr.c_str())) {
+                    for (int z = 12; z <= 18; ++z) {
+                        bool        isSelected = (m_testZ == z);
+                        std::string zStr       = std::to_string(z);
+                        if (ImGui::Selectable(zStr.c_str(), isSelected)) {
+                            m_testZ = z;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ImGui::Separator();
+
+                // Slider de tamanho de blocos
+                ImGui::Text("Escala Visual Blocos:");
+                ImGui::SetNextItemWidth(160.0f);
+                ImGui::SliderFloat("##BlockScale", &m_zoomScale, 0.5f, 2.0f, "%.1fx");
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Estilo")) {
+            ImGui::Text("Cores dos Símbolos:");
+            ImGui::ColorEdit4("Linha", m_colorLine);
+            ImGui::ColorEdit4("Pontos", m_colorPoint);
+            ImGui::ColorEdit4("Último Ponto", m_colorLastPoint);
+
+            ImGui::Separator();
+
+            if (ImGui::BeginMenu("Gradiente de Cores (Pontos)")) {
+                ImGui::Text("Arraste a coluna de gradiente para o campo abaixo:");
+                ImGui::Spacing();
+
+                // --- COLUNA DE GRADIENTE ---
+                std::string colorLabel = m_selectedColorCol.empty() ? "(Nenhuma - Arraste aqui)##ColorButton"
+                                                                    : (m_selectedColorCol + "##ColorButton");
+
+                ImGui::PushStyleColor(ImGuiCol_Button, m_selectedColorCol.empty() ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f)
+                                                                                  : ImVec4(0.1f, 0.35f, 0.45f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedColorCol.empty()
+                                                                  ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f)
+                                                                  : ImVec4(0.15f, 0.45f, 0.55f, 0.7f));
+                ImGui::Button(colorLabel.c_str(), ImVec2(200.0f, 0.0f));
+                ImGui::PopStyleColor(2);
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
+                        const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
+                        m_selectedColorCol                 = columnPayload->columnName;
+                        m_selectedColorFileName            = columnPayload->fileName;
+                        m_selectedColorFileType            = columnPayload->fileType;
+                        autoFitColorLimits();
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                if (!m_selectedColorCol.empty()) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("X##ClearColor")) {
+                        m_selectedColorCol      = "";
+                        m_selectedColorFileName = "";
+                        m_selectedColorFileType = "";
+                    }
+                }
+
+                if (!m_selectedColorCol.empty()) {
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Origem do Gradiente:");
+                    std::string originColorText  = m_selectedColorFileName;
+                    originColorText             += (m_selectedColorFileType == "CSV") ? " (CSV)" : " (Telemetria)";
+                    ImGui::TextWrapped("%s", originColorText.c_str());
+                    ImGui::Separator();
+                    ImGui::Text("Estilo do Gradiente:");
+                    ImGui::RadioButton("ImPlot Colormap", &m_colorMode, 1);
+                    ImGui::SameLine();
+                    ImGui::RadioButton("Manual", &m_colorMode, 2);
+
+                    ImGui::Separator();
+                    ImGui::Text("Limites do Gradiente:");
+                    ImGui::PushItemWidth(140.0f);
+                    ImGui::InputDouble("Mín##rec", &m_gradMinVal, 0.1, 1.0, "%.2f");
+                    ImGui::InputDouble("Máx##rec", &m_gradMaxVal, 0.1, 1.0, "%.2f");
+
+                    if (m_colorMode == 1) {
+                        ImGui::Separator();
+                        ImGui::Text("Mapa de Cores:");
+                        if (ImPlot::ColormapButton(ImPlot::GetColormapName(m_colormap), ImVec2(200, 0), m_colormap)) {
+                            m_colormap = (m_colormap + 1) % ImPlot::GetColormapCount();
+                            ImPlot::BustItemCache();
+                        }
+                        ImGui::SetNextItemWidth(200.0f);
+                        ImPlotColormap prev_cmap    = ImPlot::GetStyle().Colormap;
+                        ImPlot::GetStyle().Colormap = m_colormap;
+                        if (ImPlot::ShowColormapSelector("##colormap_rec")) {
+                            m_colormap = ImPlot::GetStyle().Colormap;
+                            ImPlot::BustItemCache();
+                        }
+                        ImPlot::GetStyle().Colormap = prev_cmap;
+                        ImGui::Checkbox("Inverter Cores", &m_reverseColormap);
+                    } else {
+                        ImGui::Separator();
+                        ImGui::Text("Cores Manuais:");
+                        ImGui::ColorEdit4("Cor Min##gradMinColor_rec", m_gradMinColor,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                        ImGui::ColorEdit4("Cor Max##gradMaxColor_rec", m_gradMaxColor,
+                                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
+                    }
+                    ImGui::PopItemWidth();
+
+                    if (ImGui::Button("Auto-ajustar Limites", ImVec2(200.0f, 0.0f))) {
+                        autoFitColorLimits();
+                    }
+                    ImGui::Checkbox("Auto Atualizar Gradiente", &m_autoFitGradient);
+
+                    ImGui::Separator();
+                    ImGui::Text("Alinhamento do Gradiente:");
+                    ImGui::SetNextItemWidth(200.0f);
+                    const char* colorAlignmentModes[] = {"Tamanho Mínimo", "Valor Mais Próximo",
+                                                         "Interpolação Linear (Técnico)"};
+                    int         currentColorMode      = static_cast<int>(m_colorAlignmentMode);
+                    if (ImGui::Combo("##ColorAlignMode", &currentColorMode, colorAlignmentModes,
+                                     IM_ARRAYSIZE(colorAlignmentModes))) {
+                        m_colorAlignmentMode = static_cast<XYAlignmentMode>(currentColorMode);
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Calibração")) {
+            ImGui::Checkbox("Ajustar Pista com Mouse", &m_moveTrackMode);
+            if (m_moveTrackMode) {
+                ImGui::TextDisabled("(Use o mouse ou as setas)");
+                ImGui::Text("Offset Lat: %.6f", m_trackOffsetLat);
+                ImGui::Text("Offset Lon: %.6f", m_trackOffsetLon);
+                if (ImGui::Button("Zerar Ajuste")) {
+                    m_trackOffsetLat = 0.0;
+                    m_trackOffsetLon = 0.0;
+                }
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Dados")) {
+        if (ImGui::BeginMenu("Trajeto")) {
+            // Botão de centralizar no trajeto
+            bool hasTrack = !m_selectedLatFileName.empty() && !m_selectedLatCol.empty() &&
+                            !m_selectedLonFileName.empty() && !m_selectedLonCol.empty();
+            if (hasTrack) {
+                if (ImGui::MenuItem("Centralizar no Trajeto")) {
+                    centerOnTrack();
+                }
+            } else {
+                ImGui::TextDisabled("(Arraste colunas Lat/Lon)");
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::BeginMenu("Dados da Trajetória")) {
+                ImGui::Text("Arraste colunas de coordenadas para os campos abaixo:");
+                ImGui::Spacing();
+
+                // --- LATITUDE ---
+                ImGui::Text("Latitude:");
+                std::string latLabel = m_selectedLatCol.empty() ? "(Nenhuma - Arraste aqui)##LatButton"
+                                                                : (m_selectedLatCol + "##LatButton");
+
+                ImGui::PushStyleColor(ImGuiCol_Button, m_selectedLatCol.empty() ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f)
+                                                                                : ImVec4(0.1f, 0.4f, 0.2f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedLatCol.empty()
+                                                                  ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f)
+                                                                  : ImVec4(0.15f, 0.5f, 0.25f, 0.7f));
+                ImGui::Button(latLabel.c_str(), ImVec2(200.0f, 0.0f));
+                ImGui::PopStyleColor(2);
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
+                        const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
+                        m_selectedLatFileType              = columnPayload->fileType;
+                        m_selectedLatFileName              = columnPayload->fileName;
+                        m_selectedLatCol                   = columnPayload->columnName;
+                        centerOnTrack();
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                if (!m_selectedLatCol.empty()) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("X##ClearLat")) {
+                        m_selectedLatCol      = "";
+                        m_selectedLatFileName = "";
+                    }
+                }
+
+                ImGui::Spacing();
+
+                ImGui::Separator();
+                ImGui::Checkbox("Seguir o Final", &m_followTheEnd);
+                if (m_followTheEnd) {
+                    ImGui::InputInt("Pontos", &m_numPointsToShow, 1, 10);
+                }
+                ImGui::Separator();
+
+                // --- LONGITUDE ---
+                ImGui::Text("Longitude:");
+                std::string lonLabel = m_selectedLonCol.empty() ? "(Nenhuma - Arraste aqui)##LonButton"
+                                                                : (m_selectedLonCol + "##LonButton");
+
+                ImGui::PushStyleColor(ImGuiCol_Button, m_selectedLonCol.empty() ? ImVec4(0.2f, 0.2f, 0.2f, 0.4f)
+                                                                                : ImVec4(0.1f, 0.4f, 0.2f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, m_selectedLonCol.empty()
+                                                                  ? ImVec4(0.3f, 0.3f, 0.3f, 0.5f)
+                                                                  : ImVec4(0.15f, 0.5f, 0.25f, 0.7f));
+                ImGui::Button(lonLabel.c_str(), ImVec2(200.0f, 0.0f));
+                ImGui::PopStyleColor(2);
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("COLUMN_NAME")) {
+                        const ColumnPayload* columnPayload = reinterpret_cast<const ColumnPayload*>(payload->Data);
+                        m_selectedLonFileType              = columnPayload->fileType;
+                        m_selectedLonFileName              = columnPayload->fileName;
+                        m_selectedLonCol                   = columnPayload->columnName;
+                        centerOnTrack();
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                if (!m_selectedLonCol.empty()) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("X##ClearLon")) {
+                        m_selectedLonCol      = "";
+                        m_selectedLonFileName = "";
+                    }
+                }
+
+                if (!m_selectedLatCol.empty() || !m_selectedLonCol.empty()) {
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Origem dos dados:");
+                    if (!m_selectedLatCol.empty()) {
+                        std::string latOriginText = "Lat: " + m_selectedLatFileName +
+                                                    ((m_selectedLatFileType == "CSV") ? " (CSV)" : " (Telemetria)");
+                        ImGui::TextWrapped("%s", latOriginText.c_str());
+                    }
+                    if (!m_selectedLonCol.empty()) {
+                        std::string lonOriginText = "Lon: " + m_selectedLonFileName +
+                                                    ((m_selectedLonFileType == "CSV") ? " (CSV)" : " (Telemetria)");
+                        ImGui::TextWrapped("%s", lonOriginText.c_str());
+                    }
+                }
+
+                ImGui::Separator();
+                ImGui::Text("Alinhamento Lat/Lon:");
+                ImGui::SetNextItemWidth(200.0f);
+                const char* alignmentModes[] = {"Tamanho Mínimo", "Proximidade Temporal",
+                                                "Interpolação Linear (Técnico)"};
+                int         currentMode      = static_cast<int>(m_alignmentMode);
+                if (ImGui::Combo("##AlignMode", &currentMode, alignmentModes, IM_ARRAYSIZE(alignmentModes))) {
+                    m_alignmentMode = static_cast<XYAlignmentMode>(currentMode);
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Anotações Textuais")) {
+            if (m_textAnnotations.empty()) {
+                ImGui::TextDisabled("Nenhuma anotação (Arraste colunas de Texto)");
+            } else {
+                if (ImGui::BeginTable("TabelaTextosRec", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+                    ImGui::TableSetupColumn("Remover", ImGuiTableColumnFlags_WidthFixed);
+                    ImGui::TableSetupColumn("Anotação", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableHeadersRow();
+                    for (size_t i = 0; i < m_textAnnotations.size(); ++i) {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        if (ImGui::Button(("X##txtRec" + std::to_string(i)).c_str())) {
+                            m_textAnnotations.erase(m_textAnnotations.begin() + i);
+                            break;
+                        }
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(m_textAnnotations[i].columnName.c_str());
+                    }
+                    ImGui::EndTable();
+                }
+            }
+            ImGui::EndMenu(); // Closes Anotações Textuais
+        }
+        ImGui::EndMenu(); // Closes Dados
+    }
 }

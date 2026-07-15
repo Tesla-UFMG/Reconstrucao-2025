@@ -25,11 +25,17 @@ VideoPlayer::~VideoPlayer() {
 }
 
 void VideoPlayer::cleanup() {
+    // IMPORTANTE: libvlc_media_player_stop bloqueia a execução até que a thread
+    // do VLC termine de decodificar. Se segurarmos o m_mutex aqui, o VLC não
+    // conseguirá fazer o lock() do frame atual, e o app inteiro trava (deadlock).
     if (m_mediaPlayer) {
         libvlc_media_player_stop(m_mediaPlayer);
         libvlc_media_player_release(m_mediaPlayer);
         m_mediaPlayer = nullptr;
     }
+
+    // Agora que o VLC parou, é seguro limpar os buffers
+    std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_texture) {
         SDL_DestroyTexture(m_texture);
@@ -49,9 +55,9 @@ void VideoPlayer::cleanup() {
 }
 
 void VideoPlayer::load(const std::string& path) {
-    std::lock_guard<std::mutex> lock(m_mutex);
     cleanup();
 
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_vlcInstance) return;
 
     libvlc_media_t* media = libvlc_media_new_path(m_vlcInstance, path.c_str());
