@@ -4,6 +4,7 @@ imgui.ini
 log.txt
 cache/
 data/
+lib/
 Reconstrucao.zip
 output/
 telemetry/

@@ -390,7 +390,7 @@ void Window::Reconstruction::render() {
 
             // 2. Capturar cliques e arraste com o mouse em qualquer parte da janela
             ImGui::InvisibleButton("MapCanvas", windowSize);
-            ImGui::SetItemAllowOverlap();
+            ImGui::SetNextItemAllowOverlap();
             if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
                 float deltaX = ImGui::GetIO().MouseDelta.x;
                 float deltaY = ImGui::GetIO().MouseDelta.y;

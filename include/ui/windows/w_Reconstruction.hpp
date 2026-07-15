@@ -14,7 +14,7 @@
 #include "XYAlignment.hpp"
 
 // Third Party
-#include "sqlite3/sqlite3.h"
+#include "sqlite3.h"
 
 struct CachedTile {
     int z;

@@ -1,0 +1,9 @@
+[submodule "lib/implot3d"]
+	path = lib/implot3d
+	url = https://github.com/brenocq/implot3d.git
+[submodule "lib/serialib"]
+	path = lib/serialib
+	url = https://github.com/imabot2/serialib.git
+[submodule "lib/tinyfiledialogs"]
+	path = lib/tinyfiledialogs
+	url = git://git.code.sf.net/p/tinyfiledialogs/code

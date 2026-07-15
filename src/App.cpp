@@ -38,12 +38,14 @@ bool App::handleEvent() {
                 if (!currentProject.empty()) {
                     std::string F_number = std::to_string(SDLWrapper::events.key.keysym.sym - offset);
                     if ((SDLWrapper::events.key.keysym.mod & KMOD_CTRL)) { // Se CTRL estiver pressionado...
-                        WindowManager::getInstance().saveWindowVisibility("./cache/layouts/" + currentProject + "/.visibility_" + F_number + ".bin");
+                        WindowManager::getInstance().saveWindowVisibility("./cache/layouts/" + currentProject +
+                                                                          "/.visibility_" + F_number + ".bin");
                         ImGuiWrapper::saveLayout("./cache/layouts/" + currentProject + "/.layout_" + F_number + ".ini");
                     } else {
                         std::string pathIni = "./cache/layouts/" + currentProject + "/.layout_" + F_number + ".ini";
                         if (std::filesystem::exists(pathIni)) {
-                            WindowManager::getInstance().loadWindowVisibility("./cache/layouts/" + currentProject + "/.visibility_" + F_number + ".bin");
+                            WindowManager::getInstance().loadWindowVisibility("./cache/layouts/" + currentProject +
+                                                                              "/.visibility_" + F_number + ".bin");
                             ImGuiWrapper::loadLayout(pathIni);
                         } else {
                             LOG("WARN", "Layout " + F_number + " não existe para o projeto atual.");
@@ -62,9 +64,9 @@ bool App::handleEvent() {
                 if (SDLWrapper::events.key.keysym.sym == SDLK_n) { // N - Carregar o projeto
                     DB::getInstance().loadProjectDialog();
                 }
-              //  if (SDLWrapper::events.key.keysym.sym == SDLK_c) { // C - Cria o projeto
-              //      DB::getInstance().createProjectDialog();
-              //   }
+                //  if (SDLWrapper::events.key.keysym.sym == SDLK_c) { // C - Cria o projeto
+                //      DB::getInstance().createProjectDialog();
+                //   }
             }
         }
     }

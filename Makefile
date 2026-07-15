@@ -1,106 +1,189 @@
-WINDOWS := 0
-CARD_VIDEO_RENDEREING := 1
+rwildcard = $(foreach d,$(wildcard $(1)*), \
+	$(call rwildcard,$(d)/,$(2)) \
+	$(filter $(subst *,%,$(2)),$(d)))
+
+.DEFAULT_GOAL := all
 
 PROJECT := app
+
 BUILD_FOLDER := build
-OBJ_FOLDER := obj
+CONAN_FOLDER := $(BUILD_FOLDER)/conan
+OBJ_FOLDER := $(BUILD_FOLDER)/obj
 
-SRC_FILES := $(wildcard src/**/**/*.cpp) $(wildcard src/**/*.cpp) $(wildcard src/*.cpp)
-LIB_CPP_FILES := $(wildcard lib/**/*.cpp)
-LIB_C_FILES := $(wildcard lib/**/*.c)
+CONAN_SETTINGS := $(CONAN_FOLDER)/conan_settings.mk
 
-OBJ_FILES := $(patsubst src/%.cpp, $(OBJ_FOLDER)/%.o, $(SRC_FILES))
-OBJ_FILES += $(patsubst lib/%.cpp, $(OBJ_FOLDER)/lib/%.o, $(LIB_CPP_FILES))
-OBJ_FILES += $(patsubst lib/%.c, $(OBJ_FOLDER)/lib/%.o, $(LIB_C_FILES))
+REQUESTED_GOALS := $(if $(MAKECMDGOALS),$(MAKECMDGOALS),all)
+NON_CLEAN_GOALS := $(filter-out clean distclean,$(REQUESTED_GOALS))
 
-CXX_FLAGS := -Wall -Wextra -pedantic -std=c++17 -g
-INCLUDES := -I./include \
-    -I./lib\
-  	-I./lib/imgui\
-   	-I./lib/SDL2\
-    -I./lib/implot\
-	-I./lib/tinyDialogs\
-	-I./lib/rapidcsv\
-	-I./lib/implot3d\
-	-I./src/ui/windows\
-	-I./lib/serialib\
-	-I./lib/sqlite3
+ifneq ($(strip $(NON_CLEAN_GOALS)),)
+include $(CONAN_SETTINGS)
+endif
 
-ifeq ($(WINDOWS), 1)
-	CXX := x86_64-w64-mingw32-g++
-	LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lbcrypt -mconsole -static-libgcc -static-libstdc++ -lcomdlg32 -lole32
-	LDFLAGS := -Llib/SDL2
-	OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
+$(CONAN_SETTINGS): conanfile.py
+	@echo "Installing Conan dependencies"
+	@mkdir -p $(CONAN_FOLDER)
+	conan install . \
+		-of $(CONAN_FOLDER) \
+		--build=missing
+
+export PKG_CONFIG_PATH := $(abspath $(CONAN_FOLDER))
+
+PKG_CONFIG ?= pkg-config
+
+PKG_DEPS := \
+	sdl2 \
+	SDL2_image \
+	SDL2_mixer \
+	SDL2_ttf \
+	libavformat \
+	libavcodec \
+	libswscale \
+	libavutil \
+	imgui \
+	implot \
+	rapidcsv \
+	sqlite3
+
+SRC_FILES := $(call rwildcard,src/,*.cpp)
+
+LIB_FILES := \
+	$(wildcard lib/implot3d/*.cpp) \
+	lib/serialib/lib/serialib.cpp \
+	lib/tinyfiledialogs/tinyfiledialogs.c
+
+CPP_LIB_FILES := $(filter %.cpp,$(LIB_FILES))
+C_LIB_FILES := $(filter %.c,$(LIB_FILES))
+
+OBJ_FILES := $(patsubst src/%.cpp,$(OBJ_FOLDER)/src/%.o,$(SRC_FILES))
+OBJ_FILES += $(patsubst lib/%.cpp,$(OBJ_FOLDER)/lib/%.o,$(CPP_LIB_FILES))
+OBJ_FILES += $(patsubst lib/%.c,$(OBJ_FOLDER)/lib/%.o,$(C_LIB_FILES))
+
+DEP_FILES := $(OBJ_FILES:.o=.d)
+
+PKG_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PKG_DEPS))
+
+PKG_LIBS := $(shell $(PKG_CONFIG) --libs --static $(PKG_DEPS))
+
+PROJECT_INCLUDES := \
+	-Iinclude \
+	-Isrc \
+	-Iinclude/imgui_backends \
+	-Ilib/implot3d \
+	-Ilib/serialib/lib \
+	-Ilib/tinyfiledialogs
+
+CPPFLAGS := $(PROJECT_INCLUDES) $(PKG_CFLAGS)
+
+COMMON_FLAGS := \
+	-Wall \
+	-Wextra \
+	-MMD \
+	-MP
+
+CXXFLAGS := $(COMMON_FLAGS) -std=c++17
+CFLAGS := $(COMMON_FLAGS) -std=c11
+
+ifeq ($(CONAN_BUILD_TYPE),Debug)
+	CXXFLAGS += -O0 -g3 -fno-omit-frame-pointer
+	CFLAGS += -O0 -g3 -fno-omit-frame-pointer
+else ifeq ($(CONAN_BUILD_TYPE),RelWithDebInfo)
+	CXXFLAGS += -O2 -g -DNDEBUG -fno-omit-frame-pointer
+	CFLAGS += -O2 -g -DNDEBUG -fno-omit-frame-pointer
+else ifeq ($(CONAN_BUILD_TYPE),MinSizeRel)
+	CXXFLAGS += -Os -DNDEBUG
+	CFLAGS += -Os -DNDEBUG
 else
-	CXX := g++
-	LINKFLAGS := -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lz -lpthread -lm -static-libgcc -static-libstdc++
-	LDFLAGS := 
+	CXXFLAGS += -O3 -DNDEBUG
+	CFLAGS += -O3 -DNDEBUG
+endif
+
+ifeq ($(CONAN_COMPILER),gcc)
+	ifeq ($(origin CC),default)
+		CC := gcc
+	endif
+
+	ifeq ($(origin CXX),default)
+		CXX := g++
+	endif
+else ifeq ($(CONAN_COMPILER),clang)
+	ifeq ($(origin CC),default)
+		CC := clang
+	endif
+
+	ifeq ($(origin CXX),default)
+		CXX := clang++
+	endif
+else ifeq ($(CONAN_COMPILER),msvc)
+	$(error This Makefile does not support MSVC. Use a MinGW/GCC profile on Windows)
+endif
+
+LDFLAGS :=
+PLATFORM_LIBS :=
+
+ifeq ($(CONAN_COMPILER),gcc)
+	LDFLAGS += -static-libgcc -static-libstdc++
+endif
+
+ifeq ($(CONAN_OS),Windows)
+	OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
+
+	LDFLAGS += -static
+
+	PLATFORM_LIBS += \
+		-lbcrypt \
+		-lcomdlg32 \
+		-lole32 \
+		-luuid \
+		-lws2_32 \
+		-lsetupapi
+else
 	OUTPUT := $(BUILD_FOLDER)/$(PROJECT)
-endif
 
-ifeq ($(CARD_VIDEO_RENDEREING), 1)
-CXX_FLAGS += -DACCELERATED
-endif
+GROUP_BEGIN := -Wl,--start-group
+GROUP_END := -Wl,--end-group
 
+.PHONY: all conan clean distclean
 
-all: $(BUILD_FOLDER) $(OBJ_FOLDER) $(OUTPUT)
+all: $(OUTPUT)
 
-$(OUTPUT): $(OBJ_FILES)
-	@echo "Compilando o executável" $@
-	@$(CXX) $(OBJ_FILES) $(LDFLAGS) $(LINKFLAGS) -o $(OUTPUT)
+conan:
+	@mkdir -p $(CONAN_FOLDER)
+	conan install . \
+		-of $(CONAN_FOLDER) \
+		--build=missing
 
-$(OBJ_FOLDER)/%.o: src/%.cpp $(wildcard include/**/*.hpp) $(wildcard include/*.hpp)
+$(OUTPUT): $(OBJ_FILES) | $(BUILD_FOLDER)
+	@echo "Linking $@"
+	$(CXX) \
+		$(LDFLAGS) \
+		$(OBJ_FILES) \
+		$(GROUP_BEGIN) \
+		$(PKG_LIBS) \
+		$(GROUP_END) \
+		$(PLATFORM_LIBS) \
+		-o $@
+
+$(OBJ_FOLDER)/src/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
-	@echo $@
-	@$(CXX) $(CXX_FLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_FOLDER)/lib/%.o: lib/%.cpp
 	@mkdir -p $(dir $@)
-	@echo $@
-	@$(CXX) $(CXX_FLAGS) $(INCLUDES) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_FOLDER)/lib/%.o: lib/%.c
 	@mkdir -p $(dir $@)
-	@echo $@
-	@$(CXX) -x c $(INCLUDES) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-ifeq ($(WINDOWS), 1)
 $(BUILD_FOLDER):
-	@mkdir -p $@ $@/assets
-	cp lib/SDL2/*.dll $(BUILD_FOLDER)
-	cp assets/* $(BUILD_FOLDER)/assets/ 
-
-	@mkdir -p $@ $@/maps
-	cp maps/* $(BUILD_FOLDER)/maps/
-else 
-$(BUILD_FOLDER):
-	@mkdir -p $@ $@/assets
-	cp assets/* $(BUILD_FOLDER)/assets/
-
-	@mkdir -p $@ $@/maps
-	cp maps/* $(BUILD_FOLDER)/maps/
-endif
-
-$(OBJ_FOLDER):	
 	@mkdir -p $@
-	@mkdir -p $(OBJ_FOLDER)/lib
-
-.PHONY: clean run check copy format
-
-check: all
-	valgrind --leak-check=full --show-leak-kinds=all $(OUTPUT) 2> check.txt
-
-run: all
-	@rm -rf log.txt
-	@echo "Executando."
-	@./$(OUTPUT)
 
 clean:
-	rm -rf $(BUILD_FOLDER) $(OBJ_FOLDER) log.txt check.txt data.db3 Reconstrucao.zip output
+	rm -rf $(OBJ_FOLDER)
+	rm -f $(BUILD_FOLDER)/$(PROJECT)
+	rm -f $(BUILD_FOLDER)/$(PROJECT).exe
 
-copy:
-	cp -r cache/* $(BUILD_FOLDER)/cache/ 
-	zip -r Reconstrucao.zip $(BUILD_FOLDER)
+distclean:
+	rm -rf $(BUILD_FOLDER)
 
-format:
-	@find src include -type f \( -name "*.cpp" -o -name "*.hpp" \) -exec clang-format -i {} +
+-include $(DEP_FILES)

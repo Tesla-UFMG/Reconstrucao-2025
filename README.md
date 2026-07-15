@@ -161,3 +161,23 @@ Reformular janela do GNSS - Ok
 Salvar as assinalações nos layouts, quando salvar ou mudar de aba
 
 Tela de atualizações:
+
+# Compilando com Conan
+
+Use o conan para obter o profile do computador
+
+```
+conan profile detect --force
+```
+
+Para verificar profile gerado
+
+```
+conan profile show
+```
+
+Para baixar e compilar as dependências e o programa
+
+```
+make -j<n-threads>
+```
