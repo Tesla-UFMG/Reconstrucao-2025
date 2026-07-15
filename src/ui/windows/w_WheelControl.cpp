@@ -81,8 +81,15 @@ void Window::WheelControl::render() {
     // --- Lógica de cálculo do ângulo do volante baseada no último valor do vetor continuamente ---
     if (isLoaded()) {
         const auto& wheelData = m_dataList[m_steerIndex];
-        if (!wheelData.data->empty()) {
-            double rawValue = wheelData.data->back();
+        const std::vector<double>* data = nullptr;
+        if (wheelData.fileType == "CSV") {
+            data = &DB::getInstance().getCSVData(wheelData.archive, wheelData.column);
+        } else if (wheelData.fileType == "Telemetry") {
+            data = &DB::getInstance().getTelemetryData(wheelData.archive, wheelData.column);
+        }
+
+        if (data && !data->empty()) {
+            double rawValue = data->back();
             anguloVolante = static_cast<float>(rawValue);
         }
     } else {
@@ -107,8 +114,14 @@ void Window::WheelControl::render() {
         double valorExibido = 0.0;
         if (isLoaded()) {
             const auto& wheelData = m_dataList[m_steerIndex];
-            if (!wheelData.data->empty()) {
-                valorExibido = wheelData.data->back();
+            const std::vector<double>* data = nullptr;
+            if (wheelData.fileType == "CSV") {
+                data = &DB::getInstance().getCSVData(wheelData.archive, wheelData.column);
+            } else if (wheelData.fileType == "Telemetry") {
+                data = &DB::getInstance().getTelemetryData(wheelData.archive, wheelData.column);
+            }
+            if (data && !data->empty()) {
+                valorExibido = data->back();
             }
         }
         char formattedText[32];
@@ -159,26 +172,28 @@ void Window::WheelControl::addColumn(const std::string& fileType, const std::str
     wd.fileType = fileType;
 
     if (fileType == "CSV") {
-        wd.data = &DB::getInstance().getCSVData(fileName, columnName);
+        const auto& vec = DB::getInstance().getCSVData(fileName, columnName);
+        if (!vec.empty()) {
+            auto minmax = std::minmax_element(vec.begin(), vec.end());
+            wd.minValue = *minmax.first;
+            wd.maxValue = *minmax.second;
+        }
     } else if (fileType == "Telemetry") {
-        wd.data = &DB::getInstance().getTelemetryData(fileName, columnName);
-    }
-
-    if (!wd.data) {
+        const auto& vec = DB::getInstance().getTelemetryData(fileName, columnName);
+        if (!vec.empty()) {
+            auto minmax = std::minmax_element(vec.begin(), vec.end());
+            wd.minValue = *minmax.first;
+            wd.maxValue = *minmax.second;
+        }
+    } else {
         LOG("ERROR", "[Volante] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "'.");
         return;
-    }
-
-    auto minmax = std::minmax_element(wd.data->begin(), wd.data->end());
-    if (minmax.first != wd.data->end()) {
-        wd.minValue = *minmax.first;
-        wd.maxValue = *minmax.second;
     }
 
     m_dataList.push_back(wd);
     m_steerIndex = 0; // Vincula imediatamente como a coluna ativa do volante
 
-    LOG("INFO", "[Volante] Dados carregados com sucesso! Coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(wd.data->size()));
+    LOG("INFO", "[Volante] Dados carregados com sucesso! Coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'.");
 }
 
 void Window::WheelControl::removeColumn(int index) {

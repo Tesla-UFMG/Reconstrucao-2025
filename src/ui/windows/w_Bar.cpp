@@ -48,21 +48,30 @@ void Window::Bar::render() {
     double maxL   = m_maxVal;
     double minL   = m_minVal;
 
-    if (m_hasData && m_loadedData.data) {
+    const std::vector<double>* dataPtr = nullptr;
+    if (m_hasData) {
+        if (m_loadedData.fileType == "CSV") {
+            dataPtr = &DB::getInstance().getCSVData(m_loadedData.archive, m_loadedData.column);
+        } else if (m_loadedData.fileType == "Telemetry") {
+            dataPtr = &DB::getInstance().getTelemetryData(m_loadedData.archive, m_loadedData.column);
+        }
+    }
+
+    if (m_hasData && dataPtr) {
         hasVal = true;
-        if (!m_loadedData.data->empty()) {
+        if (!dataPtr->empty()) {
             if (m_currentMetric == MetricType::LAST) {
-                val = m_loadedData.data->back();
+                val = dataPtr->back();
             } else if (m_currentMetric == MetricType::AVERAGE) {
                 double sum = 0.0;
-                for (double x : *m_loadedData.data) {
+                for (double x : *dataPtr) {
                     sum += x;
                 }
-                val = sum / m_loadedData.data->size();
+                val = sum / dataPtr->size();
             } else if (m_currentMetric == MetricType::MIN) {
-                val = *std::min_element(m_loadedData.data->begin(), m_loadedData.data->end());
+                val = *std::min_element(dataPtr->begin(), dataPtr->end());
             } else if (m_currentMetric == MetricType::MAX) {
-                val = *std::max_element(m_loadedData.data->begin(), m_loadedData.data->end());
+                val = *std::max_element(dataPtr->begin(), dataPtr->end());
             }
 
             if (m_useFormula) {
@@ -70,8 +79,8 @@ void Window::Bar::render() {
             }
 
             if (!m_useManualLimits) {
-                double dataMin = *std::min_element(m_loadedData.data->begin(), m_loadedData.data->end());
-                double dataMax = *std::max_element(m_loadedData.data->begin(), m_loadedData.data->end());
+                double dataMin = *std::min_element(dataPtr->begin(), dataPtr->end());
+                double dataMax = *std::max_element(dataPtr->begin(), dataPtr->end());
 
                 if (m_useFormula) {
                     double v1 = dataMin * m_multiplier + m_offset;
@@ -183,13 +192,11 @@ void Window::Bar::render() {
                 ImGui::SameLine();
                 if (ImGui::SmallButton("X##removeData")) {
                     m_hasData         = false;
-                    m_loadedData.data = nullptr;
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::Separator();
                 if (ImGui::Button("Limpar Todas as Colunas")) {
                     m_hasData         = false;
-                    m_loadedData.data = nullptr;
                     ImGui::CloseCurrentPopup();
                 }
 
@@ -361,7 +368,7 @@ void Window::Bar::render() {
         ImGui::EndPopup();
     }
 
-    if (!m_hasData || !m_loadedData.data) {
+    if (!m_hasData || !dataPtr || dataPtr->empty()) {
         std::string placeholder  = "(Arraste uma coluna de dados aqui)";
         ImVec2      textSize     = ImGui::CalcTextSize(placeholder.c_str());
         textSize.x              *= m_fontScale;
@@ -616,19 +623,19 @@ void Window::Bar::addColumn(const std::string& fileType, const std::string& file
     m_loadedData.column   = columnName;
     m_loadedData.fileType = fileType;
 
+    const std::vector<double>* dataPtr = nullptr;
     if (fileType == "CSV") {
-        m_loadedData.data = &DB::getInstance().getCSVData(fileName, columnName);
+        dataPtr = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        m_loadedData.data = &DB::getInstance().getTelemetryData(fileName, columnName);
+        dataPtr = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (m_loadedData.data) {
+    if (dataPtr) {
         m_hasData = true;
-        LOG("INFO", "[Barra] Carregado dados da coluna '" + columnName + "' de '" + fileName +
-                        "'. Total de registros: " + std::to_string(m_loadedData.data->size()));
+        LOG("INFO", "[Bar] Dados vinculados com sucesso! Coluna: '" + columnName + "' (" + fileType + ") de '" + fileName +
+                        "'. Total de registros: " + std::to_string(dataPtr->size()));
     } else {
-        m_hasData         = false;
-        m_loadedData.data = nullptr;
-        LOG("ERROR", "[Barra] Falha ao carregar dados da coluna '" + columnName + "' de '" + fileName + "'.");
+        m_hasData = false;
+        LOG("ERROR", "[Bar] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "'.");
     }
 }

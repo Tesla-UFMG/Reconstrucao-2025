@@ -44,6 +44,7 @@ class DB {
 
         // Dialogo de salvar ou carregar um projeto
         void saveProjectDialog();
+        void quickSaveProject();
         void loadProjectDialog();
 
         // Dialogo carregar dados (CSV ou Vídeo)

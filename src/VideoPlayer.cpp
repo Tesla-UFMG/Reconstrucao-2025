@@ -1,16 +1,11 @@
 #include "VideoPlayer.hpp"
 #include "Log.hpp"
-#include <iostream>
 #include <cstring>
+#include <iostream>
 
 VideoPlayer::VideoPlayer(SDL_Renderer* renderer) : m_renderer(renderer) {
-    const char* vlc_args[] = {
-        "--no-xlib",
-        "--drop-late-frames",
-        "--skip-frames",
-        "--quiet"
-    };
-    m_vlcInstance = libvlc_new(sizeof(vlc_args) / sizeof(vlc_args[0]), vlc_args);
+    const char* vlc_args[] = {"--no-xlib", "--drop-late-frames", "--skip-frames", "--quiet"};
+    m_vlcInstance          = libvlc_new(sizeof(vlc_args) / sizeof(vlc_args[0]), vlc_args);
     if (!m_vlcInstance) {
         LOG("ERROR", "Falha ao inicializar o libvlc.");
     }
@@ -47,18 +42,19 @@ void VideoPlayer::cleanup() {
         m_pixelBuffer = nullptr;
     }
 
-    m_width = 0;
-    m_height = 0;
-    m_pitch = 0;
+    m_width                = 0;
+    m_height               = 0;
+    m_pitch                = 0;
     m_textureNeedsCreation = false;
-    m_textureNeedsUpdate = false;
+    m_textureNeedsUpdate   = false;
 }
 
 void VideoPlayer::load(const std::string& path) {
     cleanup();
 
     std::lock_guard<std::mutex> lock(m_mutex);
-    if (!m_vlcInstance) return;
+    if (!m_vlcInstance)
+        return;
 
     libvlc_media_t* media = libvlc_media_new_path(m_vlcInstance, path.c_str());
     if (!media) {
@@ -139,19 +135,14 @@ void VideoPlayer::setRate(float rate) {
 
 void VideoPlayer::updateTexture() {
     std::lock_guard<std::mutex> lock(m_mutex);
-    
+
     if (m_textureNeedsCreation) {
         if (m_texture) {
             SDL_DestroyTexture(m_texture);
             m_texture = nullptr;
         }
-        m_texture = SDL_CreateTexture(
-            m_renderer,
-            SDL_PIXELFORMAT_ARGB8888,
-            SDL_TEXTUREACCESS_STREAMING,
-            m_width,
-            m_height
-        );
+        m_texture =
+            SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, m_width, m_height);
         m_textureNeedsCreation = false;
     }
 
@@ -169,7 +160,7 @@ void* VideoPlayer::lock(void* data, void** p_pixels) {
 }
 
 void VideoPlayer::unlock(void* data, void* /*id*/, void* const* /*p_pixels*/) {
-    auto* player = static_cast<VideoPlayer*>(data);
+    auto* player                 = static_cast<VideoPlayer*>(data);
     player->m_textureNeedsUpdate = true;
     player->m_mutex.unlock();
 }
@@ -178,20 +169,21 @@ void VideoPlayer::display(void* /*data*/, void* /*id*/) {
     // A flag m_textureNeedsUpdate foi setada no unlock, a thread de UI do ImGui irá atualizar a textura.
 }
 
-unsigned VideoPlayer::format_setup(void** opaque, char* chroma, unsigned* width, unsigned* height, unsigned* pitches, unsigned* lines) {
-    auto* player = static_cast<VideoPlayer*>(*opaque);
+unsigned VideoPlayer::format_setup(void** opaque, char* chroma, unsigned* width, unsigned* height, unsigned* pitches,
+                                   unsigned* lines) {
+    auto*                       player = static_cast<VideoPlayer*>(*opaque);
     std::lock_guard<std::mutex> lock(player->m_mutex);
 
     // SDL Textures in ImGui typically use RGBA32
     // libvlc RV32 corresponds to RGBA
     memcpy(chroma, "RV32", 4);
 
-    player->m_width = *width;
+    player->m_width  = *width;
     player->m_height = *height;
-    player->m_pitch = (*width) * 4;
+    player->m_pitch  = (*width) * 4;
 
     *pitches = player->m_pitch;
-    *lines = player->m_height;
+    *lines   = player->m_height;
 
     player->m_textureNeedsCreation = true;
 

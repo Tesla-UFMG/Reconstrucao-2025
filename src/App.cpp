@@ -57,7 +57,7 @@ bool App::handleEvent() {
                     Log::getInstance().clearLog();
                 }
                 if (SDLWrapper::events.key.keysym.sym == SDLK_s) { // S - Salvar o projeto
-                    DB::getInstance().saveProjectDialog();
+                    DB::getInstance().quickSaveProject();
                 }
                 if (SDLWrapper::events.key.keysym.sym == SDLK_n) { // N - Carregar o projeto
                     DB::getInstance().loadProjectDialog();

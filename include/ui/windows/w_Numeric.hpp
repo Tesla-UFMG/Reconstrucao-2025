@@ -16,7 +16,6 @@ struct NumericData {
     std::string         column;
     std::string         archive;
     std::string         fileType;
-    const std::vector<double>* data = nullptr;
 };
 
 enum class MetricType {

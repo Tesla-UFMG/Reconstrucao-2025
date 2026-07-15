@@ -80,8 +80,16 @@ void DB::saveProject(const std::filesystem::path& filepath) {
     }
     if (this->projectData.serialize(finalPath)) {
         this->projectData.currentProjectName = finalPath.filename().string();
-        SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProjectName);
+        this->projectData.currentProjectPath = finalPath.string();
         LOG("INFO", "Projeto salvo: " + this->projectData.currentProjectName);
+    }
+}
+
+void DB::quickSaveProject() {
+    if (!this->projectData.currentProjectPath.empty()) {
+        DB::saveProject(this->projectData.currentProjectPath);
+    } else {
+        DB::saveProjectDialog();
     }
 }
 
@@ -92,7 +100,7 @@ void DB::loadProject(const std::filesystem::path& filepath) {
     }
     if (this->projectData.deserialize(finalPath)) {
         this->projectData.currentProjectName = finalPath.filename().string();
-        SDLWrapper::changeWindowTitle(SDLWrapper::windowTitle + " - " + this->projectData.currentProjectName);
+        this->projectData.currentProjectPath = finalPath.string();
         LOG("INFO", "Projeto carregado com sucesso.");
 
         auto* warningWin = Window::Warning::getInstance();

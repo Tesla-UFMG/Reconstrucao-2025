@@ -431,10 +431,14 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
 
         file << "PLAYBACK_CURSOR_STATE\n";
         file << m_playbackWindow->globalTime << "\n";
+
+        file << "PLAYBACK_LOCK_STATE\n";
+        file << m_playbackWindow->tracksLocked << "\n";
     } else {
         file << "NO_PLAYBACK_STATE\n";
         file << "NO_PLAYBACK_FILES_STATE\n";
         file << "NO_PLAYBACK_CURSOR_STATE\n";
+        file << "NO_PLAYBACK_LOCK_STATE\n";
     }
 
     // 2. Salvando janelas dinâmicas
@@ -834,23 +838,26 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     bool rev             = false;
                     if (file >> rev) {
                         reconWin->m_reverseColormap = rev;
-                        
+
                         // New fields added later, wrap in safe read block
                         bool followEnd, rotateMap, limitPts;
-                        int numPts;
+                        int  numPts;
                         if (file >> followEnd) {
                             reconWin->m_followTheEnd = followEnd;
-                            if (file >> rotateMap) reconWin->m_rotateMap = rotateMap;
-                            if (file >> limitPts) reconWin->m_limitPoints = limitPts;
-                            if (file >> numPts) reconWin->m_numPointsToShow = numPts;
+                            if (file >> rotateMap)
+                                reconWin->m_rotateMap = rotateMap;
+                            if (file >> limitPts)
+                                reconWin->m_limitPoints = limitPts;
+                            if (file >> numPts)
+                                reconWin->m_numPointsToShow = numPts;
                         } else {
                             file.clear(); // Clear EOF flag if reading old file format
                         }
-                        
+
                         std::getline(file, dummy); // consume newline
-                        
+
                         std::streampos pos = file.tellg();
-                        std::string mapName;
+                        std::string    mapName;
                         if (std::getline(file, mapName)) {
                             if (mapName.find("_STATE") != std::string::npos) {
                                 file.seekg(pos); // Rewind because it's the next block header, not a map name
@@ -922,11 +929,8 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                 std::getline(file, dummy); // consume newline
 
                 if (DB::getInstance().columnExists(pd.fileType, pd.archive, pd.column)) {
-                    pd.data = nullptr;
                     if (pd.fileType == "CSV") {
-                        pd.data = &DB::getInstance().getCSVData(pd.archive, pd.column);
                     } else if (pd.fileType == "Telemetry") {
-                        pd.data = &DB::getInstance().getTelemetryData(pd.archive, pd.column);
                     }
                     pedalWin->m_dataList.push_back(pd);
                     int newIdx = static_cast<int>(pedalWin->m_dataList.size() - 1);
@@ -969,11 +973,8 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                 std::getline(file, dummy); // consume newline
 
                 if (DB::getInstance().columnExists(wd.fileType, wd.archive, wd.column)) {
-                    wd.data = nullptr;
                     if (wd.fileType == "CSV") {
-                        wd.data = &DB::getInstance().getCSVData(wd.archive, wd.column);
                     } else if (wd.fileType == "Telemetry") {
-                        wd.data = &DB::getInstance().getTelemetryData(wd.archive, wd.column);
                     }
                     wheelWin->m_dataList.push_back(wd);
                     int newIdx = static_cast<int>(wheelWin->m_dataList.size() - 1);
@@ -1026,7 +1027,7 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
             m_playbackWindow->selectedTimestampCol = (temp == "EMPTY" ? "" : temp);
             std::getline(file, temp);
             m_playbackWindow->loadedVideoName = (temp == "EMPTY" ? "" : temp);
-            
+
             // Re-populate timestamp data and bounds based on loaded file/column
             m_playbackWindow->refreshData();
         }
@@ -1046,6 +1047,18 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
     } else {
         file.clear();
         file.seekg(beforeCursor);
+    }
+    
+    // Tentamos ler o estado do cadeado do playback
+    std::streampos beforeLock = file.tellg();
+    if (seekToBlock("PLAYBACK_LOCK_STATE")) {
+        if (line == "PLAYBACK_LOCK_STATE" && m_playbackWindow) {
+            file >> m_playbackWindow->tracksLocked;
+            std::getline(file, dummy); // Consume newline
+        }
+    } else {
+        file.clear();
+        file.seekg(beforeLock);
     }
 
     // 2. Remove todas as janelas dinâmicas existentes

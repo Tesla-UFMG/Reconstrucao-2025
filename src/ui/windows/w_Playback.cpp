@@ -221,15 +221,15 @@ void Window::Playback::refreshData() {
     }
 
     if (!this->timestampData.empty()) {
-        this->maxIndex         = static_cast<int>(this->timestampData.size() - 1);
-        this->startTimestamp   = this->timestampData.front();
-        this->endTimestamp     = this->timestampData.back();
+        this->maxIndex       = static_cast<int>(this->timestampData.size() - 1);
+        this->startTimestamp = this->timestampData.front();
+        this->endTimestamp   = this->timestampData.back();
         // currentTimestamp is not reset here to preserve layout state
     } else {
-        this->maxIndex         = 0;
-        this->startTimestamp   = 0.0;
-        this->endTimestamp     = 0.0;
-        this->currentIndex     = 0;
+        this->maxIndex       = 0;
+        this->startTimestamp = 0.0;
+        this->endTimestamp   = 0.0;
+        this->currentIndex   = 0;
     }
 
     this->lastUpdatedIndex = -1;
@@ -263,7 +263,7 @@ void Window::Playback::updatePlaybackData() {
                 }
             }
         }
-        
+
         for (const auto& colName : this->cachedColNames) {
             if (this->selectedFileType == "CSV") {
                 this->cachedColumns.push_back(&DB::getInstance().getCSVData(this->selectedFileName, colName));
@@ -273,7 +273,8 @@ void Window::Playback::updatePlaybackData() {
         }
     }
 
-    if (this->cachedColNames.empty()) return;
+    if (this->cachedColNames.empty())
+        return;
 
     bool           found        = false;
     ProjectData&   pd           = DB::getInstance().getProject();
@@ -296,7 +297,8 @@ void Window::Playback::updatePlaybackData() {
                 break;
             }
         }
-        if (!targetPacket) return;
+        if (!targetPacket)
+            return;
     }
 
     if (this->currentIndex < this->lastUpdatedIndex) {
@@ -409,6 +411,17 @@ void Window::Playback::render() {
         }
 
         ImGui::Separator();
+        if (this->tracksLocked) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
+        }
+        if (ImGui::MenuItem("Cadeado")) {
+            this->tracksLocked = !this->tracksLocked;
+        }
+        ImGui::PopStyleColor();
+
+        ImGui::Separator();
         ImGui::TextDisabled("CSV: %s | Vídeo: %s",
                             this->selectedFileName.empty() ? "Nenhum" : this->selectedFileName.c_str(),
                             this->loadedVideoName.empty() ? "Nenhum" : this->loadedVideoName.c_str());
@@ -461,114 +474,116 @@ void Window::Playback::render() {
     }
 
     if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
-        auto*  player          = wVideo->getPlayer();
-        auto   now             = std::chrono::steady_clock::now();
-        double msSinceLastSeek = std::chrono::duration<double, std::milli>(now - this->lastSeekTime).count();
+        if (!wVideo->getLoadedVideo().empty()) {
+            auto*  player          = wVideo->getPlayer();
+            auto   now             = std::chrono::steady_clock::now();
+            double msSinceLastSeek = std::chrono::duration<double, std::milli>(now - this->lastSeekTime).count();
 
-        // Only try to control video if it has been parsed and has a length
-        if (player->getLength() > 0) {
-            if (this->isScrubbing) {
-                // User is dragging the timeline cursor: seek video to the target position
-                // instead of reading position from it (which would overwrite globalTime).
-                if (this->videoPlayCommandSent) {
-                    player->pause();
-                    this->videoPlayCommandSent = false;
-                }
-                
-                if (shouldVideoPlay) {
-                    int64_t currentVidTime = player->getTime();
-                    bool canSeek = false;
-                    
-                    // Allow seeking if 300ms have passed (timeout) OR 
-                    // if VLC has successfully reached near the PREVIOUS seek target (meaning it's ready for another)
-                    if (msSinceLastSeek > 300.0) {
-                        canSeek = true;
-                    } else if (msSinceLastSeek > 30.0) {
-                        if (this->lastSeekTarget < 0 || std::abs(currentVidTime - this->lastSeekTarget) < 300.0) {
-                            canSeek = true;
-                        }
-                    }
-
-                    if (canSeek && std::abs(currentVidTime - videoTargetPos) > 16.0) {
-                        int64_t safeTarget = static_cast<int64_t>(videoTargetPos);
-                        if (safeTarget >= this->videoLengthMs - 150 && this->videoLengthMs > 150)
-                            safeTarget = static_cast<int64_t>(this->videoLengthMs - 150);
-                        player->setTime(safeTarget);
-                        this->lastSeekTime = now;
-                        this->lastSeekTarget = safeTarget;
-                    }
-                }
-            } else if (this->isPlaying && shouldVideoPlay) {
-                if (!this->videoPlayCommandSent) {
-                    // BUG FIX: always seek to the correct position BEFORE calling play().
-                    // Without this, VLC resumes from wherever it last stopped instead of
-                    // starting at videoTargetPos (typically 0 at the block start).
-                    if (msSinceLastSeek > 80.0) {
-                        int64_t safeTarget = static_cast<int64_t>(videoTargetPos);
-                        if (safeTarget >= this->videoLengthMs - 150 && this->videoLengthMs > 150)
-                            safeTarget = static_cast<int64_t>(this->videoLengthMs - 150);
-                        player->setTime(safeTarget);
-                        this->lastSeekTime = now;
-                        this->lastSeekTarget = safeTarget;
-                    }
-                    player->play();
-                    this->videoPlayCommandSent = true;
-                }
-
-                int64_t currentVidTime = player->getTime();
-                if (currentVidTime >= this->videoLengthMs - 150 && this->videoLengthMs > 150) {
-                    if (player->isPlaying()) {
+            // Only try to control video if it has been parsed and has a length
+            if (player->getLength() > 0) {
+                if (this->isScrubbing) {
+                    // User is dragging the timeline cursor: seek video to the target position
+                    // instead of reading position from it (which would overwrite globalTime).
+                    if (this->videoPlayCommandSent) {
                         player->pause();
                         this->videoPlayCommandSent = false;
                     }
-                    this->globalTime += dt * 1000.0 * this->playbackSpeed;
-                } else {
-                    // Smoothly advance globalTime using dt for 60fps CSV rendering
-                    this->globalTime += dt * 1000.0 * this->playbackSpeed;
-                    
-                    // Sync with VLC only if drift is large (e.g., buffering or big jumps)
-                    // This prevents the CSV from updating in "chunks" since player->getTime() 
-                    // is not updated at 60fps internally by libvlc.
-                    double expectedVidTime = this->globalTime - this->videoBlockStart;
-                    if (std::abs(expectedVidTime - currentVidTime) > 500.0) {
-                        this->globalTime = this->videoBlockStart + currentVidTime;
-                    }
-                }
-            } else {
-                // Pause if: we sent a play command, OR the video is playing due to
-                // an external trigger (e.g. setLoadedVideo auto-play on drag & drop).
-                if (this->videoPlayCommandSent || player->isPlaying()) {
-                    player->pause();
-                    this->videoPlayCommandSent = false;
-                }
-                if (shouldVideoPlay) {
-                    // Cursor is inside the video block but paused: keep video seeked to cursor.
-                    int64_t currentVidTime = player->getTime();
-                    bool canSeek = false;
-                    
-                    if (msSinceLastSeek > 300.0) {
-                        canSeek = true;
-                    } else if (msSinceLastSeek > 30.0) {
-                        if (this->lastSeekTarget < 0 || std::abs(currentVidTime - this->lastSeekTarget) < 300.0) {
+
+                    if (shouldVideoPlay) {
+                        int64_t currentVidTime = player->getTime();
+                        bool    canSeek        = false;
+
+                        // Allow seeking if 300ms have passed (timeout) OR
+                        // if VLC has successfully reached near the PREVIOUS seek target (meaning it's ready for another)
+                        if (msSinceLastSeek > 300.0) {
                             canSeek = true;
+                        } else if (msSinceLastSeek > 30.0) {
+                            if (this->lastSeekTarget < 0 || std::abs(currentVidTime - this->lastSeekTarget) < 300.0) {
+                                canSeek = true;
+                            }
+                        }
+
+                        if (canSeek && std::abs(currentVidTime - videoTargetPos) > 16.0) {
+                            int64_t safeTarget = static_cast<int64_t>(videoTargetPos);
+                            if (safeTarget >= this->videoLengthMs - 150 && this->videoLengthMs > 150)
+                                safeTarget = static_cast<int64_t>(this->videoLengthMs - 150);
+                            player->setTime(safeTarget);
+                            this->lastSeekTime   = now;
+                            this->lastSeekTarget = safeTarget;
                         }
                     }
-
-                    if (canSeek && std::abs(currentVidTime - videoTargetPos) > 16.0) {
-                        int64_t safeTarget = static_cast<int64_t>(videoTargetPos);
-                        if (safeTarget >= this->videoLengthMs - 150 && this->videoLengthMs > 150)
-                            safeTarget = static_cast<int64_t>(this->videoLengthMs - 150);
-                        player->setTime(safeTarget);
-                        this->lastSeekTime = now;
-                        this->lastSeekTarget = safeTarget;
+                } else if (this->isPlaying && shouldVideoPlay) {
+                    if (!this->videoPlayCommandSent) {
+                        // BUG FIX: always seek to the correct position BEFORE calling play().
+                        // Without this, VLC resumes from wherever it last stopped instead of
+                        // starting at videoTargetPos (typically 0 at the block start).
+                        if (msSinceLastSeek > 80.0) {
+                            int64_t safeTarget = static_cast<int64_t>(videoTargetPos);
+                            if (safeTarget >= this->videoLengthMs - 150 && this->videoLengthMs > 150)
+                                safeTarget = static_cast<int64_t>(this->videoLengthMs - 150);
+                            player->setTime(safeTarget);
+                            this->lastSeekTime   = now;
+                            this->lastSeekTarget = safeTarget;
+                        }
+                        player->play();
+                        this->videoPlayCommandSent = true;
                     }
-                } else if (videoTargetPos < 0.0) {
-                    // BUG FIX: cursor is BEFORE the video block — reset video to position 0
-                    // so the next play() always starts from the beginning.
-                    if (player->getTime() > 150 && msSinceLastSeek > 500.0) {
-                        player->setTime(0);
-                        this->lastSeekTime = now;
-                        this->lastSeekTarget = 0;
+
+                    int64_t currentVidTime = player->getTime();
+                    if (currentVidTime >= this->videoLengthMs - 150 && this->videoLengthMs > 150) {
+                        if (player->isPlaying()) {
+                            player->pause();
+                            this->videoPlayCommandSent = false;
+                        }
+                        this->globalTime += dt * 1000.0 * this->playbackSpeed;
+                    } else {
+                        // Smoothly advance globalTime using dt for 60fps CSV rendering
+                        this->globalTime += dt * 1000.0 * this->playbackSpeed;
+
+                        // Sync with VLC only if drift is large (e.g., buffering or big jumps)
+                        // This prevents the CSV from updating in "chunks" since player->getTime()
+                        // is not updated at 60fps internally by libvlc.
+                        double expectedVidTime = this->globalTime - this->videoBlockStart;
+                        if (std::abs(expectedVidTime - currentVidTime) > 500.0) {
+                            this->globalTime = this->videoBlockStart + currentVidTime;
+                        }
+                    }
+                } else {
+                    // Pause if: we sent a play command, OR the video is playing due to
+                    // an external trigger (e.g. setLoadedVideo auto-play on drag & drop).
+                    if (this->videoPlayCommandSent || player->isPlaying()) {
+                        player->pause();
+                        this->videoPlayCommandSent = false;
+                    }
+                    if (shouldVideoPlay) {
+                        // Cursor is inside the video block but paused: keep video seeked to cursor.
+                        int64_t currentVidTime = player->getTime();
+                        bool    canSeek        = false;
+
+                        if (msSinceLastSeek > 300.0) {
+                            canSeek = true;
+                        } else if (msSinceLastSeek > 30.0) {
+                            if (this->lastSeekTarget < 0 || std::abs(currentVidTime - this->lastSeekTarget) < 300.0) {
+                                canSeek = true;
+                            }
+                        }
+
+                        if (canSeek && std::abs(currentVidTime - videoTargetPos) > 16.0) {
+                            int64_t safeTarget = static_cast<int64_t>(videoTargetPos);
+                            if (safeTarget >= this->videoLengthMs - 150 && this->videoLengthMs > 150)
+                                safeTarget = static_cast<int64_t>(this->videoLengthMs - 150);
+                            player->setTime(safeTarget);
+                            this->lastSeekTime   = now;
+                            this->lastSeekTarget = safeTarget;
+                        }
+                    } else if (videoTargetPos < 0.0) {
+                        // BUG FIX: cursor is BEFORE the video block — reset video to position 0
+                        // so the next play() always starts from the beginning.
+                        if (player->getTime() > 150 && msSinceLastSeek > 500.0) {
+                            player->setTime(0);
+                            this->lastSeekTime   = now;
+                            this->lastSeekTarget = 0;
+                        }
                     }
                 }
             }
@@ -714,7 +729,11 @@ void Window::Playback::render() {
         if (vW < 1.0f)
             vW = 1.0f; // PREVENT CRASH
         ImGui::SetCursorScreenPos(ImVec2(vStartX, track1Y));
-        ImGui::InvisibleButton("##VideoTrackDrag", ImVec2(vW, trackH));
+        if (!this->tracksLocked) {
+            ImGui::InvisibleButton("##VideoTrackDrag", ImVec2(vW, trackH));
+        } else {
+            ImGui::Dummy(ImVec2(vW, trackH));
+        }
         double videoSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             if (!this->isDraggingVideo) {
@@ -770,7 +789,11 @@ void Window::Playback::render() {
 
         // Left handle
         ImGui::SetCursorScreenPos(ImVec2(cStartX - handleW, track2Y));
-        ImGui::InvisibleButton("##CsvLeft", ImVec2(handleW * 2, trackH));
+        if (!this->tracksLocked) {
+            ImGui::InvisibleButton("##CsvLeft", ImVec2(handleW * 2, trackH));
+        } else {
+            ImGui::Dummy(ImVec2(handleW * 2, trackH));
+        }
         double csvLeftSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             double rawVal = xToTime(ImGui::GetMousePos().x);
@@ -794,7 +817,12 @@ void Window::Playback::render() {
         float centerW = (cEndX - cStartX) - handleW * 2;
         if (centerW < 1.0f)
             centerW = 1.0f; // PREVENT CRASH
-        ImGui::InvisibleButton("##CsvCenter", ImVec2(centerW, trackH));
+            
+        if (!this->tracksLocked) {
+            ImGui::InvisibleButton("##CsvCenter", ImVec2(centerW, trackH));
+        } else {
+            ImGui::Dummy(ImVec2(centerW, trackH));
+        }
         double csvCenterSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             if (!this->isDraggingCsv) {
@@ -839,7 +867,11 @@ void Window::Playback::render() {
 
         // Right handle
         ImGui::SetCursorScreenPos(ImVec2(cEndX - handleW, track2Y));
-        ImGui::InvisibleButton("##CsvRight", ImVec2(handleW * 2, trackH));
+        if (!this->tracksLocked) {
+            ImGui::InvisibleButton("##CsvRight", ImVec2(handleW * 2, trackH));
+        } else {
+            ImGui::Dummy(ImVec2(handleW * 2, trackH));
+        }
         double csvRightSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             double rawVal = xToTime(ImGui::GetMousePos().x);

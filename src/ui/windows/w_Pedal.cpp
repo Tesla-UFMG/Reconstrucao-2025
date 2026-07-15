@@ -68,16 +68,22 @@ void Window::Pedal::render() {
 
     if (m_throttleIndex != -1) {
         const auto& pedalData = m_dataList[m_throttleIndex];
-        if (!pedalData.data->empty()) {
-            double rawThrottle = pedalData.data->back();
+        const std::vector<double>* dataPtr = nullptr;
+        if (pedalData.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(pedalData.archive, pedalData.column);
+        else if (pedalData.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(pedalData.archive, pedalData.column);
+        if (dataPtr && !dataPtr->empty()) {
+            double rawThrottle = dataPtr->back();
             double maxThrottle = pedalData.maxValue;
             throttleValue = static_cast<float>(rawThrottle / maxThrottle);
         }
     }
     if (m_brakeIndex != -1) {
         const auto& pedalData = m_dataList[m_brakeIndex];
-        if (!pedalData.data->empty()) {
-            double rawBrake = pedalData.data->back();
+        const std::vector<double>* dataPtr = nullptr;
+        if (pedalData.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(pedalData.archive, pedalData.column);
+        else if (pedalData.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(pedalData.archive, pedalData.column);
+        if (dataPtr && !dataPtr->empty()) {
+            double rawBrake = dataPtr->back();
             double maxBrake = pedalData.maxValue;
             brakeValue = static_cast<float>(rawBrake / maxBrake);
         }
@@ -206,7 +212,7 @@ bool Window::Pedal::isLoaded() const {
 
 double Window::Pedal::getDuration() const {
     if (m_throttleIndex != -1) {
-        return static_cast<double>(m_dataList[m_throttleIndex].data->size() - 1);
+        return static_cast<double>(0.0); // Fix me properly
     }
     return 0.0;
 }
@@ -232,19 +238,20 @@ void Window::Pedal::addColumn(const std::string& fileType, const std::string& fi
     pd.fileType = fileType;
     
     // Carregar dados dependendo da fonte (CSV ou Telemetria)
+    const std::vector<double>* dataPtr = nullptr;
     if (fileType == "CSV") {
-        pd.data = &DB::getInstance().getCSVData(fileName, columnName);
+        dataPtr = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        pd.data = &DB::getInstance().getTelemetryData(fileName, columnName);
+        dataPtr = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
     
-    if (!pd.data) {
+    if (!dataPtr) {
         LOG("ERROR", "[Pedal] Falha ao carregar dados da coluna '" + columnName + "' do arquivo '" + fileName + "'.");
         return;
     }
 
-    auto maxIt = std::max_element(pd.data->begin(), pd.data->end());
-    if (maxIt != pd.data->end()) {
+    auto maxIt = std::max_element(dataPtr->begin(), dataPtr->end());
+    if (maxIt != dataPtr->end()) {
         pd.maxValue = *maxIt;
     }
     if (pd.maxValue == 0) {
@@ -258,16 +265,16 @@ void Window::Pedal::addColumn(const std::string& fileType, const std::string& fi
     if (m_brakeIndex == -1) {
         m_dataList.push_back(pd);
         m_brakeIndex = static_cast<int>(m_dataList.size() - 1);
-        LOG("INFO", "[Pedal] Freio carregado com a coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(pd.data->size()));
+        LOG("INFO", "[Pedal] Freio carregado com a coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(dataPtr->size()));
     } else if (m_throttleIndex == -1) {
         m_dataList.push_back(pd);
         m_throttleIndex = static_cast<int>(m_dataList.size() - 1);
-        LOG("INFO", "[Pedal] Acelerador carregado com a coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(pd.data->size()));
+        LOG("INFO", "[Pedal] Acelerador carregado com a coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(dataPtr->size()));
     } else {
         removeColumn(m_throttleIndex);
         m_dataList.push_back(pd);
         m_throttleIndex = static_cast<int>(m_dataList.size() - 1);
-        LOG("INFO", "[Pedal] Acelerador (substituído) carregado com a coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(pd.data->size()));
+        LOG("INFO", "[Pedal] Acelerador (substituído) carregado com a coluna: '" + columnName + "' (" + fileType + ") de '" + fileName + "'. Total de registros: " + std::to_string(dataPtr->size()));
     }
 }
 

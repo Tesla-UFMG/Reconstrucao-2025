@@ -52,29 +52,31 @@ namespace Window {
 
             // Timeline NLE Variables
             std::string loadedVideoName;
-            double videoLengthMs = 0.0;
-            
+            double      videoLengthMs = 0.0;
+
             double globalTime = 0.0;
-            
-            double videoBlockStart = 0.0; 
-            double csvBlockStart = 0.0;   
-            double csvBlockEnd = 10000.0; 
-            
+
+            double videoBlockStart = 0.0;
+            double csvBlockStart   = 0.0;
+            double csvBlockEnd     = 10000.0;
+
             // Drag states
-            bool isDraggingVideo = false;
-            bool isDraggingCsv = false;
-            bool isResizingCsvLeft = false;
-            bool isResizingCsvRight = false;
-            float dragOffset = 0.0f;
+            bool  isDraggingVideo    = false;
+            bool  isDraggingCsv      = false;
+            bool  isResizingCsvLeft  = false;
+            bool  isResizingCsvRight = false;
+            float dragOffset         = 0.0f;
+            
+            bool  tracksLocked       = false;
 
             // Timer
             std::chrono::time_point<std::chrono::steady_clock> lastFrameTime;
             std::chrono::time_point<std::chrono::steady_clock> lastSeekTime;
-            bool videoPlayCommandSent = false;
+            bool                                               videoPlayCommandSent = false;
 
             // Scrubbing: true when user is clicking/dragging the timeline cursor
             // Updated at end of frame; used by video control logic at start of next frame
-            bool isScrubbing = false;
+            bool   isScrubbing    = false;
             double lastSeekTarget = -1.0;
     };
 } // namespace Window

@@ -35,6 +35,7 @@ class ProjectData {
         ProjectData& operator=(ProjectData&&)      = default;
 
         std::string                currentProjectName;
+        std::string                currentProjectPath;
         std::vector<CSVFile>       csvFiles;
         std::vector<VideoFile>     videoFiles;
         std::vector<TelemetryFile> telemetryFiles;

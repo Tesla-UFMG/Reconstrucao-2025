@@ -20,7 +20,6 @@ struct Metric {
         std::string                display_name;
         std::string                fileName;
         std::string                fileType;
-        const std::vector<double>* data;
 };
 
 namespace Window {

@@ -65,106 +65,64 @@ namespace Window {
                 // --- Conteúdo da Página (com quebra de linha em marcadores) ---
                 switch (m_currentPage) {
                     case 0: {
-                        ImGui::TextColored(greenColor, "Página 1: Novas Janelas Dinâmicas e Análise");
+                        ImGui::TextColored(greenColor, "Página 1: Vídeo e Playback Interativo");
                         ImGui::Spacing();
 
                         ImGui::Bullet();
                         ImGui::SameLine(0.0f, 6.0f);
                         ImGui::TextWrapped(
-                            "Várias Janelas (Novidade): Agora dá pra abrir várias janelas de Gráficos, Tabelas e "
-                            "outras (novidades abaixo) ao mesmo tempo. Não vai ficar mais travado usando apenas "
-                            "uma de cada tipo.");
+                            "Janela de Vídeo (Novidade): Agora tem suporte a vídeo! Dá pra abrir "
+                            "as gravações on-board das corridas e ver exatamente o que rolou na pista.");
                         ImGui::Spacing();
 
                         ImGui::Bullet();
                         ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped("Janela Numérica: Janela rápida para ver valores. Ela muda de cor "
-                                           "dependendo da faixa de "
-                                           "valor, aceita fórmulas na hora, converte o valor pra texto e mostra de "
-                                           "onde o dado veio "
-                                           "quando você passa o mouse por cima. Muito daora mesmo, dá uma olhada.");
-                        ImGui::Spacing();
-
-                        ImGui::Bullet();
-                        ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped(
-                            "Matriz de Dados: Funciona como a Janela Numérica, porém em formato de grade. Funciona "
-                            "perfeitamente para ver as dezenas de tensões das stacks que o Estevão fica pedindo.");
-                        ImGui::Spacing();
-
-                        ImGui::Bullet();
-                        ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped("Janela de Barras: Muito útil para ver como o dado ta se comportando "
-                                           "com base em um limite que você impôs. Da pra colocar limite numérico, "
-                                           "colocar um gradiente de cor...");
-                        ImGui::Spacing();
-
-                        ImGui::Bullet();
-                        ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped(
-                            "Gráficos Avançados: É possível colocar textos no gráfico agora, só arrastar as "
-                            "colunas de texto que estão no selecionador de dados para ele! Também "
-                            "resolvi alguns bugs de plotagem XY e de dados com IDs diferentes.");
+                        ImGui::TextWrapped("Playback Interativo: O aplicativo agora tem uma barra de tempo de verdade! "
+                                           "Arrastou a barrinha? Os gráficos, as matrizes e o mapa viajam no tempo junto com o vídeo, "
+                                           "tudo sincronizado.");
                         ImGui::Spacing();
 
                         break;
                     }
                     case 1: {
-                        ImGui::TextColored(greenColor, "Página 2: Telemetria e Registro de Avisos");
+                        ImGui::TextColored(greenColor, "Página 2: Novidades da Reconstrução GNSS");
                         ImGui::Spacing();
 
                         ImGui::Bullet();
                         ImGui::SameLine(0.0f, 6.0f);
                         ImGui::TextWrapped(
-                            "Controle de Telemetria: Ficou bem mais fácil registrar os testes (como mudar o "
-                            "Piloto) e tem um atalho rápido pra limpar a tela da UART.");
+                            "Câmera Magnética: Uma nova opção 'Seguir Final' na Reconstrução de Pista. "
+                            "Se você ligar, a câmera prende no carro e não solta mais, acompanhando o movimento.");
                         ImGui::Spacing();
 
                         ImGui::Bullet();
                         ImGui::SameLine(0.0f, 6.0f);
                         ImGui::TextWrapped(
-                            "Tempo e Marcações: Agora você consegue ver o tempo "
-                            "total de gravação rolando e salvar anotações rápidas de texto junto com os dados. "
-                            "Você nunca mais precisará gravar áudios que nem besta, Raphael.");
+                            "Modo GPS Dinâmico: A cereja do bolo! Ativou 'Girar com o Veículo'? O mapa inteiro gira "
+                            "nas curvas pra frente do carro ficar sempre apontada pra cima, igualzinho ao Waze e Google Maps.");
                         ImGui::Spacing();
 
                         ImGui::Bullet();
                         ImGui::SameLine(0.0f, 6.0f);
                         ImGui::TextWrapped(
-                            "Avisos e Logs: Dá pra definir os limites das variáveis. Por exemplo, se o valor sair "
-                            "do limite, "
-                            "o sistema avisa na tela, salva no selecionador de dados e ainda exporta tudo pra CSV. "
-                            "Vai da pra jogar os textos nos gráficos e na Reconstrução também...");
+                            "Limitar Rastro: Coloquei uma caixinha pra você decidir quantos pontos quer ver do trajeto. "
+                            "Perfeito pra quem odeia a tela poluída com aquela cauda infinita de pontos.");
                         break;
                     }
                     case 2: {
-                        ImGui::TextColored(greenColor, "Página 3: Cockpit, GNSS e Salvamento de Layouts");
+                        ImGui::TextColored(greenColor, "Página 3: Estabilidade e Correções");
                         ImGui::Spacing();
 
                         ImGui::Bullet();
                         ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped("Cockpit Virtual: O volante e os pedais foram atualizado. A janela tá "
-                                           "respondendo melhor aos dados em tempo real.");
+                        ImGui::TextWrapped("Salvamento dos Layouts: Os saves agora guardam e lembram certinho de todas essas opções "
+                                           "malucas novas de mapa, e não perdem mais as configurações.");
                         ImGui::Spacing();
-
+                        
                         ImGui::Bullet();
                         ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped("Mapa GNSS: AGORA TEM MAPINHA! Ta muito doido.");
-                        ImGui::Spacing();
-
-                        ImGui::Bullet();
-                        ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped("Salvamento de Layouts: Agora vai salvar tudo, absolutamente tudo.");
-                        break;
-                    }
-                    case 3: {
-                        ImGui::TextColored(greenColor, "Página 4: Janela de Atualização");
-                        ImGui::Spacing();
-
-                        ImGui::Bullet();
-                        ImGui::SameLine(0.0f, 6.0f);
-                        ImGui::TextWrapped("Agora tem uma janela de atualização (que ninguém vai atualizar depois que "
-                                           "eu sair dessa equipe)");
+                        ImGui::TextWrapped("Tudo mais leve: O motor de renderização do mapa e da rotação foi feito pra rodar liso. "
+                                           "Mesmo com dados pesados de telemetria, o programa continua voando.");
                         break;
                     }
                     default:
@@ -206,7 +164,7 @@ namespace Window {
                 ImGui::SameLine();
 
                 // Paginação (bolinhas) no centro
-                int   totalPages = 4;
+                int   totalPages = 3;
                 float availWidth = ImGui::GetContentRegionAvail().x;
                 float dotsWidth  = totalPages * 10.0f + (totalPages - 1) * ImGui::GetStyle().ItemSpacing.x;
                 float startDotsX = ImGui::GetCursorPosX() + (availWidth - nextBtnSize.x - dotsWidth) / 2.0f;

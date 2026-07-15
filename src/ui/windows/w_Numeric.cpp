@@ -59,7 +59,10 @@ void Window::Numeric::render() {
 
     bool anyData = false;
     for (const auto& col : m_loadedColumns) {
-        if (col.data && !col.data->empty()) {
+        const std::vector<double>* dataPtr = nullptr;
+                        if (col.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(col.archive, col.column);
+                        else if (col.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(col.archive, col.column);
+                        if (dataPtr && !dataPtr->empty()) {
             anyData = true;
             break;
         }
@@ -70,8 +73,11 @@ void Window::Numeric::render() {
         if (m_currentMetric == MetricType::LAST) {
             bool found = false;
             for (auto it = m_loadedColumns.rbegin(); it != m_loadedColumns.rend(); ++it) {
-                if (it->data && !it->data->empty()) {
-                    val   = it->data->back();
+                const std::vector<double>* dataPtr = nullptr;
+                if (it->fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(it->archive, it->column);
+                else if (it->fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(it->archive, it->column);
+                if (dataPtr && !dataPtr->empty()) {
+                    val   = dataPtr->back();
                     found = true;
                     break;
                 }
@@ -86,8 +92,11 @@ void Window::Numeric::render() {
                     std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
-                        if (col.data && !col.data->empty()) {
-                            double colMin = *std::min_element(col.data->begin(), col.data->end());
+                        const std::vector<double>* dataPtr = nullptr;
+                        if (col.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(col.archive, col.column);
+                        else if (col.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(col.archive, col.column);
+                        if (dataPtr && !dataPtr->empty()) {
+                            double colMin = *std::min_element(dataPtr->begin(), dataPtr->end());
                             if (colMin < minVal) {
                                 minVal   = colMin;
                                 bestCol  = col.column;
@@ -103,8 +112,11 @@ void Window::Numeric::render() {
                     std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
-                        if (col.data && !col.data->empty()) {
-                            double colMax = *std::max_element(col.data->begin(), col.data->end());
+                        const std::vector<double>* dataPtr = nullptr;
+                        if (col.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(col.archive, col.column);
+                        else if (col.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(col.archive, col.column);
+                        if (dataPtr && !dataPtr->empty()) {
+                            double colMax = *std::max_element(dataPtr->begin(), dataPtr->end());
                             if (colMax > maxVal) {
                                 maxVal   = colMax;
                                 bestCol  = col.column;
@@ -119,8 +131,11 @@ void Window::Numeric::render() {
                     double sum   = 0.0;
                     size_t count = 0;
                     for (const auto& col : m_loadedColumns) {
-                        if (col.data && !col.data->empty()) {
-                            for (double x : *col.data) {
+                        const std::vector<double>* dataPtr = nullptr;
+                        if (col.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(col.archive, col.column);
+                        else if (col.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(col.archive, col.column);
+                        if (dataPtr && !dataPtr->empty()) {
+                            for (double x : *dataPtr) {
                                 sum += x;
                                 count++;
                             }
@@ -134,8 +149,11 @@ void Window::Numeric::render() {
                     std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
-                        if (col.data && !col.data->empty()) {
-                            double lastVal = col.data->back();
+                        const std::vector<double>* dataPtr = nullptr;
+                        if (col.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(col.archive, col.column);
+                        else if (col.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(col.archive, col.column);
+                        if (dataPtr && !dataPtr->empty()) {
+                            double lastVal = dataPtr->back();
                             if (lastVal < minVal) {
                                 minVal   = lastVal;
                                 bestCol  = col.column;
@@ -153,8 +171,11 @@ void Window::Numeric::render() {
                     std::string bestCol  = "";
                     std::string bestArch = "";
                     for (const auto& col : m_loadedColumns) {
-                        if (col.data && !col.data->empty()) {
-                            double lastVal = col.data->back();
+                        const std::vector<double>* dataPtr = nullptr;
+                        if (col.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(col.archive, col.column);
+                        else if (col.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(col.archive, col.column);
+                        if (dataPtr && !dataPtr->empty()) {
+                            double lastVal = dataPtr->back();
                             if (lastVal > maxVal) {
                                 maxVal   = lastVal;
                                 bestCol  = col.column;
@@ -171,8 +192,11 @@ void Window::Numeric::render() {
                     double sum   = 0.0;
                     size_t count = 0;
                     for (const auto& col : m_loadedColumns) {
-                        if (col.data && !col.data->empty()) {
-                            sum += col.data->back();
+                        const std::vector<double>* dataPtr = nullptr;
+                        if (col.fileType == "CSV") dataPtr = &DB::getInstance().getCSVData(col.archive, col.column);
+                        else if (col.fileType == "Telemetry") dataPtr = &DB::getInstance().getTelemetryData(col.archive, col.column);
+                        if (dataPtr && !dataPtr->empty()) {
+                            sum += dataPtr->back();
                             count++;
                         }
                     }
@@ -702,17 +726,17 @@ void Window::Numeric::addColumn(const std::string& fileType, const std::string& 
     colData.column   = columnName;
     colData.fileType = fileType;
 
+    const std::vector<double>* dataPtr = nullptr;
     if (fileType == "CSV") {
-        colData.data = &DB::getInstance().getCSVData(fileName, columnName);
+        dataPtr = &DB::getInstance().getCSVData(fileName, columnName);
     } else if (fileType == "Telemetry") {
-        colData.data = &DB::getInstance().getTelemetryData(fileName, columnName);
+        dataPtr = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (colData.data) {
+    if (dataPtr && !dataPtr->empty()) {
         m_loadedColumns.push_back(colData);
         m_hasData = true;
-        LOG("INFO", "[Numérico] Adicionado dados da coluna '" + columnName + "' de '" + fileName +
-                        "'. Total de registros: " + std::to_string(colData.data->size()));
+        LOG("INFO", "[Numérico] Coluna '" + columnName + "' carregada com sucesso.");
     } else {
         LOG("ERROR", "[Numérico] Falha ao carregar dados da coluna '" + columnName + "' de '" + fileName + "'.");
     }
