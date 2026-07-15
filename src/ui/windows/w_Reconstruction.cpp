@@ -632,6 +632,83 @@ void Window::Reconstruction::render() {
                 }
             }
 
+            // --- DYNAMIC CAMERA TRACKING & HEADING CALCULATION ---
+            if (m_followTheEnd) {
+                if (!m_selectedLatFileName.empty() && !m_selectedLatCol.empty() && !m_selectedLonFileName.empty() &&
+                    !m_selectedLonCol.empty() &&
+                    DB::getInstance().columnExists(m_selectedLatFileType, m_selectedLatFileName, m_selectedLatCol) &&
+                    DB::getInstance().columnExists(m_selectedLonFileType, m_selectedLonFileName, m_selectedLonCol)) {
+                    
+                    const std::vector<double>* latDataPtr = nullptr;
+                    const std::vector<double>* lonDataPtr = nullptr;
+
+                    if (m_selectedLatFileType == "CSV") {
+                        latDataPtr = &DB::getInstance().getCSVData(m_selectedLatFileName, m_selectedLatCol);
+                    } else if (m_selectedLatFileType == "Telemetry") {
+                        latDataPtr = &DB::getInstance().getTelemetryData(m_selectedLatFileName, m_selectedLatCol);
+                    }
+
+                    if (m_selectedLonFileType == "CSV") {
+                        lonDataPtr = &DB::getInstance().getCSVData(m_selectedLonFileName, m_selectedLonCol);
+                    } else if (m_selectedLonFileType == "Telemetry") {
+                        lonDataPtr = &DB::getInstance().getTelemetryData(m_selectedLonFileName, m_selectedLonCol);
+                    }
+                    
+                    if (latDataPtr && lonDataPtr && !latDataPtr->empty() && !lonDataPtr->empty()) {
+                        size_t endIdx = std::min(latDataPtr->size(), lonDataPtr->size()) - 1;
+                        
+                        // 1. Auto-center camera on the last point
+                        m_centerLat = (*latDataPtr)[endIdx] + m_trackOffsetLat;
+                        m_centerLon = (*lonDataPtr)[endIdx] + m_trackOffsetLon;
+
+                        // 2. Calculate Heading (Orientation) for Map Rotation
+                        if (m_rotateMap && endIdx > 0) {
+                            double pi = 3.14159265358979323846;
+                            double cosLat = std::cos(m_centerLat * pi / 180.0);
+                            
+                            size_t prevIdx = endIdx;
+                            double dLon = 0.0, dLat = 0.0, dx = 0.0, dy = 0.0;
+                            
+                            // Buscar retroativamente um ponto que esteja a pelo menos ~2 metros de distância
+                            // para formar um vetor de direção longo o suficiente (evitando flicadas por ruído do GPS)
+                            for (int i = 0; i < 50; ++i) {
+                                if (prevIdx == 0) break;
+                                prevIdx--;
+                                
+                                double lat1 = (*latDataPtr)[prevIdx] + m_trackOffsetLat;
+                                double lon1 = (*lonDataPtr)[prevIdx] + m_trackOffsetLon;
+                                
+                                dLon = m_centerLon - lon1;
+                                dLat = m_centerLat - lat1;
+                                dx = dLon * cosLat;
+                                dy = dLat;
+                                
+                                if (dx*dx + dy*dy > 4e-10) { // ~2 metros ao quadrado
+                                    break;
+                                }
+                            }
+                            
+                            // Apenas atualiza a direção se o vetor tiver tamanho mínimo
+                            if (dx*dx + dy*dy > 1e-10) {
+                                double targetHeading = std::atan2(dy, dx);
+                                
+                                // Smooth interpolation for the heading (shortest path)
+                                double diff = targetHeading - m_currentHeading;
+                                while (diff < -pi) diff += 2.0 * pi;
+                                while (diff > pi) diff -= 2.0 * pi;
+                                
+                                // Interpolation factor (0.1 means 10% per frame)
+                                m_currentHeading += diff * 0.1;
+                                
+                                // Normalize
+                                while (m_currentHeading < -pi) m_currentHeading += 2.0 * pi;
+                                while (m_currentHeading > pi) m_currentHeading -= 2.0 * pi;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Recalcular parâmetros georreferenciados para garantir alinhamento perfeito na mesma frame
             cx_osm   = (m_centerLon + 180.0) / 360.0 * (1 << m_testZ);
             clatRad  = m_centerLat * pi / 180.0;
@@ -644,11 +721,25 @@ void Window::Reconstruction::render() {
             m_panY   = static_cast<float>(cy_tms - (m_testY + 0.5)) * tileSize;
 
             // 6. Determinar dinamicamente a grade de tiles necessária para cobrir 100% da janela
-            int halfTilesX = static_cast<int>(std::ceil(windowSize.x * 0.5f / tileSize)) + 1;
-            int halfTilesY = static_cast<int>(std::ceil(windowSize.y * 0.5f / tileSize)) + 1;
+            // When rotating, the corners of the window are further from the center, so we need more tiles.
+            // A quick fix is to multiply the required tiles by 1.5 when rotating to ensure the corners don't get black triangles.
+            float coverageMultiplier = (m_followTheEnd && m_rotateMap) ? 1.5f : 1.0f;
+            int halfTilesX = static_cast<int>(std::ceil(windowSize.x * 0.5f * coverageMultiplier / tileSize)) + 1;
+            int halfTilesY = static_cast<int>(std::ceil(windowSize.y * 0.5f * coverageMultiplier / tileSize)) + 1;
 
             ImVec2 centerScreen(windowPos.x + windowSize.x * 0.5f + m_panX, windowPos.y + windowSize.y * 0.5f + m_panY);
             ImVec2 centerTileTopLeft(centerScreen.x - tileSize * 0.5f, centerScreen.y - tileSize * 0.5f);
+            
+            ImVec2 windowCenter(windowPos.x + windowSize.x * 0.5f, windowPos.y + windowSize.y * 0.5f);
+            auto rotatePoint = [&](ImVec2 p) -> ImVec2 {
+                if (!m_followTheEnd || !m_rotateMap) return p;
+                float dx = p.x - windowCenter.x;
+                float dy = p.y - windowCenter.y;
+                float angle = static_cast<float>(m_currentHeading) - 1.57079632679f;
+                float cosA = std::cos(angle);
+                float sinA = std::sin(angle);
+                return ImVec2(windowCenter.x + dx * cosA - dy * sinA, windowCenter.y + dx * sinA + dy * cosA);
+            };
 
             // Varredura da grade dinâmica calculada para preenchimento total
             for (int dy = halfTilesY; dy >= -halfTilesY; --dy) {
@@ -659,17 +750,29 @@ void Window::Reconstruction::render() {
                     SDL_Texture* tex = getTileTexture(m_testZ, targetX, targetY);
 
                     float tileX = centerTileTopLeft.x + dx * tileSize;
-                    float tileY =
-                        centerTileTopLeft.y - dy * tileSize; // Y geográfico aumenta para cima, tela aumenta para baixo
+                    float tileY = centerTileTopLeft.y - dy * tileSize;
 
                     ImVec2 p_min(tileX, tileY);
                     ImVec2 p_max(tileX + tileSize, tileY + tileSize);
 
-                    if (tex) {
-                        drawList->AddImage(reinterpret_cast<ImTextureID>(tex), p_min, p_max);
+                    if (m_followTheEnd && m_rotateMap) {
+                        ImVec2 p1 = rotatePoint(p_min);
+                        ImVec2 p2 = rotatePoint(ImVec2(p_max.x, p_min.y));
+                        ImVec2 p3 = rotatePoint(p_max);
+                        ImVec2 p4 = rotatePoint(ImVec2(p_min.x, p_max.y));
+                        
+                        if (tex) {
+                            drawList->AddImageQuad(reinterpret_cast<ImTextureID>(tex), p1, p2, p3, p4);
+                        } else {
+                            ImVec2 pts[4] = { p1, p2, p3, p4 };
+                            drawList->AddConvexPolyFilled(pts, 4, IM_COL32(0, 0, 0, 255));
+                        }
                     } else {
-                        // Preenchimento preto sólido para áreas fora de cobertura geocartográfica
-                        drawList->AddRectFilled(p_min, p_max, IM_COL32(0, 0, 0, 255));
+                        if (tex) {
+                            drawList->AddImage(reinterpret_cast<ImTextureID>(tex), p_min, p_max);
+                        } else {
+                            drawList->AddRectFilled(p_min, p_max, IM_COL32(0, 0, 0, 255));
+                        }
                     }
                 }
             }
@@ -715,11 +818,8 @@ void Window::Reconstruction::render() {
 
                         if (!latData.empty() && !lonData.empty()) {
                             size_t numPoints = std::min(latData.size(), lonData.size());
-                            size_t startIdx  = 0;
                             size_t endIdx    = numPoints;
-                            if (m_followTheEnd) {
-                                startIdx = (numPoints > (size_t)m_numPointsToShow) ? numPoints - m_numPointsToShow : 0;
-                            }
+                            size_t startIdx = (m_limitPoints && numPoints > (size_t)m_numPointsToShow) ? numPoints - m_numPointsToShow : 0;
 
                             double pi            = 3.14159265358979323846;
                             double cx_osm        = (m_centerLon + 180.0) / 360.0 * (1 << m_testZ);
@@ -755,6 +855,7 @@ void Window::Reconstruction::render() {
                                 float  screenX = centerScreen.x + static_cast<float>(x_osm - cx_osm) * tileSize;
                                 float  screenY = centerScreen.y - static_cast<float>(y_tms - cy_tms_center) * tileSize;
                                 ImVec2 sPos(screenX, screenY);
+                                sPos = rotatePoint(sPos);
 
                                 float distSq = (sPos.x - lastDrawnPos.x) * (sPos.x - lastDrawnPos.x) +
                                                (sPos.y - lastDrawnPos.y) * (sPos.y - lastDrawnPos.y);
@@ -910,6 +1011,7 @@ void Window::Reconstruction::render() {
                                                                 ImVec2 p_track = getScreenPosFromLatLon(
                                                                     lat_closest, lon_closest, m_centerLat, m_centerLon,
                                                                     m_testZ, tileSize, windowPos, windowSize);
+                                                                p_track = rotatePoint(p_track);
 
                                                                 std::string key = ann.archiveName + "|" +
                                                                                   ann.columnName + "|" +
@@ -1310,10 +1412,28 @@ void Window::Reconstruction::drawMenuBar() {
                 ImGui::Spacing();
 
                 ImGui::Separator();
-                ImGui::Checkbox("Seguir o Final", &m_followTheEnd);
-                if (m_followTheEnd) {
-                    ImGui::InputInt("Pontos", &m_numPointsToShow, 1, 10);
+               if (ImGui::Checkbox("Seguir Final", &m_followTheEnd)) {
+                if (m_followTheEnd)
+                    m_statusMessage = "Câmera travada no veículo.";
+            }
+
+            if (m_followTheEnd) {
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Girar com o Veículo", &m_rotateMap)) {
+                    if (m_rotateMap)
+                        m_statusMessage = "Modo GPS Dinâmico ativado.";
                 }
+            }    
+            
+            if (ImGui::Checkbox("Limitar rastro", &m_limitPoints)) {
+                if (m_limitPoints)
+                    m_statusMessage = "Tamanho do trajeto visível limitado.";
+            }
+            if (m_limitPoints) {
+                ImGui::SameLine();
+                ImGui::InputInt("Pontos", &m_numPointsToShow, 10, 100);
+            }
+
                 ImGui::Separator();
 
                 // --- LONGITUDE ---

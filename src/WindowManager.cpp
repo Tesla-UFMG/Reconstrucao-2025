@@ -354,6 +354,10 @@ void WindowManager::saveWindowCustomStates(const std::string& filepath) {
         file << reconWin->m_colorMode << "\n";
         file << reconWin->m_colormap << "\n";
         file << reconWin->m_reverseColormap << "\n";
+        file << reconWin->m_followTheEnd << "\n";
+        file << reconWin->m_rotateMap << "\n";
+        file << reconWin->m_limitPoints << "\n";
+        file << reconWin->m_numPointsToShow << "\n";
         file << (reconWin->m_currentMapName.empty() ? "EMPTY" : reconWin->m_currentMapName) << "\n";
     } else {
         file << "NO_RECONSTRUCTION_STATE\n";
@@ -830,6 +834,19 @@ void WindowManager::loadWindowCustomStates(const std::string& filepath) {
                     bool rev             = false;
                     if (file >> rev) {
                         reconWin->m_reverseColormap = rev;
+                        
+                        // New fields added later, wrap in safe read block
+                        bool followEnd, rotateMap, limitPts;
+                        int numPts;
+                        if (file >> followEnd) {
+                            reconWin->m_followTheEnd = followEnd;
+                            if (file >> rotateMap) reconWin->m_rotateMap = rotateMap;
+                            if (file >> limitPts) reconWin->m_limitPoints = limitPts;
+                            if (file >> numPts) reconWin->m_numPointsToShow = numPts;
+                        } else {
+                            file.clear(); // Clear EOF flag if reading old file format
+                        }
+                        
                         std::getline(file, dummy); // consume newline
                         
                         std::streampos pos = file.tellg();

@@ -40,6 +40,8 @@ namespace Window {
             virtual void render() override;
             void         drawMenuBar();
             bool         m_followTheEnd    = false;
+            bool         m_rotateMap       = false; // New toggle for map rotation
+            bool         m_limitPoints     = false;
             int          m_numPointsToShow = 1000;
 
             bool isLoaded() const;
@@ -106,6 +108,8 @@ namespace Window {
             float m_colorLine[4]      = {0.0f, 0.7f, 0.2f, 0.0f}; // Transparent
             float m_colorPoint[4]     = {0.2f, 0.9f, 0.4f, 1.0f}; // Mint green
             float m_colorLastPoint[4] = {0.7f, 1.0f, 0.0f, 1.0f}; // Neon lime green
+
+            double m_currentHeading = 0.0; // Smoothed map rotation heading
 
             void                             centerOnTrack();
             void                             autoFitColorLimits();
