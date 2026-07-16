@@ -21,6 +21,14 @@ namespace Window {
             explicit Playback(bool* isOpen = nullptr);
             virtual void render() override;
 
+            bool isWindowOpen() const { return isOpen && *isOpen; }
+            bool& getShowCommentsWindow() { return m_showCommentsWindow; }
+            const std::string& getSelectedFileName() const { return selectedFileName; }
+            int getMaxIndex() const { return maxIndex; }
+            int getCurrentIndex() const { return currentIndex; }
+            double getCurrentTimestamp() const { return currentTimestamp; }
+            const std::vector<double>& getTimestampData() const { return timestampData; }
+
         private:
             void        processDragDrop();
             void        updatePlaybackData();
@@ -33,6 +41,14 @@ namespace Window {
             std::string selectedFileType;
             std::string selectedFileName;
             std::string selectedTimestampCol;
+
+            
+            // Comentários do Playback
+            bool m_showCommentsWindow = false;
+            std::vector<std::string> m_playbackCommentDates;
+
+            std::vector<std::string> m_playbackComments;
+            char                     m_currentCommentBuf[256] = "";
 
             bool   isPlaying;
             float  playbackSpeed;

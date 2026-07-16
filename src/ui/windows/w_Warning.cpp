@@ -1,4 +1,6 @@
 #include "ui/windows/w_Warning.hpp"
+#include "WindowManager.hpp"
+#include "ui/windows/w_Playback.hpp"
 #include "Dialogs.hpp"
 #include <iomanip>
 #include <limits>
@@ -351,6 +353,9 @@ void Window::Warning::render() {
 }
 
 void Window::Warning::evaluateRules() {
+    auto playbackWin = WindowManager::getInstance().getPlaybackWindow();
+    bool playbackActive = playbackWin && playbackWin->isWindowOpen() && !playbackWin->getSelectedFileName().empty() && playbackWin->getMaxIndex() > 0;
+
     for (auto& rule : m_rules) {
         const std::vector<double>* data = nullptr;
         const std::vector<std::string>* dateData = nullptr;
@@ -373,6 +378,18 @@ void Window::Warning::evaluateRules() {
         }
 
         int currentSize = static_cast<int>(data->size());
+        int targetSize = currentSize;
+        
+        // If Playback is active and the rule applies to a CSV, limit evaluation to Playback's current index
+        if (playbackActive && rule.fileType == "CSV") {
+            targetSize = playbackWin->getCurrentIndex() + 1;
+            if (targetSize > currentSize) targetSize = currentSize;
+        }
+
+        // Detect rewind in Playback
+        if (playbackActive && rule.fileType == "CSV" && rule.lastProcessedIndex >= targetSize) {
+            rule.lastProcessedIndex = targetSize - 1;
+        }
 
         // Handle database clear or load-reloads safely
         if (rule.lastProcessedIndex >= currentSize) {
@@ -381,10 +398,10 @@ void Window::Warning::evaluateRules() {
 
         if (rule.lastProcessedIndex == -1) {
             // Initialize scanner to current tail, evaluating incoming data dynamically
-            rule.lastProcessedIndex = currentSize - 1;
-        } else if (rule.lastProcessedIndex < currentSize - 1) {
+            rule.lastProcessedIndex = targetSize - 1;
+        } else if (rule.lastProcessedIndex < targetSize - 1) {
             // Process all new telemetry data points since last update
-            for (int idx = rule.lastProcessedIndex + 1; idx < currentSize; ++idx) {
+            for (int idx = rule.lastProcessedIndex + 1; idx < targetSize; ++idx) {
                 double val       = (*data)[idx];
                 bool   triggered = false;
 
@@ -405,6 +422,11 @@ void Window::Warning::evaluateRules() {
                         std::string customEpoch = "";
                         if (dateData && idx < static_cast<int>(dateData->size())) {
                             customEpoch = (*dateData)[idx];
+                        } else if (playbackActive && rule.fileType == "CSV") {
+                            const auto& tsData = playbackWin->getTimestampData();
+                            if (idx < static_cast<int>(tsData.size())) {
+                                customEpoch = std::to_string(tsData[idx]);
+                            }
                         }
                         triggerWarning(rule, val, customEpoch);
                         rule.wasTriggered = true;
@@ -413,7 +435,7 @@ void Window::Warning::evaluateRules() {
                     rule.wasTriggered = false;
                 }
             }
-            rule.lastProcessedIndex = currentSize - 1;
+            rule.lastProcessedIndex = targetSize - 1;
         }
     }
 }

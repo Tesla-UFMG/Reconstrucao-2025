@@ -47,6 +47,9 @@ void MenuBar::Windows() {
         MenuBar::changeWindowVisibility("Telemetria", &vw.visibility.showTelemetry);
         MenuBar::changeWindowVisibility("Avisos", &vw.visibility.showWarnings);
         MenuBar::changeWindowVisibility("Playback", &vw.visibility.showPlayback);
+        if (vw.getPlaybackWindow()) {
+            MenuBar::changeWindowVisibility("Comentários do Playback", &vw.getPlaybackWindow()->getShowCommentsWindow());
+        }
         MenuBar::changeWindowVisibility("Reconstrução de Pista", &vw.visibility.showReconstruction);
         MenuBar::changeWindowVisibility("Vídeo", &vw.visibility.showVideo);
         MenuBar::changeWindowVisibility("Volante", &vw.visibility.showWheelControl);

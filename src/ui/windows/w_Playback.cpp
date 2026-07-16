@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <ctime>
+#include <vector>
 
 Window::Playback::Playback(bool* isOpen) : IWindow(isOpen) {
     this->title = "Playback";
@@ -398,6 +399,34 @@ void Window::Playback::render() {
                 // Remove the packet entirely so it disappears from the data picker
                 DB::getInstance().getProject().removePacket("PLAYBACK");
             }
+
+            ImGui::Separator();
+
+            if (!this->loadedVideoName.empty()) {
+                if (ImGui::MenuItem("Remover Vídeo")) {
+                    this->loadedVideoName.clear();
+                    this->videoLengthMs = 0.0;
+                    if (auto* wVideo = WindowManager::getInstance().getVideoWindow()) {
+                        wVideo->setLoadedVideo("");
+                    }
+                    if (this->selectedFileName.empty())
+                        this->isPlaying = false;
+                }
+            }
+
+            if (!this->selectedFileName.empty()) {
+                if (ImGui::MenuItem("Remover Dados (CSV/Telemetria)")) {
+                    this->selectedFileName.clear();
+                    this->timestampData.clear();
+                    this->cachedColNames.clear();
+                    this->cachedColumns.clear();
+                    this->lastUpdatedIndex = -1;
+                    DB::getInstance().getProject().removePacket("PLAYBACK");
+                    if (this->loadedVideoName.empty())
+                        this->isPlaying = false;
+                }
+            }
+
             ImGui::EndMenu();
         }
 
@@ -420,6 +449,9 @@ void Window::Playback::render() {
             this->tracksLocked = !this->tracksLocked;
         }
         ImGui::PopStyleColor();
+
+        ImGui::Separator();
+        ImGui::MenuItem("Comentários", nullptr, &m_showCommentsWindow);
 
         ImGui::Separator();
         ImGui::TextDisabled("CSV: %s | Vídeo: %s",
@@ -454,8 +486,21 @@ void Window::Playback::render() {
         }
     }
 
-    double timelineStart = std::min(this->videoBlockStart, this->csvBlockStart);
-    double timelineEnd   = std::max(this->videoBlockStart + this->videoLengthMs, this->csvBlockEnd);
+    // Calcula de forma condicional para não considerar os valores de um arquivo removido
+    double timelineStart = 0.0;
+    double timelineEnd   = 10000.0;
+
+    if (!this->loadedVideoName.empty() && !this->selectedFileName.empty()) {
+        timelineStart = std::min(this->videoBlockStart, this->csvBlockStart);
+        timelineEnd   = std::max(this->videoBlockStart + this->videoLengthMs, this->csvBlockEnd);
+    } else if (!this->loadedVideoName.empty()) {
+        timelineStart = this->videoBlockStart;
+        timelineEnd   = this->videoBlockStart + this->videoLengthMs;
+    } else if (!this->selectedFileName.empty()) {
+        timelineStart = this->csvBlockStart;
+        timelineEnd   = this->csvBlockEnd;
+    }
+
     if (timelineEnd <= timelineStart + 1.0)
         timelineEnd = timelineStart + 10000.0;
 
@@ -494,7 +539,8 @@ void Window::Playback::render() {
                         bool    canSeek        = false;
 
                         // Allow seeking if 300ms have passed (timeout) OR
-                        // if VLC has successfully reached near the PREVIOUS seek target (meaning it's ready for another)
+                        // if VLC has successfully reached near the PREVIOUS seek target (meaning it's ready for
+                        // another)
                         if (msSinceLastSeek > 300.0) {
                             canSeek = true;
                         } else if (msSinceLastSeek > 30.0) {
@@ -615,126 +661,134 @@ void Window::Playback::render() {
 
     this->updatePlaybackData();
 
-    if (!this->loadedVideoName.empty() && !this->selectedFileName.empty()) {
-        ImGui::Spacing();
+    // --- TRACKS LAYOUT (Renderizado sempre se houver pelo menos 1 arquivo carregado) ---
+    ImGui::Spacing();
 
-        ImVec2      p            = ImGui::GetCursorScreenPos();
-        float       canvasWidth  = ImGui::GetContentRegionAvail().x;
-        float       canvasHeight = 140.0f; // A bit taller for ruler
-        ImDrawList* drawList     = ImGui::GetWindowDrawList();
+    ImVec2 p           = ImGui::GetCursorScreenPos();
+    float  canvasWidth = ImGui::GetContentRegionAvail().x;
+    if (canvasWidth < 1.0f)
+        canvasWidth = 1.0f;
 
-        // Background
-        // --- Adaptive color palette: explicit values per theme for good contrast ---
-        ImVec4 winBg  = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-        float  lum    = 0.299f * winBg.x + 0.587f * winBg.y + 0.114f * winBg.z;
-        bool   isDark = lum < 0.5f;
+    int numTracks = 0;
+    if (!this->loadedVideoName.empty())
+        numTracks++;
+    if (!this->selectedFileName.empty())
+        numTracks++;
 
-        ImU32 colBg, colBgBorder, colRulerBg, colRulerLine, colTrackBg, colTick, colTickText;
-        if (isDark) {
-            // Dark theme — original deep-dark palette
-            colBg        = IM_COL32(30, 30, 30, 255);    // main canvas bg
-            colBgBorder  = IM_COL32(60, 60, 60, 255);    // canvas border
-            colRulerBg   = IM_COL32(45, 45, 45, 255);    // ruler strip
-            colRulerLine = IM_COL32(20, 20, 20, 255);    // ruler bottom line
-            colTrackBg   = IM_COL32(40, 40, 40, 255);    // empty track lane
-            colTick      = IM_COL32(150, 150, 150, 255); // ruler tick marks
-            colTickText  = IM_COL32(200, 200, 200, 255); // ruler tick labels
-        } else {
-            // Light theme:
-            //  - colRulerBg  = #dbdbdb (219,219,219): the strip BEHIND the tick texts
-            //  - colBg / colTrackBg: lighter variants of #dbdbdb
-            //  - colBgBorder, colRulerLine, colTick, colTickText: all the same near-black
-            colBg        = IM_COL32(235, 235, 235, 255); // main canvas bg     (lighter variant)
-            colBgBorder  = IM_COL32(30, 30, 30, 255);    // canvas border      (same as tick text)
-            colRulerBg   = IM_COL32(219, 219, 219, 255); // ruler strip bg     (#dbdbdb — behind ticks)
-            colRulerLine = IM_COL32(30, 30, 30, 255);    // ruler separator    (same as tick text)
-            colTrackBg   = IM_COL32(228, 228, 228, 255); // empty track lane   (lighter variant)
-            colTick      = IM_COL32(30, 30, 30, 255);    // ruler tick marks   (same as tick text)
-            colTickText  = IM_COL32(30, 30, 30, 255);    // ruler tick labels  (near-black)
-        }
+    float rulerHeight  = 25.0f;
+    float trackH       = 35.0f;
+    float canvasHeight = rulerHeight + 10.0f + (numTracks * (trackH + 5.0f)) + 5.0f;
 
-        drawList->AddRectFilled(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), colBg);
-        // Border is drawn AFTER PopClipRect so it always sits on top of track backgrounds
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-        // Scale factors with zoom? For now just fit everything with some margin
-        double visibleStart    = timelineStart - (timelineEnd - timelineStart) * 0.02;
-        double visibleEnd      = timelineEnd + (timelineEnd - timelineStart) * 0.02;
-        double visibleDuration = visibleEnd - visibleStart;
-        if (visibleDuration < 1.0)
-            visibleDuration = 1.0;
+    // Background
+    // --- Adaptive color palette: explicit values per theme for good contrast ---
+    ImVec4 winBg  = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+    float  lum    = 0.299f * winBg.x + 0.587f * winBg.y + 0.114f * winBg.z;
+    bool   isDark = lum < 0.5f;
 
-        auto timeToX = [&](double t) -> float {
-            return p.x + (float)((t - visibleStart) / visibleDuration * canvasWidth);
-        };
+    ImU32 colBg, colBgBorder, colRulerBg, colRulerLine, colTrackBg, colTick, colTickText;
+    if (isDark) {
+        // Dark theme — original deep-dark palette
+        colBg        = IM_COL32(30, 30, 30, 255);    // main canvas bg
+        colBgBorder  = IM_COL32(60, 60, 60, 255);    // canvas border
+        colRulerBg   = IM_COL32(45, 45, 45, 255);    // ruler strip
+        colRulerLine = IM_COL32(20, 20, 20, 255);    // ruler bottom line
+        colTrackBg   = IM_COL32(40, 40, 40, 255);    // empty track lane
+        colTick      = IM_COL32(150, 150, 150, 255); // ruler tick marks
+        colTickText  = IM_COL32(200, 200, 200, 255); // ruler tick labels
+    } else {
+        // Light theme:
+        colBg        = IM_COL32(235, 235, 235, 255); // main canvas bg     (lighter variant)
+        colBgBorder  = IM_COL32(30, 30, 30, 255);    // canvas border      (same as tick text)
+        colRulerBg   = IM_COL32(219, 219, 219, 255); // ruler strip bg     (#dbdbdb — behind ticks)
+        colRulerLine = IM_COL32(30, 30, 30, 255);    // ruler separator    (same as tick text)
+        colTrackBg   = IM_COL32(228, 228, 228, 255); // empty track lane   (lighter variant)
+        colTick      = IM_COL32(30, 30, 30, 255);    // ruler tick marks   (same as tick text)
+        colTickText  = IM_COL32(30, 30, 30, 255);    // ruler tick labels  (near-black)
+    }
 
-        auto xToTime = [&](float x) -> double { return visibleStart + ((x - p.x) / canvasWidth) * visibleDuration; };
+    drawList->AddRectFilled(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), colBg);
 
-        // Snap threshold: 10 pixels converted to time units
-        double snapThreshMs = 10.0 / canvasWidth * visibleDuration;
+    double visibleStart    = timelineStart - (timelineEnd - timelineStart) * 0.02;
+    double visibleEnd      = timelineEnd + (timelineEnd - timelineStart) * 0.02;
+    double visibleDuration = visibleEnd - visibleStart;
+    if (visibleDuration < 1.0)
+        visibleDuration = 1.0;
 
-        // Returns the value snapped to the nearest snap point if within threshold.
-        // Also sets outSnapX to the screen X of the snap point (for guide line), or -1 if not snapping.
-        double m_lastSnapX = -1.0; // screen X of active snap guide line (or -1)
-        auto   trySnap     = [&](double value, std::initializer_list<double> snapPoints, double& outSnapX) -> double {
-            outSnapX = -1.0;
-            for (double sp : snapPoints) {
-                if (std::abs(value - sp) < snapThreshMs) {
-                    outSnapX = (double)timeToX(sp);
-                    return sp;
-                }
-            }
-            return value;
-        };
-        (void)m_lastSnapX;
+    auto timeToX = [&](double t) -> float { return p.x + (float)((t - visibleStart) / visibleDuration * canvasWidth); };
 
-        drawList->PushClipRect(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), true);
+    auto xToTime = [&](float x) -> double { return visibleStart + ((x - p.x) / canvasWidth) * visibleDuration; };
 
-        // --- DRAW RULER ---
-        float rulerHeight = 25.0f;
-        drawList->AddRectFilled(p, ImVec2(p.x + canvasWidth, p.y + rulerHeight), colRulerBg);
-        drawList->AddLine(ImVec2(p.x, p.y + rulerHeight), ImVec2(p.x + canvasWidth, p.y + rulerHeight), colRulerLine);
+    // Snap threshold: 10 pixels converted to time units
+    double snapThreshMs = 10.0 / canvasWidth * visibleDuration;
 
-        // Draw ruler ticks
-        double tickStep  = visibleDuration / 10.0;
-        double firstTick = std::floor(visibleStart / tickStep) * tickStep;
-        for (double t = firstTick; t < visibleEnd; t += tickStep) {
-            float tx = timeToX(t);
-            if (tx >= p.x && tx <= p.x + canvasWidth) {
-                drawList->AddLine(ImVec2(tx, p.y + rulerHeight - 5), ImVec2(tx, p.y + rulerHeight), colTick);
-                std::string tStr = this->formatTime(t);
-                drawList->AddText(ImVec2(tx + 2, p.y + 2), colTickText, tStr.c_str());
+    // Returns the value snapped to the nearest snap point se dentro do limite
+    double m_lastSnapX = -1.0; // screen X of active snap guide line (or -1)
+    auto   trySnap     = [&](double value, const std::vector<double>& snapPoints, double& outSnapX) -> double {
+        outSnapX = -1.0;
+        for (double sp : snapPoints) {
+            if (std::abs(value - sp) < snapThreshMs) {
+                outSnapX = (double)timeToX(sp);
+                return sp;
             }
         }
+        return value;
+    };
+    (void)m_lastSnapX;
 
-        // Tracks Layout
-        float track1Y = p.y + rulerHeight + 10.0f;
-        float trackH  = 35.0f;
+    drawList->PushClipRect(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), true);
 
+    // --- DRAW RULER ---
+    drawList->AddRectFilled(p, ImVec2(p.x + canvasWidth, p.y + rulerHeight), colRulerBg);
+    drawList->AddLine(ImVec2(p.x, p.y + rulerHeight), ImVec2(p.x + canvasWidth, p.y + rulerHeight), colRulerLine);
+
+    // Draw ruler ticks
+    double tickStep  = visibleDuration / 10.0;
+    double firstTick = std::floor(visibleStart / tickStep) * tickStep;
+    for (double t = firstTick; t < visibleEnd; t += tickStep) {
+        float tx = timeToX(t);
+        if (tx >= p.x && tx <= p.x + canvasWidth) {
+            drawList->AddLine(ImVec2(tx, p.y + rulerHeight - 5), ImVec2(tx, p.y + rulerHeight), colTick);
+            std::string tStr = this->formatTime(t);
+            drawList->AddText(ImVec2(tx + 2, p.y + 2), colTickText, tStr.c_str());
+        }
+    }
+
+    float currentTrackY = p.y + rulerHeight + 10.0f;
+
+    double videoSnapGuideX     = -1.0;
+    double csvLeftSnapGuideX   = -1.0;
+    double csvCenterSnapGuideX = -1.0;
+    double csvRightSnapGuideX  = -1.0;
+
+    if (!this->loadedVideoName.empty()) {
         // --- VIDEO TRACK ---
         float vStartX = timeToX(this->videoBlockStart);
         float vEndX   = timeToX(this->videoBlockStart + this->videoLengthMs);
 
-        // Draw track background (the empty lane)
-        drawList->AddRectFilled(ImVec2(p.x, track1Y), ImVec2(p.x + canvasWidth, track1Y + trackH), colTrackBg);
+        // Draw track background
+        drawList->AddRectFilled(ImVec2(p.x, currentTrackY), ImVec2(p.x + canvasWidth, currentTrackY + trackH),
+                                colTrackBg);
 
         // Draw the Video Block
-        drawList->AddRectFilled(ImVec2(vStartX, track1Y), ImVec2(vEndX, track1Y + trackH), IM_COL32(20, 90, 60, 255),
-                                3.0f);
-        drawList->AddRect(ImVec2(vStartX, track1Y), ImVec2(vEndX, track1Y + trackH), IM_COL32(40, 160, 100, 255), 3.0f);
-        drawList->AddText(ImVec2(vStartX + 8, track1Y + 10), IM_COL32(180, 255, 200, 255),
+        drawList->AddRectFilled(ImVec2(vStartX, currentTrackY), ImVec2(vEndX, currentTrackY + trackH),
+                                IM_COL32(20, 90, 60, 255), 3.0f);
+        drawList->AddRect(ImVec2(vStartX, currentTrackY), ImVec2(vEndX, currentTrackY + trackH),
+                          IM_COL32(40, 160, 100, 255), 3.0f);
+        drawList->AddText(ImVec2(vStartX + 8, currentTrackY + 10), IM_COL32(180, 255, 200, 255),
                           (std::string("Vídeo: ") + this->loadedVideoName).c_str());
 
         // Drag Video
         float vW = vEndX - vStartX;
         if (vW < 1.0f)
             vW = 1.0f; // PREVENT CRASH
-        ImGui::SetCursorScreenPos(ImVec2(vStartX, track1Y));
+        ImGui::SetCursorScreenPos(ImVec2(vStartX, currentTrackY));
         if (!this->tracksLocked) {
             ImGui::InvisibleButton("##VideoTrackDrag", ImVec2(vW, trackH));
         } else {
             ImGui::Dummy(ImVec2(vW, trackH));
         }
-        double videoSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             if (!this->isDraggingVideo) {
                 this->isDraggingVideo = true;
@@ -744,16 +798,20 @@ void Window::Playback::render() {
             double rawVideoStart = xToTime(newStartX);
             double rawVideoEnd   = rawVideoStart + this->videoLengthMs;
 
-            // Try snapping: video start or video end to CSV edges and Playhead Cursor
-            double snapX = -1.0;
-            double snappedStart =
-                trySnap(rawVideoStart, {this->csvBlockStart, this->csvBlockEnd, this->globalTime}, snapX);
+            std::vector<double> vSnapPoints = {this->globalTime};
+            if (!this->selectedFileName.empty()) {
+                vSnapPoints.push_back(this->csvBlockStart);
+                vSnapPoints.push_back(this->csvBlockEnd);
+            }
+
+            // Try snapping
+            double snapX        = -1.0;
+            double snappedStart = trySnap(rawVideoStart, vSnapPoints, snapX);
             if (snapX >= 0.0) {
                 rawVideoStart   = snappedStart;
                 videoSnapGuideX = snapX;
             } else {
-                double snappedEnd =
-                    trySnap(rawVideoEnd, {this->csvBlockStart, this->csvBlockEnd, this->globalTime}, snapX);
+                double snappedEnd = trySnap(rawVideoEnd, vSnapPoints, snapX);
                 if (snapX >= 0.0) {
                     rawVideoStart   = snappedEnd - this->videoLengthMs;
                     videoSnapGuideX = snapX;
@@ -769,37 +827,46 @@ void Window::Playback::render() {
         if (ImGui::IsItemHovered())
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
-        // --- CSV TRACK ---
-        float track2Y = track1Y + trackH + 5.0f;
+        currentTrackY += trackH + 5.0f;
+    }
 
+    if (!this->selectedFileName.empty()) {
+        // --- CSV TRACK ---
         float cStartX = timeToX(this->csvBlockStart);
         float cEndX   = timeToX(this->csvBlockEnd);
 
         // Draw track background
-        drawList->AddRectFilled(ImVec2(p.x, track2Y), ImVec2(p.x + canvasWidth, track2Y + trackH), colTrackBg);
+        drawList->AddRectFilled(ImVec2(p.x, currentTrackY), ImVec2(p.x + canvasWidth, currentTrackY + trackH),
+                                colTrackBg);
 
         // Draw the CSV Block
-        drawList->AddRectFilled(ImVec2(cStartX, track2Y), ImVec2(cEndX, track2Y + trackH), IM_COL32(15, 110, 55, 255),
-                                3.0f);
-        drawList->AddRect(ImVec2(cStartX, track2Y), ImVec2(cEndX, track2Y + trackH), IM_COL32(50, 200, 110, 255), 3.0f);
-        drawList->AddText(ImVec2(cStartX + 8, track2Y + 10), IM_COL32(180, 255, 200, 255),
+        drawList->AddRectFilled(ImVec2(cStartX, currentTrackY), ImVec2(cEndX, currentTrackY + trackH),
+                                IM_COL32(15, 110, 55, 255), 3.0f);
+        drawList->AddRect(ImVec2(cStartX, currentTrackY), ImVec2(cEndX, currentTrackY + trackH),
+                          IM_COL32(50, 200, 110, 255), 3.0f);
+        drawList->AddText(ImVec2(cStartX + 8, currentTrackY + 10), IM_COL32(180, 255, 200, 255),
                           (std::string("Dados: ") + this->selectedFileName).c_str());
 
         float handleW = 8.0f;
 
         // Left handle
-        ImGui::SetCursorScreenPos(ImVec2(cStartX - handleW, track2Y));
+        ImGui::SetCursorScreenPos(ImVec2(cStartX - handleW, currentTrackY));
         if (!this->tracksLocked) {
             ImGui::InvisibleButton("##CsvLeft", ImVec2(handleW * 2, trackH));
         } else {
             ImGui::Dummy(ImVec2(handleW * 2, trackH));
         }
-        double csvLeftSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             double rawVal = xToTime(ImGui::GetMousePos().x);
             double snapX  = -1.0;
-            rawVal        = trySnap(
-                rawVal, {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs, this->globalTime}, snapX);
+
+            std::vector<double> cSnapPoints = {this->globalTime};
+            if (!this->loadedVideoName.empty()) {
+                cSnapPoints.push_back(this->videoBlockStart);
+                cSnapPoints.push_back(this->videoBlockStart + this->videoLengthMs);
+            }
+
+            rawVal            = trySnap(rawVal, cSnapPoints, snapX);
             csvLeftSnapGuideX = snapX;
             this->globalTime  = rawVal;
             if (this->globalTime < 0.0)
@@ -813,17 +880,16 @@ void Window::Playback::render() {
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
 
         // Center drag
-        ImGui::SetCursorScreenPos(ImVec2(cStartX + handleW, track2Y));
+        ImGui::SetCursorScreenPos(ImVec2(cStartX + handleW, currentTrackY));
         float centerW = (cEndX - cStartX) - handleW * 2;
         if (centerW < 1.0f)
             centerW = 1.0f; // PREVENT CRASH
-            
+
         if (!this->tracksLocked) {
             ImGui::InvisibleButton("##CsvCenter", ImVec2(centerW, trackH));
         } else {
             ImGui::Dummy(ImVec2(centerW, trackH));
         }
-        double csvCenterSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             if (!this->isDraggingCsv) {
                 this->isDraggingCsv = true;
@@ -834,18 +900,20 @@ void Window::Playback::render() {
             double csvDuration    = this->csvBlockEnd - this->csvBlockStart;
             double rawNewCsvEnd   = rawNewCsvStart + csvDuration;
 
-            // Try snapping: CSV start or CSV end to Video edges and Playhead Cursor
-            double snapX = -1.0;
-            double snappedStart =
-                trySnap(rawNewCsvStart,
-                        {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs, this->globalTime}, snapX);
+            std::vector<double> cSnapPoints = {this->globalTime};
+            if (!this->loadedVideoName.empty()) {
+                cSnapPoints.push_back(this->videoBlockStart);
+                cSnapPoints.push_back(this->videoBlockStart + this->videoLengthMs);
+            }
+
+            // Try snapping
+            double snapX        = -1.0;
+            double snappedStart = trySnap(rawNewCsvStart, cSnapPoints, snapX);
             if (snapX >= 0.0) {
                 rawNewCsvStart      = snappedStart;
                 csvCenterSnapGuideX = snapX;
             } else {
-                double snappedEnd = trySnap(
-                    rawNewCsvEnd,
-                    {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs, this->globalTime}, snapX);
+                double snappedEnd = trySnap(rawNewCsvEnd, cSnapPoints, snapX);
                 if (snapX >= 0.0) {
                     rawNewCsvStart      = snappedEnd - csvDuration;
                     csvCenterSnapGuideX = snapX;
@@ -853,7 +921,6 @@ void Window::Playback::render() {
             }
 
             double dtMove = rawNewCsvStart - this->csvBlockStart;
-            // Limit left side to 0
             if (this->csvBlockStart + dtMove < 0.0) {
                 dtMove = -this->csvBlockStart;
             }
@@ -866,18 +933,23 @@ void Window::Playback::render() {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 
         // Right handle
-        ImGui::SetCursorScreenPos(ImVec2(cEndX - handleW, track2Y));
+        ImGui::SetCursorScreenPos(ImVec2(cEndX - handleW, currentTrackY));
         if (!this->tracksLocked) {
             ImGui::InvisibleButton("##CsvRight", ImVec2(handleW * 2, trackH));
         } else {
             ImGui::Dummy(ImVec2(handleW * 2, trackH));
         }
-        double csvRightSnapGuideX = -1.0;
         if (ImGui::IsItemActive()) {
             double rawVal = xToTime(ImGui::GetMousePos().x);
             double snapX  = -1.0;
-            rawVal        = trySnap(
-                rawVal, {this->videoBlockStart, this->videoBlockStart + this->videoLengthMs, this->globalTime}, snapX);
+
+            std::vector<double> cSnapPoints = {this->globalTime};
+            if (!this->loadedVideoName.empty()) {
+                cSnapPoints.push_back(this->videoBlockStart);
+                cSnapPoints.push_back(this->videoBlockStart + this->videoLengthMs);
+            }
+
+            rawVal             = trySnap(rawVal, cSnapPoints, snapX);
             csvRightSnapGuideX = snapX;
             this->csvBlockEnd  = rawVal;
             // Minimum duration 1 ms to prevent crash
@@ -887,86 +959,62 @@ void Window::Playback::render() {
         if (ImGui::IsItemHovered())
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
 
-        // --- SNAP GUIDE LINES (drawn after all drag logic, before playhead) ---
-        // Show a bright yellow vertical line at the active snap point
-        {
-            auto drawSnapGuide = [&](double guideX) {
-                if (guideX >= 0.0) {
-                    float gx = (float)guideX;
-                    drawList->AddLine(ImVec2(gx, p.y + rulerHeight), ImVec2(gx, p.y + canvasHeight),
-                                      IM_COL32(255, 230, 50, 200), 1.0f);
-                    // Small diamond at the top of the guide
-                    drawList->AddTriangleFilled(ImVec2(gx - 4, p.y + rulerHeight), ImVec2(gx + 4, p.y + rulerHeight),
-                                                ImVec2(gx, p.y + rulerHeight + 7), IM_COL32(255, 230, 50, 230));
-                }
-            };
-            drawSnapGuide(videoSnapGuideX);
-            drawSnapGuide(csvLeftSnapGuideX);
-            drawSnapGuide(csvCenterSnapGuideX);
-            drawSnapGuide(csvRightSnapGuideX);
-        }
-
-        // Draw Global Playhead Cursor (After Effects Style)
-        float cursorX = timeToX(this->globalTime);
-
-        // Cursor Line
-        drawList->AddLine(ImVec2(cursorX, p.y), ImVec2(cursorX, p.y + canvasHeight), IM_COL32(50, 220, 120, 255), 1.5f);
-
-        // Cursor Head (Polygon)
-        ImVec2 head[5] = {ImVec2(cursorX - 6, p.y), ImVec2(cursorX + 6, p.y), ImVec2(cursorX + 6, p.y + 12),
-                          ImVec2(cursorX, p.y + 18), ImVec2(cursorX - 6, p.y + 12)};
-        drawList->AddConvexPolyFilled(head, 5, IM_COL32(50, 220, 120, 255));
-        drawList->AddPolyline(head, 5, IM_COL32(200, 255, 220, 200), ImDrawFlags_Closed, 1.0f);
-
-        drawList->PopClipRect();
-
-        // Draw border on top of all content so track backgrounds can't overdraw it
-        drawList->AddRect(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), colBgBorder);
-
-        // Drag Global Cursor (Clicking anywhere on ruler or background)
-        ImGui::SetCursorScreenPos(p);
-        ImGui::InvisibleButton("##TimelineBg", ImVec2(canvasWidth, canvasHeight));
-        bool timelineBgActive = ImGui::IsItemActive() && !this->isDraggingVideo && !this->isDraggingCsv;
-        if (timelineBgActive) {
-            this->globalTime = xToTime(ImGui::GetMousePos().x);
-            if (this->globalTime < 0.0)
-                this->globalTime = 0.0;
-        }
-        // Update scrubbing state for next frame's video control logic
-        this->isScrubbing = timelineBgActive;
-
-        ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + canvasHeight + 10.0f));
-
-    } else {
-        ImGui::Spacing();
-
-        std::string startTimeStr   = this->formatTime(timelineStart);
-        std::string endTimeStr     = this->formatTime(timelineEnd);
-        std::string currentTimeStr = this->formatTime(this->globalTime);
-
-        float startW   = ImGui::CalcTextSize(startTimeStr.c_str()).x;
-        float endW     = ImGui::CalcTextSize(endTimeStr.c_str()).x;
-        float sliderW  = ImGui::GetWindowWidth() * 0.75f;
-        float itemSpc  = ImGui::GetStyle().ItemSpacing.x;
-        float rowWidth = startW + sliderW + endW + (itemSpc * 2);
-
-        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - rowWidth) * 0.5f);
-
-        ImGui::Text("%s", startTimeStr.c_str());
-        ImGui::SameLine();
-
-        ImGui::SetNextItemWidth(sliderW);
-        float sliderVal = static_cast<float>(this->globalTime);
-        if (ImGui::SliderFloat("##TimeSlider", &sliderVal, static_cast<float>(timelineStart),
-                               static_cast<float>(timelineEnd), currentTimeStr.c_str())) {
-            this->globalTime = static_cast<double>(sliderVal);
-        }
-        ImGui::SameLine();
-        ImGui::Text("%s", endTimeStr.c_str());
-
-        ImGui::Spacing();
-        ImGui::Spacing();
+        currentTrackY += trackH + 5.0f;
     }
+
+    // --- SNAP GUIDE LINES ---
+    {
+        auto drawSnapGuide = [&](double guideX) {
+            if (guideX >= 0.0) {
+                float gx = (float)guideX;
+                drawList->AddLine(ImVec2(gx, p.y + rulerHeight), ImVec2(gx, p.y + canvasHeight),
+                                  IM_COL32(255, 230, 50, 200), 1.0f);
+                drawList->AddTriangleFilled(ImVec2(gx - 4, p.y + rulerHeight), ImVec2(gx + 4, p.y + rulerHeight),
+                                            ImVec2(gx, p.y + rulerHeight + 7), IM_COL32(255, 230, 50, 230));
+            }
+        };
+        drawSnapGuide(videoSnapGuideX);
+        drawSnapGuide(csvLeftSnapGuideX);
+        drawSnapGuide(csvCenterSnapGuideX);
+        drawSnapGuide(csvRightSnapGuideX);
+    }
+
+    // Draw Global Playhead Cursor
+    float cursorX = timeToX(this->globalTime);
+    drawList->AddLine(ImVec2(cursorX, p.y), ImVec2(cursorX, p.y + canvasHeight), IM_COL32(50, 220, 120, 255), 1.5f);
+
+    ImVec2 head[5] = {ImVec2(cursorX - 6, p.y), ImVec2(cursorX + 6, p.y), ImVec2(cursorX + 6, p.y + 12),
+                      ImVec2(cursorX, p.y + 18), ImVec2(cursorX - 6, p.y + 12)};
+    drawList->AddConvexPolyFilled(head, 5, IM_COL32(50, 220, 120, 255));
+    drawList->AddPolyline(head, 5, IM_COL32(200, 255, 220, 200), ImDrawFlags_Closed, 1.0f);
+
+    drawList->PopClipRect();
+
+    // Draw border
+    drawList->AddRect(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), colBgBorder);
+
+    // Drag Global Cursor
+    ImGui::SetCursorScreenPos(p);
+    ImGui::InvisibleButton("##TimelineBg", ImVec2(canvasWidth, canvasHeight));
+    bool timelineBgActive = ImGui::IsItemActive() && !this->isDraggingVideo && !this->isDraggingCsv;
+    if (timelineBgActive) {
+        this->globalTime = xToTime(ImGui::GetMousePos().x);
+        if (this->globalTime < 0.0)
+            this->globalTime = 0.0;
+    }
+    this->isScrubbing = timelineBgActive;
+
+    ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + canvasHeight + 10.0f));
+
+    // --- EXIBIÇÃO DO TEMPO ATUAL ---
+    std::string currentTimeStr = this->formatTime(this->globalTime);
+    std::string endTimeStr     = this->formatTime(timelineEnd);
+    std::string timeDisplay    = currentTimeStr + " / " + endTimeStr;
+
+    float timeTextW = ImGui::CalcTextSize(timeDisplay.c_str()).x;
+    ImGui::SetCursorPosX((ImGui::GetWindowWidth() - timeTextW) * 0.5f);
+    ImGui::Text("%s", timeDisplay.c_str());
+    ImGui::Spacing();
 
     float pad           = ImGui::GetStyle().FramePadding.x * 2.0f;
     float playBtnW      = ImGui::CalcTextSize("Pause").x + pad + 10.0f;
@@ -1023,6 +1071,98 @@ void Window::Playback::render() {
             wVideo->getPlayer()->setRate(this->playbackSpeed);
         }
     }
+
+    // --- INÍCIO DA SEÇÃO DE COMENTÁRIOS INTEGRADA ---
+    if (m_showCommentsWindow) {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextDisabled("Comentários");
+
+        auto                                  pTextFiles = DB::getInstance().getProject().getTextFiles();
+        std::vector<std::string>              dates;
+        std::vector<std::vector<std::string>> data;
+        for (const auto& tf : pTextFiles) {
+            if (tf.getName() == "Comentários" || tf.getName() == "comentarios.csv") {
+                dates = tf.getDates();
+                data  = tf.getData();
+                break;
+            }
+        }
+
+        ImGui::Text("Adicionar:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.6f); // Usa 60% do espaço restante
+        bool enterPressed = ImGui::InputText("##playback_comments_input", m_currentCommentBuf,
+                                             sizeof(m_currentCommentBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+        ImGui::SameLine();
+        if (ImGui::Button("Adicionar") || enterPressed) {
+            if (strlen(m_currentCommentBuf) > 0) {
+                std::string dateStr = std::to_string(static_cast<long long>(this->currentTimestamp));
+
+                dates.push_back(dateStr);
+                if (data.empty()) {
+                    data.push_back(std::vector<std::string>{std::string(m_currentCommentBuf)});
+                } else {
+                    data[0].push_back(std::string(m_currentCommentBuf));
+                }
+
+                DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, dates, data);
+                DB::getInstance().quickSaveProject();
+                LOG("INFO", "Comentário (Playback) adicionado: " + std::string(m_currentCommentBuf));
+                std::memset(m_currentCommentBuf, 0, sizeof(m_currentCommentBuf));
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Apagar Todos")) {
+            dates.clear();
+            data.clear();
+            DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, dates, data);
+            DB::getInstance().quickSaveProject();
+            LOG("INFO", "Todos os comentários foram apagados.");
+        }
+
+        ImGui::Spacing();
+        size_t numComments = data.empty() ? 0 : data[0].size();
+        ImGui::Text("Comentários Registrados (%d):", (int)numComments);
+
+        // Define o tamanho para ocupar todo o espaço vertical restante da janela principal
+        ImVec2 childSize = ImVec2(0, 0);
+        if (ImGui::BeginChild("##activeCommentsScrollPlayback", childSize, true)) {
+            for (size_t j = 0; j < numComments; ++j) {
+                ImGui::PushID(static_cast<int>(j));
+                if (ImGui::Button("X")) {
+                    dates.erase(dates.begin() + j);
+                    data[0].erase(data[0].begin() + j);
+                    DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, dates, data);
+                    DB::getInstance().quickSaveProject();
+                    LOG("INFO", "Comentário apagado.");
+                    ImGui::PopID();
+                    break; // Break since we modified the vector we are iterating
+                }
+                ImGui::PopID();
+                ImGui::SameLine();
+
+                long long ms = 0;
+                try {
+                    ms = std::stoll(dates[j]);
+                } catch (...) {
+                }
+                std::time_t t            = ms / 1000;
+                int         milliseconds = ms % 1000;
+                std::tm*    local        = std::localtime(&t);
+                char        buf[64];
+                if (local)
+                    std::strftime(buf, sizeof(buf), "%H:%M:%S", local);
+                else
+                    snprintf(buf, sizeof(buf), "%s", dates[j].c_str());
+
+                ImGui::TextWrapped("[%s.%03d] %s", buf, milliseconds, data[0][j].c_str());
+            }
+        }
+        ImGui::EndChild();
+    }
+    // --- FIM DA SEÇÃO DE COMENTÁRIOS ---
 
     if (isLightMode)
         ImGui::PopStyleColor(); // MenuBarBg

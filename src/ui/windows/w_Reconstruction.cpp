@@ -1,4 +1,6 @@
 #include "ui/windows/w_Reconstruction.hpp"
+#include "WindowManager.hpp"
+#include "ui/windows/w_Playback.hpp"
 #include "DB.hpp"
 #include "ImGuiWrapper.hpp"
 #include "Log.hpp"
@@ -392,6 +394,8 @@ void Window::Reconstruction::render() {
 
             ImVec2      windowPos  = ImGui::GetWindowPos();
             ImVec2      windowSize = ImGui::GetWindowSize();
+            if (windowSize.x < 1.0f) windowSize.x = 1.0f;
+            if (windowSize.y < 1.0f) windowSize.y = 1.0f;
             ImDrawList* drawList   = ImGui::GetWindowDrawList();
 
             // Calcular dinamicamente a posição do bloco (testX, testY) e pan da tela a partir da câmera
@@ -1013,6 +1017,21 @@ void Window::Reconstruction::render() {
                                                             if (closestIdx != -1 &&
                                                                 closestIdx < static_cast<int>(latData.size()) &&
                                                                 closestIdx < static_cast<int>(lonData.size())) {
+                                                                
+                                                                auto playbackWin = WindowManager::getInstance().getPlaybackWindow();
+                                                                bool playbackActive = playbackWin && playbackWin->isWindowOpen() && !playbackWin->getSelectedFileName().empty() && playbackWin->getMaxIndex() > 0;
+                                                                
+                                                                if (playbackActive && commentTime > playbackWin->getCurrentTimestamp()) {
+                                                                    continue;
+                                                                }
+                                                                
+                                                                if (m_limitPoints && m_numPointsToShow > 0) {
+                                                                    int start_idx_visible = std::max(0, (int)numPoints - m_numPointsToShow);
+                                                                    if (closestIdx < start_idx_visible) {
+                                                                        continue;
+                                                                    }
+                                                                }
+
                                                                 double lat_closest =
                                                                     latData[closestIdx] + m_trackOffsetLat;
                                                                 double lon_closest =

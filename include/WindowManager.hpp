@@ -98,6 +98,7 @@ public:
         void createTabelaWindow();
 
         Window::Video* getVideoWindow() { return m_videoWindow; }
+        Window::Playback* getPlaybackWindow() { return m_playbackWindow; }
 };
 
 #endif // WINDOW_HPP

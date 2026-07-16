@@ -1,4 +1,6 @@
 #include "ui/windows/w_Graph.hpp"
+#include "WindowManager.hpp"
+#include "ui/windows/w_Playback.hpp"
 #include <iostream>
 
 Window::Graph::Graph(const std::string& title) : IWindow() {
@@ -397,6 +399,13 @@ void Window::Graph::renderGraphPlot() {
                                         }
 
                                         if (closestIdx != -1) {
+                                            auto playbackWin = WindowManager::getInstance().getPlaybackWindow();
+                                            bool playbackActive = playbackWin && playbackWin->isWindowOpen() && !playbackWin->getSelectedFileName().empty() && playbackWin->getMaxIndex() > 0;
+                                            
+                                            if (playbackActive && commentTime > playbackWin->getCurrentTimestamp()) {
+                                                continue;
+                                            }
+
                                             // Se followTheEnd está ligado, só renderiza se estiver na janela final
                                             if (m_graph.config.followTheEnd) {
                                                 int maxIdx      = static_cast<int>(plotDates->size());

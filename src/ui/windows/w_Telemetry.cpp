@@ -735,6 +735,7 @@ void Window::Telemetry::renderSavingMenu() {
 
         std::vector<std::vector<std::string>> textData(1, m_activeComments);
         DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, m_activeCommentDates, textData);
+        DB::getInstance().quickSaveProject();
 
         // Atualiza controle de tempo
         this->m_lastSaveTime = std::chrono::steady_clock::now();
@@ -786,6 +787,7 @@ void Window::Telemetry::renderSavingMenu() {
         // Envia imediatamente para o arquivo "Comentários" no ProjectData
         std::vector<std::vector<std::string>> textData(1, m_activeComments);
         DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, m_activeCommentDates, textData);
+        DB::getInstance().quickSaveProject();
 
         LOG("INFO", "Comentário adicionado: " + m_activeComments.back());
         std::memset(m_currentCommentBuf, 0, sizeof(m_currentCommentBuf));
@@ -801,15 +803,46 @@ void Window::Telemetry::renderSavingMenu() {
         m_commentOffsetSec = 0;
 
     ImGui::Spacing();
+    
     ImGui::Text("Comentários Registrados (%d):", (int)m_activeComments.size());
+    ImGui::SameLine();
+    if (ImGui::Button("Apagar Todos")) {
+        m_activeCommentDates.clear();
+        m_activeComments.clear();
+        std::vector<std::vector<std::string>> textData;
+        DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, m_activeCommentDates, textData);
+        DB::getInstance().quickSaveProject();
+        LOG("INFO", "Todos os comentários foram apagados.");
+    }
+    
     ImVec2 childSize = ImVec2(0, 0); // Ocupa todo o espaço restante
     if (ImGui::BeginChild("##activeCommentsScroll", childSize, true)) {
         for (size_t j = 0; j < m_activeComments.size(); ++j) {
+            ImGui::PushID(static_cast<int>(j));
+            if (ImGui::Button("X")) {
+                m_activeCommentDates.erase(m_activeCommentDates.begin() + j);
+                m_activeComments.erase(m_activeComments.begin() + j);
+                
+                std::vector<std::vector<std::string>> textData;
+                if (!m_activeComments.empty()) {
+                    textData.push_back(m_activeComments);
+                }
+                DB::getInstance().getProject().addTextFile("Comentários", {"Comentários"}, m_activeCommentDates, textData);
+                DB::getInstance().quickSaveProject();
+                LOG("INFO", "Comentário apagado.");
+                
+                ImGui::PopID();
+                break; // Break since we modified the vector we are iterating
+            }
+            ImGui::PopID();
+            ImGui::SameLine();
+            
             std::string formattedTime = formatEpochToTimeLocal(m_activeCommentDates[j]);
             ImGui::TextWrapped("%s %s", formattedTime.c_str(), m_activeComments[j].c_str());
         }
     }
     ImGui::EndChild();
+
 
     ImGui::EndGroup();
 }
