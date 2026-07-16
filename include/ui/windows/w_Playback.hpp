@@ -84,6 +84,7 @@ namespace Window {
             float dragOffset         = 0.0f;
             
             bool  tracksLocked       = false;
+            bool  snapEnabled        = true;
 
             // Timer
             std::chrono::time_point<std::chrono::steady_clock> lastFrameTime;
