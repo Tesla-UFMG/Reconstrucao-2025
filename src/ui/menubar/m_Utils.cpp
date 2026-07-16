@@ -111,7 +111,10 @@ void MenuBar::changePlotColormap() {
         }
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        ImPlot::ShowColormapSelector("##");
+        if (ImPlot::ShowColormapSelector("##")) {
+            ImGuiWrapper::saveAppTheme();
+            ImPlot::BustItemCache();
+        }
 
         ImGui::EndMenu();
     }

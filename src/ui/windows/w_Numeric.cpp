@@ -733,7 +733,7 @@ void Window::Numeric::addColumn(const std::string& fileType, const std::string& 
         dataPtr = &DB::getInstance().getTelemetryData(fileName, columnName);
     }
 
-    if (dataPtr && !dataPtr->empty()) {
+    if (dataPtr) {
         m_loadedColumns.push_back(colData);
         m_hasData = true;
         LOG("INFO", "[Numérico] Coluna '" + columnName + "' carregada com sucesso.");

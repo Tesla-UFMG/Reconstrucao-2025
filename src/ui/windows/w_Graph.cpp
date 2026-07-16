@@ -529,11 +529,15 @@ void Window::Graph::drawContextMenu() {
 
             if (ImPlot::ColormapButton(ImPlot::GetColormapName(colormap), ImVec2(225, 0), colormap)) {
                 colormap = (colormap + 1) % ImPlot::GetColormapCount();
+                ImGuiWrapper::saveAppTheme();
                 ImPlot::BustItemCache();
             }
 
             ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-            ImPlot::ShowColormapSelector("##");
+            if (ImPlot::ShowColormapSelector("##")) {
+                ImGuiWrapper::saveAppTheme();
+                ImPlot::BustItemCache();
+            }
 
             ImGui::EndMenu();
         }

@@ -1,4 +1,4 @@
-WINDOWS := 0
+WINDOWS := 1
 CARD_VIDEO_RENDEREING := 1
 
 PROJECT := app
@@ -27,10 +27,11 @@ INCLUDES := -I./include \
 	-I./lib/sqlite3
 
 ifeq ($(WINDOWS), 1)
-	CXX := x86_64-w64-mingw32-g++
-	LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lbcrypt -mconsole -static-libgcc -static-libstdc++ -lcomdlg32 -lole32 -lvlc
-	LDFLAGS := -Llib/SDL2
-	OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
+    CXX := x86_64-w64-mingw32-g++
+    INCLUDES += -I./lib/vlc/include
+    LDFLAGS := -Llib/SDL2 -Llib/vlc/lib
+    LINKFLAGS := -lmingw32 -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lbcrypt -mconsole -static-libgcc -static-libstdc++ -lcomdlg32 -lole32 -lvlc -lvlccore
+    OUTPUT := $(BUILD_FOLDER)/$(PROJECT).exe
 else
 	CXX := g++
 	LINKFLAGS := -lSDL2 -lSDL2_image -lSDL2_mixer -lSDL2_ttf -lz -lpthread -lm -static-libgcc -static-libstdc++ -lvlc
