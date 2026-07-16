@@ -67,9 +67,11 @@ $(OBJ_FOLDER)/lib/%.o: lib/%.c
 
 ifeq ($(WINDOWS), 1)
 $(BUILD_FOLDER):
-	@mkdir -p $@ $@/assets
+	@mkdir -p $@ $@/assets $@/plugins
 	cp lib/SDL2/*.dll $(BUILD_FOLDER)
-	cp assets/* $(BUILD_FOLDER)/assets/ 
+	cp lib/vlc/lib/*.dll $(BUILD_FOLDER)
+	-cp -r lib/vlc/plugins/* $(BUILD_FOLDER)/plugins/ 2> /dev/null || true
+	cp assets/* $(BUILD_FOLDER)/assets/
 
 	@mkdir -p $@ $@/maps
 	cp maps/* $(BUILD_FOLDER)/maps/

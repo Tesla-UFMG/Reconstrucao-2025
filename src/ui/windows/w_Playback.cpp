@@ -440,11 +440,13 @@ void Window::Playback::render() {
         }
 
         ImGui::Separator();
+        ImVec4 lockColor;
         if (this->tracksLocked) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+            lockColor = (ImGuiWrapper::currentTheme == LIGHT) ? ImVec4(0.8f, 0.1f, 0.1f, 1.0f) : ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
         } else {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
+            lockColor = (ImGuiWrapper::currentTheme == LIGHT) ? ImVec4(0.15f, 0.6f, 0.15f, 1.0f) : ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
         }
+        ImGui::PushStyleColor(ImGuiCol_Text, lockColor);
         if (ImGui::MenuItem("Cadeado")) {
             this->tracksLocked = !this->tracksLocked;
         }
@@ -688,6 +690,7 @@ void Window::Playback::render() {
     bool   isDark = lum < 0.5f;
 
     ImU32 colBg, colBgBorder, colRulerBg, colRulerLine, colTrackBg, colTick, colTickText;
+    ImU32 colVideoBlockBg, colVideoBlockBorder, colCsvBlockBg, colCsvBlockBorder, colTrackText;
     if (isDark) {
         // Dark theme — original deep-dark palette
         colBg        = IM_COL32(30, 30, 30, 255);    // main canvas bg
@@ -697,6 +700,12 @@ void Window::Playback::render() {
         colTrackBg   = IM_COL32(40, 40, 40, 255);    // empty track lane
         colTick      = IM_COL32(150, 150, 150, 255); // ruler tick marks
         colTickText  = IM_COL32(200, 200, 200, 255); // ruler tick labels
+        
+        colVideoBlockBg     = IM_COL32(20, 90, 60, 255);
+        colVideoBlockBorder = IM_COL32(40, 160, 100, 255);
+        colCsvBlockBg       = IM_COL32(15, 110, 55, 255);
+        colCsvBlockBorder   = IM_COL32(50, 200, 110, 255);
+        colTrackText        = IM_COL32(180, 255, 200, 255);
     } else {
         // Light theme:
         colBg        = IM_COL32(235, 235, 235, 255); // main canvas bg     (lighter variant)
@@ -706,6 +715,12 @@ void Window::Playback::render() {
         colTrackBg   = IM_COL32(228, 228, 228, 255); // empty track lane   (lighter variant)
         colTick      = IM_COL32(30, 30, 30, 255);    // ruler tick marks   (same as tick text)
         colTickText  = IM_COL32(30, 30, 30, 255);    // ruler tick labels  (near-black)
+        
+        colVideoBlockBg     = IM_COL32(140, 230, 180, 255);
+        colVideoBlockBorder = IM_COL32(80, 180, 120, 255);
+        colCsvBlockBg       = IM_COL32(120, 210, 150, 255);
+        colCsvBlockBorder   = IM_COL32(60, 160, 100, 255);
+        colTrackText        = IM_COL32(10, 60, 30, 255); // Dark green text
     }
 
     drawList->AddRectFilled(p, ImVec2(p.x + canvasWidth, p.y + canvasHeight), colBg);
@@ -773,10 +788,10 @@ void Window::Playback::render() {
 
         // Draw the Video Block
         drawList->AddRectFilled(ImVec2(vStartX, currentTrackY), ImVec2(vEndX, currentTrackY + trackH),
-                                IM_COL32(20, 90, 60, 255), 3.0f);
+                                colVideoBlockBg, 3.0f);
         drawList->AddRect(ImVec2(vStartX, currentTrackY), ImVec2(vEndX, currentTrackY + trackH),
-                          IM_COL32(40, 160, 100, 255), 3.0f);
-        drawList->AddText(ImVec2(vStartX + 8, currentTrackY + 10), IM_COL32(180, 255, 200, 255),
+                          colVideoBlockBorder, 3.0f);
+        drawList->AddText(ImVec2(vStartX + 8, currentTrackY + 10), colTrackText,
                           (std::string("Vídeo: ") + this->loadedVideoName).c_str());
 
         // Drag Video
@@ -841,10 +856,10 @@ void Window::Playback::render() {
 
         // Draw the CSV Block
         drawList->AddRectFilled(ImVec2(cStartX, currentTrackY), ImVec2(cEndX, currentTrackY + trackH),
-                                IM_COL32(15, 110, 55, 255), 3.0f);
+                                colCsvBlockBg, 3.0f);
         drawList->AddRect(ImVec2(cStartX, currentTrackY), ImVec2(cEndX, currentTrackY + trackH),
-                          IM_COL32(50, 200, 110, 255), 3.0f);
-        drawList->AddText(ImVec2(cStartX + 8, currentTrackY + 10), IM_COL32(180, 255, 200, 255),
+                          colCsvBlockBorder, 3.0f);
+        drawList->AddText(ImVec2(cStartX + 8, currentTrackY + 10), colTrackText,
                           (std::string("Dados: ") + this->selectedFileName).c_str());
 
         float handleW = 8.0f;

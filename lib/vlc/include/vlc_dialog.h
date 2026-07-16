@@ -275,6 +275,16 @@ vlc_dialog_is_cancelled(vlc_object_t *p_obj, vlc_dialog_id *p_id);
 typedef struct vlc_dialog_cbs
 {
     /**
+     * Called when an error message needs to be displayed
+     *
+     * @param p_data opaque pointer for the callback
+     * @param psz_title title of the dialog
+     * @param psz_text text of the dialog
+     */
+    void (*pf_display_error)(void *p_data, const char *psz_title,
+                             const char *psz_text);
+
+    /**
      * Called when a login dialog needs to be displayed
      *
      * You can interact with this dialog by calling vlc_dialog_id_post_login()
@@ -370,18 +380,8 @@ typedef struct vlc_dialog_cbs
 } vlc_dialog_cbs;
 
 /**
- * Called when an error message needs to be displayed
- *
- * @param p_data opaque pointer for the callback
- * @param psz_title title of the dialog
- * @param psz_text text of the dialog
- */
-typedef void (*vlc_dialog_error_cbs)(void *p_data, const char *psz_title, const char *psz_text);
-
-/**
  * Register callbacks to handle VLC dialogs
  *
- * @param p_obj the VLC object to get the dialog provider from
  * @param p_cbs a pointer to callbacks, or NULL to unregister callbacks.
  * @param p_data opaque pointer for the callback
  */
@@ -390,21 +390,6 @@ vlc_dialog_provider_set_callbacks(vlc_object_t *p_obj,
                                   const vlc_dialog_cbs *p_cbs, void *p_data);
 #define vlc_dialog_provider_set_callbacks(a, b, c) \
     vlc_dialog_provider_set_callbacks(VLC_OBJECT(a), b, c)
-
-/**
- * Register callbacks to handle VLC error messages
- *
- * @version LibVLC 4.0.0 and later.
- *
- * @param p_obj the VLC object to get the dialog provider from
- * @param p_cbs a pointer to the callback, or NULL to unregister the callback.
- * @param p_data opaque pointer for the callback
- */
-VLC_API void
-vlc_dialog_provider_set_error_callback(vlc_object_t *p_obj,
-                                       vlc_dialog_error_cbs p_cbs, void *p_data);
-#define vlc_dialog_provider_set_error_callback(a, b, c) \
-    vlc_dialog_provider_set_error_callback(VLC_OBJECT(a), b, c)
 
 /**
  * Associate an opaque pointer with the dialog id
@@ -482,7 +467,6 @@ typedef void (*vlc_dialog_ext_update_cb)(extension_dialog_t *p_ext_dialog,
 /**
  * Register a callback for VLC extension dialog
  *
- * @param p_obj a VLC object to get the libvlc instance from
  * @param pf_update a pointer to the update callback, or NULL to unregister
  * callback
  * @param p_data opaque pointer for the callback
@@ -494,7 +478,6 @@ vlc_dialog_provider_set_ext_callback(vlc_object_t *p_obj,
 #define vlc_dialog_provider_set_ext_callback(a, b, c) \
     vlc_dialog_provider_set_ext_callback(VLC_OBJECT(a), b, c)
 
-/** @} */
-/** @} */
+/** @} @} */
 
 #endif

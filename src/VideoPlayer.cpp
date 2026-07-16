@@ -2,9 +2,10 @@
 #include "Log.hpp"
 #include <cstring>
 #include <iostream>
+#include <filesystem>
 
 VideoPlayer::VideoPlayer(SDL_Renderer* renderer) : m_renderer(renderer) {
-    const char* vlc_args[] = {"--no-xlib", "--drop-late-frames", "--skip-frames", "--quiet"};
+    const char* vlc_args[] = {"--no-xlib", "--drop-late-frames", "--skip-frames", "--quiet", "--avcodec-hw=none"};
     m_vlcInstance          = libvlc_new(sizeof(vlc_args) / sizeof(vlc_args[0]), vlc_args);
     if (!m_vlcInstance) {
         LOG("ERROR", "Falha ao inicializar o libvlc.");
@@ -56,7 +57,16 @@ void VideoPlayer::load(const std::string& path) {
     if (!m_vlcInstance)
         return;
 
-    libvlc_media_t* media = libvlc_media_new_path(m_vlcInstance, path.c_str());
+    std::filesystem::path fsPath(path);
+#if __cplusplus >= 202002L
+    auto u8str = fsPath.u8string();
+    const char* utf8_path = reinterpret_cast<const char*>(u8str.c_str());
+#else
+    std::string u8str = fsPath.u8string();
+    const char* utf8_path = u8str.c_str();
+#endif
+
+    libvlc_media_t* media = libvlc_media_new_path(m_vlcInstance, utf8_path);
     if (!media) {
         LOG("ERROR", "Falha ao abrir a mídia: " + path);
         return;

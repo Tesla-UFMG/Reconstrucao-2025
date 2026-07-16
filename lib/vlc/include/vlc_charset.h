@@ -3,6 +3,7 @@
  *****************************************************************************
  * Copyright (C) 2003-2005 VLC authors and VideoLAN
  * Copyright © 2005-2010 Rémi Denis-Courmont
+ * $Id$
  *
  * Author: Rémi Denis-Courmont
  *
@@ -25,9 +26,9 @@
 #define VLC_CHARSET_H 1
 
 /**
- * \file vlc_charset.h
- * \ingroup charset
- * \defgroup charset Character sets
+ * \file
+ * Characters sets handling
+ *
  * \ingroup strings
  * @{
  */
@@ -42,12 +43,12 @@
  *
  * \return the number of bytes occupied by the decoded code point
  *
- * \retval -1 not a valid UTF-8 sequence
+ * \retval (size_t)-1 not a valid UTF-8 sequence
  * \retval 0 null character (i.e. str points to an empty string)
  * \retval 1 (non-null) ASCII character
  * \retval 2-4 non-ASCII character
  */
-VLC_API ssize_t vlc_towc(const char *str, uint32_t *restrict pwc);
+VLC_API size_t vlc_towc(const char *str, uint32_t *restrict pwc);
 
 /**
  * Checks UTF-8 validity.
@@ -61,34 +62,13 @@ VLC_API ssize_t vlc_towc(const char *str, uint32_t *restrict pwc);
  */
 VLC_USED static inline const char *IsUTF8(const char *str)
 {
-    ssize_t n;
+    size_t n;
     uint32_t cp;
 
     while ((n = vlc_towc(str, &cp)) != 0)
-        if (likely(n != -1))
+        if (likely(n != (size_t)-1))
             str += n;
         else
-            return NULL;
-    return str;
-}
-
-/**
- * Checks ASCII validity.
- *
- * Checks whether a null-terminated string is a valid ASCII bytes sequence
- * (non-printable ASCII characters 1-31 are permitted).
- *
- * \param str string to check
- *
- * \retval str the string is a valid null-terminated ASCII sequence
- * \retval NULL the string is not an ASCII sequence
- */
-VLC_USED static inline const char *IsASCII(const char *str)
-{
-    unsigned char c;
-
-    for (const char *p = str; (c = *p) != '\0'; p++)
-        if (c >= 0x80)
             return NULL;
     return str;
 }
@@ -114,11 +94,11 @@ VLC_USED static inline const char *IsASCII(const char *str)
 static inline char *EnsureUTF8(char *str)
 {
     char *ret = str;
-    ssize_t n;
+    size_t n;
     uint32_t cp;
 
     while ((n = vlc_towc(str, &cp)) != 0)
-        if (likely(n != -1))
+        if (likely(n != (size_t)-1))
             str += n;
         else
         {
@@ -128,20 +108,12 @@ static inline char *EnsureUTF8(char *str)
     return ret;
 }
 
-/**
- * \defgroup iconv iconv wrappers
- *
- * (defined in src/extras/libc.c)
- * @{
- */
-
+/* iconv wrappers (defined in src/extras/libc.c) */
 #define VLC_ICONV_ERR ((size_t) -1)
 typedef void *vlc_iconv_t;
 VLC_API vlc_iconv_t vlc_iconv_open( const char *, const char * ) VLC_USED;
 VLC_API size_t vlc_iconv( vlc_iconv_t, const char **, size_t *, char **, size_t * ) VLC_USED;
 VLC_API int vlc_iconv_close( vlc_iconv_t );
-
-/** @} */
 
 #include <stdarg.h>
 
@@ -153,7 +125,7 @@ VLC_API char * FromCharset( const char *charset, const void *data, size_t data_s
 VLC_API void * ToCharset( const char *charset, const char *in, size_t *outsize ) VLC_USED;
 
 #ifdef __APPLE__
-# include <CoreFoundation/CoreFoundation.h>
+# include <CoreFoundation/CFString.h>
 
 /* Obtains a copy of the contents of a CFString in specified encoding.
  * Returns char* (must be freed by caller) or NULL on failure.
@@ -197,8 +169,6 @@ VLC_USED static inline char *FromCFString(const CFStringRef cfString,
 #endif
 
 #ifdef _WIN32
-# include <windows.h>
-
 VLC_USED
 static inline char *FromWide (const wchar_t *wide)
 {
@@ -276,6 +246,13 @@ static inline char *ToANSI (const char *utf8)
     return ToCodePage (GetACP (), utf8);
 }
 
+# ifdef UNICODE
+#  define FromT FromWide
+#  define ToT   ToWide
+# else
+#  define FromT FromANSI
+#  define ToT   ToANSI
+# endif
 # define FromLocale    FromANSI
 # define ToLocale      ToANSI
 # define LocaleFree(s) free((char *)(s))
@@ -347,128 +324,12 @@ static inline char *FromLatin1 (const char *latin)
     return utf8 ? utf8 : str;
 }
 
-/**
- * \defgroup c_locale C/POSIX locale functions
- * @{
- */
-
-/**
- * Parses a double in C locale.
- *
- * This function parses a double-precision floating point number from a string
- * just like the standard strtod() but it uses the C locale. In other words, it
- * expects the POSIX/C/American decimal format regardless of the current
- * numeric locale.
- *
- * \param str nul-terminated string to parse
- * \param[out] end storage space for a pointer to the first unparsed byte
- *                 (or NULL to discard it)
- * \return the parsed double value (zero if no character could be parsed)
- */
-VLC_API double vlc_strtod_c(const char *restrict str, char **restrict end)
-VLC_USED;
-
-/**
- * Parses a float in C locale.
- *
- * This function parses a single-precision floating point number from a string
- * just like the standard strtof() but it uses the C locale. In other words, it
- * expects the POSIX/C/American decimal format regardless of the current
- * numeric locale.
- *
- * \param str nul-terminated string to parse
- * \param[out] end storage space for a pointer to the first unparsed byte
- *                 (or NULL to discard it)
- * \return the parsed double value (zero if no character could be parsed)
- */
-VLC_API float vlc_strtof_c(const char *restrict str, char **restrict end)
-VLC_USED;
-
-/**
- * Parses a double in C locale.
- *
- * This function parses a double-precision floating point number from a string
- * just like the standard atof() but it uses the C locale. In other words, it
- * expects the POSIX/C/American decimal format regardless of the current
- * numeric locale.
- *
- * \param str nul-terminated string to parse
- * \return the parsed double value (zero if no character could be parsed)
- */
-VLC_USED static inline double vlc_atof_c(const char *str)
-{
-    return vlc_strtod_c(str, NULL);
-}
-
-/**
- * Formats a string using the C locale.
- *
- * This function formats a string from a format string and a variable argument
- * list, just like the standard vasprintf() but using the C locale for the
- * formatting of numerals.
- *
- * \param[out] p storage space for a pointer to the heap-allocated formatted
- *               string (undefined on error)
- * \param fmt format string
- * \param ap variable argument list
- * \return number of bytes formatted (excluding the nul terminator)
- *        or -1 on error
- */
-VLC_API int vlc_vasprintf_c(char **restrict p, const char *restrict fmt,
-                            va_list ap) VLC_USED;
-
-/**
- * Formats a string using the C locale.
- *
- * This function formats a string from a format string and a variable argument
- * list, just like the standard asprintf() but using the C locale for the
- * formatting of numerals.
- *
- * \param[out] p storage space for a pointer to the heap-allocated formatted
- *               string (undefined on error)
- * \param fmt format string
- * \return number of bytes formatted (excluding the nul terminator)
- *        or -1 on error
- */
-VLC_API int vlc_asprintf_c( char **p, const char *fmt, ... ) VLC_USED;
-
-/**
- * Write a string to the output using the C locale
- *
- * This function formats a string from a format string and a variable argument
- * list, just like the standard vfprintf() but using the C locale for the
- * formatting of numerals.
- *
- * \param f output stream to write the string to
- * \param fmt format string
- * \param ap variable argument list
- * \return number of bytes formatted (excluding the nul terminator)
- *        or -1 on error
- */
-VLC_API int vlc_vfprintf_c(FILE *f, const char *fmt, va_list ap);
-
-/**
- * Write a string to the output using the C locale
- *
- * This function formats a string from a format string and a variable argument
- * list, just like the standard fprintf() but using the C locale for the
- * formatting of numerals.
- *
- * \param f output stream to write the string to
- * \param fmt format string
- * \return number of bytes formatted (excluding the nul terminator)
- *        or -1 on error
- */
-VLC_API int vlc_fprintf_c(FILE *f, const char *fmt, ...);
-
-int vlc_vsscanf_c(const char *, const char *, va_list) VLC_USED;
-int vlc_sscanf_c(const char*, const char*, ...) VLC_USED
-#ifdef __GNUC__
-__attribute__((format(scanf, 2, 3)))
-#endif
-;
-
 /** @} */
-/** @} */
+
+VLC_API double us_strtod( const char *, char ** ) VLC_USED;
+VLC_API float us_strtof( const char *, char ** ) VLC_USED;
+VLC_API double us_atof( const char * ) VLC_USED;
+VLC_API int us_vasprintf( char **, const char *, va_list );
+VLC_API int us_asprintf( char **, const char *, ... ) VLC_USED;
 
 #endif

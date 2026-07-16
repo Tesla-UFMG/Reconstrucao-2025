@@ -18,7 +18,6 @@ Window::Telemetry::Telemetry(bool* isOpen) : IWindow(isOpen) {
     // Uart configuration
     this->serialPort = "";
     this->baudrate   = 115200;
-    this->getAvailablePorts();
     this->selectedPortIndex = 0;
     this->saveToFile        = false;
     this->outputPacketFolder.resize(COLUMN_NAME_SIZE);

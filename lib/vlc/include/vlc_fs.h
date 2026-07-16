@@ -22,12 +22,12 @@
 #define VLC_FS_H 1
 
 #include <sys/types.h>
+#include <dirent.h>
 
 struct stat;
 struct iovec;
 
 #ifdef _WIN32
-# include <io.h>
 # include <sys/stat.h>
 # ifndef stat
 #  define stat _stati64
@@ -35,25 +35,21 @@ struct iovec;
 # ifndef fstat
 #  define fstat _fstati64
 # endif
-# undef lseek
-# define lseek _lseeki64
-#else // !_WIN32
-#include <dirent.h>
+# ifndef _MSC_VER
+#  undef lseek
+#  define lseek _lseeki64
+# endif
 #endif
 
 #ifdef __ANDROID__
 # define lseek lseek64
 #endif
 
-#ifdef __OS2__
-# include <io.h>
-#endif
 
 /**
  * \defgroup os Operating system
- * \ingroup vlc
+ * @{
  * \defgroup file File system
- * \ingroup os
  * @{
  *
  * \file
@@ -98,37 +94,16 @@ VLC_API int vlc_open(const char *filename, int flags, ...) VLC_USED;
  * @note Contrary to standard open(), this function returns a file handle
  * with the close-on-exec flag preset.
  */
-VLC_API int vlc_openat(int dir, const char *filename, int flags, ...) VLC_USED;
+VLC_API int vlc_openat(int fd, const char *filename, int flags, ...) VLC_USED;
 
 VLC_API int vlc_mkstemp( char * );
 
 /**
- * Duplicates a file descriptor.
- *
- * @param oldfd file descriptor to duplicate
- *
- * @note Contrary to standard dup(), the new file descriptor has the
- * close-on-exec descriptor flag preset.
- * @return a new file descriptor, -1 (see @c errno)
+ * Duplicates a file descriptor. The new file descriptor has the close-on-exec
+ * descriptor flag preset.
+ * @return a new file descriptor, -1 (see errno)
  */
-VLC_API int vlc_dup(int oldfd) VLC_USED;
-
-/**
- * Replaces a file descriptor.
- *
- * This function duplicates a file descriptor to a specified file descriptor.
- * This is primarily used to atomically replace a described file.
- *
- * @param oldfd source file descriptor to copy
- * @param newfd destination file descriptor to replace
- *
- * @note Contrary to standard dup2(), the new file descriptor has the
- * close-on-exec descriptor flag preset.
- *
- * @retval newfd success
- * @retval -1 failure (see @c errno)
- */
-VLC_API int vlc_dup2(int oldfd, int newfd);
+VLC_API int vlc_dup(int) VLC_USED;
 
 /**
  * Creates a pipe (see "man pipe" for further reference). The new file
@@ -195,18 +170,16 @@ VLC_API int vlc_close(int fd);
  * @note As far as possible, fstat() should be used instead.
  *
  * @param filename UTF-8 file path
- * @param st the POSIX stat structure to fill
  */
-VLC_API int vlc_stat(const char *filename, struct stat *st) VLC_USED;
+VLC_API int vlc_stat(const char *filename, struct stat *) VLC_USED;
 
 /**
  * Finds file/inode information, as lstat().
  * Consider using fstat() instead, if possible.
  *
  * @param filename UTF-8 file path
- * @param st the POSIX stat structure to fill
  */
-VLC_API int vlc_lstat(const char *filename, struct stat *st) VLC_USED;
+VLC_API int vlc_lstat(const char *filename, struct stat *) VLC_USED;
 
 /**
  * Removes a file.
@@ -234,20 +207,14 @@ VLC_API FILE * vlc_fopen( const char *filename, const char *mode ) VLC_USED;
  * @{
  */
 
-#if defined( _WIN32 )
-typedef struct vlc_DIR vlc_DIR;
-#else // !_WIN32
-typedef DIR vlc_DIR;
-#endif
-
 /**
  * Opens a DIR pointer.
  *
  * @param dirname UTF-8 representation of the directory name
  * @return a pointer to the DIR struct, or NULL in case of error.
- * Release with vlc_closedir().
+ * Release with standard closedir().
  */
-VLC_API vlc_DIR *vlc_opendir(const char *dirname) VLC_USED;
+VLC_API DIR *vlc_opendir(const char *dirname) VLC_USED;
 
 /**
  * Reads the next file name from an open directory.
@@ -256,17 +223,14 @@ VLC_API vlc_DIR *vlc_opendir(const char *dirname) VLC_USED;
  *            (must not be used by another thread concurrently)
  *
  * @return a UTF-8 string of the directory entry. The string is valid until
- * the next call to vlc_readdir() or vlc_closedir() on the handle.
+ * the next call to vlc_readdir() or closedir() on the handle.
  * If there are no more entries in the directory, NULL is returned.
  * If an error occurs, errno is set and NULL is returned.
  */
-VLC_API const char *vlc_readdir(vlc_DIR *dir) VLC_USED;
+VLC_API const char *vlc_readdir(DIR *dir) VLC_USED;
 
-VLC_API int vlc_loaddir( vlc_DIR *dir, char ***namelist, int (*select)( const char * ), int (*compar)( const char **, const char ** ) );
+VLC_API int vlc_loaddir( DIR *dir, char ***namelist, int (*select)( const char * ), int (*compar)( const char **, const char ** ) );
 VLC_API int vlc_scandir( const char *dirname, char ***namelist, int (*select)( const char * ), int (*compar)( const char **, const char ** ) );
-
-VLC_API void vlc_closedir( vlc_DIR *dir );
-VLC_API void vlc_rewinddir( vlc_DIR *dir );
 
 /**
  * Creates a directory.
@@ -279,16 +243,6 @@ VLC_API void vlc_rewinddir( vlc_DIR *dir );
 VLC_API int vlc_mkdir(const char *dirname, mode_t mode);
 
 /**
- * Creates a directory and parent directories as needed.
- *
- * @param dirname a UTF-8 string containing the name of the directory to
- *        be created.
- * @param mode directory permissions
- * @return 0 on success, -1 on error (see errno).
- */
-VLC_API int vlc_mkdir_parent(const char *dirname, mode_t mode);
-
-/**
  * Determines the current working directory.
  *
  * @return the current working directory (must be free()'d)
@@ -297,10 +251,44 @@ VLC_API int vlc_mkdir_parent(const char *dirname, mode_t mode);
 VLC_API char *vlc_getcwd(void) VLC_USED;
 
 /** @} */
+/** @} */
+
+#if defined( _WIN32 )
+typedef struct vlc_DIR
+{
+    _WDIR *wdir; /* MUST be first, see <vlc_fs.h> */
+    char *entry;
+    union
+    {
+        DWORD drives;
+        bool insert_dot_dot;
+    } u;
+} vlc_DIR;
+
+static inline int vlc_closedir( DIR *dir )
+{
+    vlc_DIR *vdir = (vlc_DIR *)dir;
+    _WDIR *wdir = vdir->wdir;
+
+    free( vdir->entry );
+    free( vdir );
+    return (wdir != NULL) ? _wclosedir( wdir ) : 0;
+}
+# undef closedir
+# define closedir vlc_closedir
+
+static inline void vlc_rewinddir( DIR *dir )
+{
+    _WDIR *wdir = *(_WDIR **)dir;
+
+    _wrewinddir( wdir );
+}
+# undef rewinddir
+# define rewinddir vlc_rewinddir
+#endif
 
 #ifdef __ANDROID__
 # define lseek lseek64
 #endif
 
-/** @} */
 #endif

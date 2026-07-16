@@ -2,6 +2,7 @@
  * libvlc_media_list_player.h:  libvlc_media_list API
  *****************************************************************************
  * Copyright (C) 1998-2008 VLC authors and VideoLAN
+ * $Id$
  *
  * Authors: Pierre d'Herbemont
  *
@@ -23,17 +24,9 @@
 #ifndef LIBVLC_MEDIA_LIST_PLAYER_H
 #define LIBVLC_MEDIA_LIST_PLAYER_H 1
 
-#include <vlc/libvlc.h>
-#include <vlc/libvlc_media_player.h>
-
 # ifdef __cplusplus
 extern "C" {
 # endif
-
-typedef struct libvlc_instance_t libvlc_instance_t;
-typedef struct libvlc_media_player_t libvlc_media_player_t;
-typedef struct libvlc_media_list_t libvlc_media_list_t;
-typedef struct libvlc_media_t libvlc_media_t;
 
 /** \defgroup libvlc_media_list_player LibVLC media list player
  * \ingroup libvlc
@@ -63,23 +56,16 @@ typedef enum libvlc_playback_mode_t
  * Create new media_list_player.
  *
  * \param p_instance libvlc instance
- * \param cbs callback to listen to events (can be NULL). The pointed
- * struct must be kept alive (and not modified) by the caller until
- * the returned media list player is released.
- * \param cbs_opaque opaque pointer used by the callbacks
  * \return media list player instance or NULL on error
- *         (it must be released by libvlc_media_list_player_release())
  */
 LIBVLC_API libvlc_media_list_player_t *
-    libvlc_media_list_player_new( libvlc_instance_t * p_instance,
-                                  const struct libvlc_media_player_cbs *cbs,
-                                  void *cbs_opaque );
+    libvlc_media_list_player_new( libvlc_instance_t * p_instance );
 
 /**
  * Release a media_list_player after use
- * Decrement the reference count of a media list player object. If the
+ * Decrement the reference count of a media player object. If the
  * reference count is 0, then libvlc_media_list_player_release() will
- * release the media list player object. If the media list player object
+ * release the media player object. If the media player object
  * has been released, then it should not be used again.
  *
  * \param p_mlp media list player instance
@@ -92,10 +78,29 @@ LIBVLC_API void
  * libvlc_media_list_player_release() to decrement reference count.
  *
  * \param p_mlp media player list object
- * \return the same object
  */
-LIBVLC_API libvlc_media_list_player_t *
+LIBVLC_API void
     libvlc_media_list_player_retain( libvlc_media_list_player_t *p_mlp );
+
+/**
+ * Return the event manager of this media_list_player.
+ *
+ * \param p_mlp media list player instance
+ * \return the event manager
+ */
+LIBVLC_API libvlc_event_manager_t *
+    libvlc_media_list_player_event_manager(libvlc_media_list_player_t * p_mlp);
+
+/**
+ * Replace media player in media_list_player with this instance.
+ *
+ * \param p_mlp media list player instance
+ * \param p_mi media player instance
+ */
+LIBVLC_API void
+    libvlc_media_list_player_set_media_player(
+                                     libvlc_media_list_player_t * p_mlp,
+                                     libvlc_media_player_t * p_mi );
 
 /**
  * Get media player of the media_list_player instance.
@@ -103,7 +108,6 @@ LIBVLC_API libvlc_media_list_player_t *
  * \param p_mlp media list player instance
  * \return media player instance
  * \note the caller is responsible for releasing the returned instance
- *       with libvlc_media_player_release().
  */
 LIBVLC_API libvlc_media_player_t *
     libvlc_media_list_player_get_media_player(libvlc_media_list_player_t * p_mlp);
@@ -150,12 +154,12 @@ void libvlc_media_list_player_set_pause(libvlc_media_list_player_t * p_mlp,
  * Is media list playing?
  *
  * \param p_mlp media list player instance
+ * \return true for playing and false for not playing
  *
- * \retval true playing
- * \retval false not playing
+ * \libvlc_return_bool
  */
-LIBVLC_API bool
-libvlc_media_list_player_is_playing(libvlc_media_list_player_t * p_mlp);
+LIBVLC_API int
+    libvlc_media_list_player_is_playing( libvlc_media_list_player_t * p_mlp );
 
 /**
  * Get current libvlc_state of media list player
@@ -194,7 +198,7 @@ int libvlc_media_list_player_play_item(libvlc_media_list_player_t * p_mlp,
  * \param p_mlp media list player instance
  */
 LIBVLC_API void
-    libvlc_media_list_player_stop_async( libvlc_media_list_player_t * p_mlp);
+    libvlc_media_list_player_stop( libvlc_media_list_player_t * p_mlp);
 
 /**
  * Play next item from media list

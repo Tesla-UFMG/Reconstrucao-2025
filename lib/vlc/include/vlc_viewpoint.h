@@ -26,6 +26,10 @@
 #include <math.h>
 
 /**
+ * \defgroup output Output
+ * \ingroup output
+ *
+ * @{
  * \file
  * Video and audio viewpoint struct and helpers
  */
@@ -59,24 +63,6 @@ static inline void vlc_viewpoint_clip( vlc_viewpoint_t *p_vp )
                           FIELD_OF_VIEW_DEGREES_MAX );
 }
 
-/**
- * Generate the 4x4 transform matrix corresponding to a viewpoint
- *
- * Convert a vlc_viewpoint_t into a 4x4 transform matrix with a column-major
- * layout.
- *
- * \param vp a valid viewpoint object
- * \param matrix a 4x4-sized array which will contain the matrix data
- */
-VLC_API
-void vlc_viewpoint_to_4x4( const vlc_viewpoint_t *vp, float *matrix );
-
-VLC_API
-void vlc_viewpoint_from_euler( vlc_viewpoint_t *vp,
-                               float yaw, float pitch, float roll );
-
-VLC_API
-void vlc_viewpoint_to_euler( const vlc_viewpoint_t *vp,
-                             float *yaw, float *pitch, float *roll );
+/**@}*/
 
 #endif /* VLC_VIEWPOINT_H_ */

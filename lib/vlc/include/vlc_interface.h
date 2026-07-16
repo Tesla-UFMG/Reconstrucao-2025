@@ -4,6 +4,7 @@
  * interface, such as message output.
  *****************************************************************************
  * Copyright (C) 1999, 2000 VLC authors and VideoLAN
+ * $Id$
  *
  * Authors: Vincent Seguin <seguin@via.ecp.fr>
  *
@@ -25,18 +26,14 @@
 #ifndef VLC_INTF_H_
 #define VLC_INTF_H_
 
-#include <vlc_threads.h>
-
 # ifdef __cplusplus
 extern "C" {
 # endif
 
-typedef struct vlc_playlist vlc_playlist_t;
 typedef struct intf_dialog_args_t intf_dialog_args_t;
 
 /**
  * \defgroup interface Interface
- * \ingroup vlc
  * VLC user interfaces
  * @{
  * \file
@@ -48,7 +45,7 @@ typedef struct intf_sys_t intf_sys_t;
 /** Describe all interface-specific data of the interface thread */
 typedef struct intf_thread_t
 {
-    struct vlc_object_t obj;
+    VLC_COMMON_MEMBERS
 
     struct intf_thread_t *p_next; /** LibVLC interfaces book keeping */
 
@@ -89,27 +86,29 @@ struct intf_dialog_args_t
     struct interaction_dialog_t *p_dialog;
 };
 
-VLC_API int intf_Create( libvlc_int_t *, const char * );
+VLC_API int intf_Create( playlist_t *, const char * );
 
 VLC_API void libvlc_Quit( libvlc_int_t * );
 
+static inline playlist_t *pl_Get( struct intf_thread_t *intf )
+{
+    return (playlist_t *)(intf->obj.parent);
+}
+
 /**
- * Recover the main playlist from an interface module
- *
- * @return the main playlist (can't be NULL)
+ * Retrieves the current input thread from the playlist.
+ * @note The returned object must be released with vlc_object_release().
  */
-VLC_API vlc_playlist_t *
-vlc_intf_GetMainPlaylist(intf_thread_t *intf);
+#define pl_CurrentInput(intf) (playlist_CurrentInput(pl_Get(intf)))
 
 /**
  * @ingroup messages
  * @{
  */
 
-VLC_API void vlc_LogSet(libvlc_int_t *, const struct vlc_logger_operations *,
-                        void *data);
+VLC_API void vlc_LogSet(libvlc_int_t *, vlc_log_cb cb, void *data);
 
-/** @} */
+/*@}*/
 
 /* Interface dialog ids for dialog providers */
 typedef enum vlc_intf_dialog {
@@ -125,7 +124,6 @@ typedef enum vlc_intf_dialog {
     INTF_DIALOG_WIZARD,
 
     INTF_DIALOG_PLAYLIST,
-    INTF_DIALOG_PLAYLISTS,
     INTF_DIALOG_MESSAGES,
     INTF_DIALOG_FILEINFO,
     INTF_DIALOG_PREFS,
@@ -151,19 +149,19 @@ typedef enum vlc_intf_dialog {
 /* Useful text messages shared by interfaces */
 #define INTF_ABOUT_MSG LICENSE_MSG
 
-#define EXTENSIONS_AUDIO_CSV "3ga", "669", "a52", "aac", "ac3", "adt", "adts", "aif", "aifc", "aiff", "alac", \
-                         "amb", "amr", "aob", "ape", "au", "awb", "caf", "dts", "dsf", "dff", "flac", "it", "kar", \
+#define EXTENSIONS_AUDIO_CSV "3ga", "669", "a52", "aac", "ac3", "adt", "adts", "aif", "aifc", "aiff", \
+                         "amb", "amr", "aob", "ape", "au", "awb", "caf", "dts", "flac", "it", "kar", \
                          "m4a", "m4b", "m4p", "m5p", "mka", "mlp", "mod", "mpa", "mp1", "mp2", "mp3", "mpc", "mpga", "mus", \
                          "oga", "ogg", "oma", "opus", "qcp", "ra", "rmi", "s3m", "sid", "spx", "tak", "thd", "tta", \
                          "voc", "vqf", "w64", "wav", "wma", "wv", "xa", "xm"
 
-#define EXTENSIONS_VIDEO_CSV "3g2", "3gp", "3gp2", "3gpp", "amrec", "amv", "asf", "avi", "bik", "crf", "dav", "divx", "drc", \
-                             "dv", "dvr-ms", "evo", "f4v", "flv", "gvi", "gxf", "iso", "k3g", \
+#define EXTENSIONS_VIDEO_CSV "3g2", "3gp", "3gp2", "3gpp", "amv", "asf", "avi", "bik", "crf", "dav", "divx", "drc", "dv", "dvr-ms" \
+                             "evo", "f4v", "flv", "gvi", "gxf", "iso", \
                              "m1v", "m2v", "m2t", "m2ts", "m4v", "mkv", "mov",\
                              "mp2", "mp2v", "mp4", "mp4v", "mpe", "mpeg", "mpeg1", \
                              "mpeg2", "mpeg4", "mpg", "mpv2", "mts", "mtv", "mxf", "mxg", "nsv", "nuv", \
-                             "ogg", "ogm", "ogv", "ogx", "ps", "qt", \
-                             "rec", "rm", "rmvb", "rpl", "skm", "thp", "tod", "ts", "tts", "txd", "vob", "vp6", "vro", \
+                             "ogg", "ogm", "ogv", "ogx", "ps", \
+                             "rec", "rm", "rmvb", "rpl", "thp", "tod", "ts", "tts", "txd", "vob", "vro", \
                              "webm", "wm", "wmv", "wtv", "xesc"
 
 #define EXTENSIONS_AUDIO \
@@ -177,7 +175,6 @@ typedef enum vlc_intf_dialog {
     "*.aif;"\
     "*.aifc;"\
     "*.aiff;"\
-    "*.alac;" \
     "*.amb;" \
     "*.amr;" \
     "*.aob;" \
@@ -186,8 +183,6 @@ typedef enum vlc_intf_dialog {
     "*.awb;" \
     "*.caf;" \
     "*.dts;" \
-    "*.dsf;" \
-    "*.dff;" \
     "*.flac;"\
     "*.it;"  \
     "*.kar;" \
@@ -228,13 +223,13 @@ typedef enum vlc_intf_dialog {
     "*.xa;"  \
     "*.xm"
 
-#define EXTENSIONS_VIDEO "*.3g2;*.3gp;*.3gp2;*.3gpp;*.amrec;*.amv;*.asf;*.avi;*.bik;*.bin;*.crf;*.dav;*.divx;*.drc;*.dv;*.dvr-ms;*.evo;*.f4v;*.flv;*.gvi;*.gxf;*.iso;*.k3g;*.m1v;*.m2v;" \
+#define EXTENSIONS_VIDEO "*.3g2;*.3gp;*.3gp2;*.3gpp;*.amv;*.asf;*.avi;*.bik;*.bin;*.crf;*.dav;*.divx;*.drc;*.dv;*.dvr-ms;*.evo;*.f4v;*.flv;*.gvi;*.gxf;*.iso;*.m1v;*.m2v;" \
                          "*.m2t;*.m2ts;*.m4v;*.mkv;*.mov;*.mp2;*.mp2v;*.mp4;*.mp4v;*.mpe;*.mpeg;*.mpeg1;" \
                          "*.mpeg2;*.mpeg4;*.mpg;*.mpv2;*.mts;*.mtv;*.mxf;*.mxg;*.nsv;*.nuv;" \
-                         "*.ogg;*.ogm;*.ogv;*.ogx;*.ps;*.qt;" \
-                         "*.rec;*.rm;*.rmvb;*.rpl;*.skm;*.thp;*.tod;*.tp;*.ts;*.tts;*.txd;*.vob;*.vp6;*.vro;*.webm;*.wm;*.wmv;*.wtv;*.xesc"
+                         "*.ogg;*.ogm;*.ogv;*.ogx;*.ps;" \
+                         "*.rec;*.rm;*.rmvb;*.rpl;*.thp;*.tod;*.tp;*.ts;*.tts;*.txd;*.vob;*.vro;*.webm;*.wm;*.wmv;*.wtv;*.xesc"
 
-#define EXTENSIONS_PLAYLIST "*.asx;*.b4s;*.cue;*.ifo;*.m3u;*.m3u8;*.pls;*.ram;*.rar;*.sdp;*.vlc;*.xspf;*.wax;*.wpl;*.wvx;*.zip;*.conf"
+#define EXTENSIONS_PLAYLIST "*.asx;*.b4s;*.cue;*.ifo;*.m3u;*.m3u8;*.pls;*.ram;*.rar;*.sdp;*.vlc;*.xspf;*.wax;*.wvx;*.zip;*.conf"
 
 #define EXTENSIONS_MEDIA EXTENSIONS_VIDEO ";" EXTENSIONS_AUDIO ";" \
                           EXTENSIONS_PLAYLIST
@@ -270,6 +265,7 @@ typedef struct interaction_dialog_t
 
     char           *psz_returned[1];    ///< returned responses from the user
 
+    vlc_value_t     val;                ///< value coming from core for dialogue
     int             i_timeToGo;         ///< time (in sec) until shown progress is finished
     bool      b_cancelled;        ///< was the dialogue cancelled ?
 

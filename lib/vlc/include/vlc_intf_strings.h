@@ -2,6 +2,7 @@
  * vlc_intf_strings.h : Strings for main interfaces
  *****************************************************************************
  * Copyright (C) 2003 VLC authors and VideoLAN
+ * $Id$
  *
  * Authors: Clément Stenac <zorglub@videolan.org>
  *
@@ -29,7 +30,7 @@
  */
 
 /* A helper macro that will expand to either of the arguments
-   depending on platform. The arguments are supposed to be:
+   depanding on platform. The arguments are supposed to be:
    1. dir: a string containing "directory"
    2. folder: a string with the same meaning but with directory
               substituted with "folder"
@@ -55,12 +56,35 @@
 #define I_MENU_CODECINFO  N_("&Codec Information")
 #define I_MENU_MSG   N_("&Messages")
 #define I_MENU_GOTOTIME N_("Jump to Specific &Time")
-#define I_MENU_BOOKMARK N_("&Bookmarks")
+#define I_MENU_BOOKMARK N_("Custom &Bookmarks")
 #define I_MENU_VLM N_("&VLM Configuration")
 
 #define I_MENU_ABOUT N_("&About")
 
+/* Playlist popup */
+#define I_POP_PLAY N_("Play")
+#define I_POP_DEL N_("Remove Selected")
+#define I_POP_INFO N_("Information...")
+#define I_POP_NEWFOLDER I_DIR_OR_FOLDER( N_("Create Directory..."), \
+                                         N_("Create Folder...") )
+#define I_POP_RENAMEFOLDER I_DIR_OR_FOLDER( N_("Rename Directory..."), \
+                                         N_("Rename Folder...") )
+#define I_POP_EXPLORE I_DIR_OR_FOLDER( N_("Show Containing Directory..."), \
+                                       N_("Show Containing Folder...") )
+#define I_POP_STREAM N_("Stream...")
+#define I_POP_SAVE N_("Save...")
+
 /*************** Playlist *************/
+
+#define I_PL_LOOP       N_("Repeat All")
+#define I_PL_REPEAT     N_("Repeat One")
+#define I_PL_RANDOM     N_("Random")
+#define I_PL_NORANDOM   N_("Random Off")
+#define I_PL_ADDPL      N_("Add to Playlist")
+
+#define I_PL_ADDF       N_("Add File...")
+#define I_PL_ADDDIR     I_DIR_OR_FOLDER( N_("Add Directory..."), \
+                                         N_("Add Folder...") )
 
 #define I_PL_SAVE       N_("Save Playlist to &File...")
 
@@ -72,6 +96,7 @@
 
 /*************** Video filters **************/
 
+#define I_WAVE      N_("Waves")
 #define I_LONGHELP N_("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /></head><body>" \
     "<h2>Welcome to VLC media player Help</h2>" \
         "<h3>Documentation</h3>" \
@@ -83,7 +108,7 @@
             "<p>To understand the main keyboard shortcuts, read the <a href=\"http://wiki.videolan.org/Hotkeys\">shortcuts</a> page.</p>" \
         "<h3>Help</h3>" \
             "<p>Before asking any question, please refer yourself to the <a href=\"http://www.videolan.org/support/faq.html\">FAQ</a>.</p>" \
-            "<p>You might then get (and give) help on the <a href=\"http://forum.videolan.org\">Forums</a>, the <a href=\"http://www.videolan.org/vlc/lists.html\">mailing-lists</a> or our IRC channel (<em>#videolan</em> on irc.libera.chat).</p>" \
+            "<p>You might then get (and give) help on the <a href=\"http://forum.videolan.org\">Forums</a>, the <a href=\"http://www.videolan.org/vlc/lists.html\">mailing-lists</a> or our IRC channel (<em>#videolan</em> on irc.freenode.net).</p>" \
         "<h3>Contribute to the project</h3>" \
             "<p>You can help the VideoLAN project giving some of your time to help the community, to design skins, to translate the documentation, to test and to code. You can also give funds and material to help us. And of course, you can <b>promote</b> VLC media player.</p>" \
     "</body></html>")

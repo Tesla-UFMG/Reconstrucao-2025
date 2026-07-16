@@ -27,7 +27,6 @@
 
 /**
  * @defgroup vlc_renderer VLC renderer discovery
- * @ingroup interface
  * @{
  *
  * @file
@@ -114,12 +113,12 @@ vlc_renderer_item_flags(const vlc_renderer_item_t *p_item);
  * @{
  */
 
+typedef struct vlc_renderer_discovery_sys vlc_renderer_discovery_sys;
 struct vlc_renderer_discovery_owner;
 
 /**
  * Return a list of renderer discovery modules
  *
- * @param p_obj any VLC object to get a libvlc instance from TODO
  * @param pppsz_names a pointer to a list of module name, NULL terminated
  * @param pppsz_longnames a pointer to a list of module longname, NULL
  * terminated
@@ -135,11 +134,8 @@ vlc_rd_get_names(vlc_object_t *p_obj, char ***pppsz_names,
 /**
  * Create a new renderer discovery module
  *
- * @param p_obj the parent VLC object the variables will be inherited from
  * @param psz_name name of the module to load, see vlc_rd_get_names() to get
  * the list of names
- * @param owner owner object with callback that the renderer discovery will
- * notify when new renderers are found or removed
  *
  * @return a valid vlc_renderer_discovery, need to be released with
  * vlc_rd_release()
@@ -167,7 +163,7 @@ struct vlc_renderer_discovery_owner
 
 struct vlc_renderer_discovery_t
 {
-    struct vlc_object_t obj;
+    VLC_COMMON_MEMBERS
     module_t *          p_module;
 
     struct vlc_renderer_discovery_owner owner;
@@ -175,7 +171,7 @@ struct vlc_renderer_discovery_t
     char *              psz_name;
     config_chain_t *    p_cfg;
 
-    void *p_sys;
+    vlc_renderer_discovery_sys *p_sys;
 };
 
 /**
@@ -201,7 +197,7 @@ static inline void vlc_rd_remove_item(vlc_renderer_discovery_t * p_rd,
 }
 
 /**
- * Renderer Discovery probe helpers
+ * Renderer Discovery proble helpers
  */
 VLC_API int
 vlc_rd_probe_add(vlc_probe_t *p_probe, const char *psz_name,
@@ -216,9 +212,8 @@ static int vlc_rd_probe_open(vlc_object_t *obj) \
 #define VLC_RD_PROBE_SUBMODULE \
     add_submodule() \
         set_capability("renderer probe", 100) \
-        set_callback(vlc_rd_probe_open)
+        set_callbacks(vlc_rd_probe_open, NULL)
 
-/** @} */
-/** @} */
+/** @} @} */
 
 #endif

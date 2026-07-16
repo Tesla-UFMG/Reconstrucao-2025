@@ -2,6 +2,7 @@
  * libvlc_media_list.h:  libvlc_media_list API
  *****************************************************************************
  * Copyright (C) 1998-2008 VLC authors and VideoLAN
+ * $Id$
  *
  * Authors: Pierre d'Herbemont
  *
@@ -23,8 +24,6 @@
 #ifndef LIBVLC_MEDIA_LIST_H
 #define LIBVLC_MEDIA_LIST_H 1
 
-typedef struct libvlc_media_t libvlc_media_t;
-
 # ifdef __cplusplus
 extern "C" {
 # endif
@@ -42,9 +41,11 @@ typedef struct libvlc_media_list_t libvlc_media_list_t;
 /**
  * Create an empty media list.
  *
+ * \param p_instance libvlc instance
  * \return empty media list, or NULL on error
  */
-LIBVLC_API libvlc_media_list_t *libvlc_media_list_new(void);
+LIBVLC_API libvlc_media_list_t *
+    libvlc_media_list_new( libvlc_instance_t *p_instance );
 
 /**
  * Release media list created with libvlc_media_list_new().
@@ -58,9 +59,8 @@ LIBVLC_API void
  * Retain reference to a media list
  *
  * \param p_ml a media list created with libvlc_media_list_new()
- * \return the same object
  */
-LIBVLC_API libvlc_media_list_t *
+LIBVLC_API void
     libvlc_media_list_retain( libvlc_media_list_t *p_ml );
 
 /**
@@ -159,10 +159,12 @@ LIBVLC_API int
  * This indicates if this media list is read-only from a user point of view
  *
  * \param p_ml media list instance
- * \retval true read-only
- * \retval false read/write
+ * \return 1 on readonly, 0 on readwrite
+ *
+ * \libvlc_return_bool
  */
-LIBVLC_API bool libvlc_media_list_is_readonly(libvlc_media_list_t *p_ml);
+LIBVLC_API int
+    libvlc_media_list_is_readonly( libvlc_media_list_t * p_ml );
 
 /**
  * Get lock on media list items
@@ -180,6 +182,16 @@ LIBVLC_API void
  */
 LIBVLC_API void
     libvlc_media_list_unlock( libvlc_media_list_t *p_ml );
+
+/**
+ * Get libvlc_event_manager from this media list instance.
+ * The p_event_manager is immutable, so you don't have to hold the lock
+ *
+ * \param p_ml a media list instance
+ * \return libvlc_event_manager
+ */
+LIBVLC_API libvlc_event_manager_t *
+    libvlc_media_list_event_manager( libvlc_media_list_t *p_ml );
 
 /** @} media_list */
 

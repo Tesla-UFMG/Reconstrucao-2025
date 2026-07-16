@@ -26,81 +26,6 @@
 #ifndef LIBVLC_FIXUPS_H
 # define LIBVLC_FIXUPS_H 1
 
-#if defined(_MSC_VER)
-// disable common warnings when compiling POSIX code
-#ifndef _CRT_NONSTDC_NO_DEPRECATE
-// the POSIX variants are not available in the GDK
-# if !(defined(_GAMING_XBOX_SCARLETT) || defined(_GAMING_XBOX_XBOXONE) || defined(_XBOX_ONE))
-#  define _CRT_NONSTDC_NO_DEPRECATE
-# endif
-#endif
-#ifndef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS     1
-#endif
-#if defined(_GAMING_XBOX_SCARLETT) || defined(_GAMING_XBOX_XBOXONE) || defined(_XBOX_ONE)
-// make sure we don't use MS POSIX aliases that won't link
-# undef _CRT_DECLARE_NONSTDC_NAMES
-# define _CRT_DECLARE_NONSTDC_NAMES 0
-#endif
-
-
-// sys/stat.h values
-#define S_IWUSR     _S_IWRITE
-#define S_IRUSR     _S_IREAD
-#define S_IFIFO     _S_IFIFO
-#define S_IFMT      _S_IFMT
-#define S_IFCHR     _S_IFCHR
-#define S_IFREG     _S_IFREG
-#define S_IFDIR     _S_IFDIR
-#define S_ISDIR(m)  (((m) & _S_IFMT) == _S_IFDIR)
-#define S_ISREG(m)  (((m) & _S_IFMT) == _S_IFREG)
-#define S_ISBLK(m)  (0)
-
-// same type as statXXX structures st_mode field
-typedef unsigned short mode_t;
-
-// no compat, but there's an MSVC equivalent
-#define strncasecmp _strnicmp
-#define snwprintf   _snwprintf
-
-// since we define restrist as __restrict for C++, __declspec(restrict) is bogus
-#define _CRT_SUPPRESS_RESTRICT
-#define DECLSPEC_RESTRICT
-
-// turn CPU MSVC-ism into more standard defines
-#if defined(_M_X64) && !defined(__x86_64__)
-# define __x86_64__
-#endif
-#if defined(_M_IX86) && !defined(__i386__)
-# define __i386__
-#endif
-#if defined(_M_ARM64) && !defined(__aarch64__)
-# define __aarch64__
-#endif
-#if defined(_M_ARM) && !defined(__arm__)
-# define __arm__
-#endif
-#if defined(_M_IX86_FP) && _M_IX86_FP == 1 && !defined(__SSE__)
-# define __SSE__
-#endif
-#if defined(_M_IX86_FP) && _M_IX86_FP == 2 && !defined(__SSE2__)
-# define __SSE2__
-#endif
-
-#endif // _MSC_VER
-
-#ifdef _WIN32
-# if !defined(NOMINMAX)
-// avoid collision between numeric_limits::max() and max define
-#  define NOMINMAX
-# endif
-# if !defined(_USE_MATH_DEFINES)
-// enable M_PI definition
-#  define _USE_MATH_DEFINES
-# endif
-#endif
-
-
 /* needed to detect uClibc */
 #ifdef HAVE_FEATURES_H
 #include <features.h>
@@ -108,7 +33,7 @@ typedef unsigned short mode_t;
 
 /* C++11 says there's no need to define __STDC_*_MACROS when including
  * inttypes.h and stdint.h. */
-#if defined (__cplusplus) && defined(__UCLIBC__)
+#if defined (__cplusplus) && (defined(__MINGW32__) || defined(__UCLIBC__) || defined(__native_client__))
 # ifndef __STDC_FORMAT_MACROS
 #  define __STDC_FORMAT_MACROS 1
 # endif
@@ -137,6 +62,14 @@ typedef unsigned short mode_t;
 # include <time.h> /* time_t */
 #endif
 
+#ifndef HAVE_GETTIMEOFDAY
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <sys/time.h>
+#endif
+#endif
+
 #ifndef HAVE_LLDIV
 typedef struct
 {
@@ -157,8 +90,6 @@ typedef struct
 
 #if !defined (HAVE_ALIGNED_ALLOC) || \
     !defined (HAVE_MEMRCHR) || \
-    !defined (HAVE_POSIX_MEMALIGN) || \
-    !defined (HAVE_QSORT_R) || \
     !defined (HAVE_STRLCPY) || \
     !defined (HAVE_STRNDUP) || \
     !defined (HAVE_STRNLEN) || \
@@ -172,15 +103,8 @@ typedef struct
 
 #if !defined (HAVE_GETDELIM) || \
     !defined (HAVE_GETPID)   || \
-    !defined (HAVE_SWAB) || \
-    !defined (HAVE_WRITEV) || \
-    !defined (HAVE_READV)
+    !defined (HAVE_SWAB)
 # include <sys/types.h> /* ssize_t, pid_t */
-
-# if defined(_CRT_INTERNAL_NONSTDC_NAMES) && !_CRT_INTERNAL_NONSTDC_NAMES
-// MS POSIX aliases missing
-typedef _off_t off_t;
-# endif
 #endif
 
 #if !defined (HAVE_DIRFD) || \
@@ -193,6 +117,15 @@ typedef _off_t off_t;
 extern "C" {
 #else
 # define VLC_NOTHROW
+#endif
+
+/* signal.h */
+#if !defined(HAVE_SIGWAIT) && defined(__native_client__)
+/* NaCl does not define sigwait in signal.h. We need to include it here to
+ * define sigwait, because sigset_t is allowed to be either an integral or a
+ * struct. */
+#include <signal.h>
+int sigwait(const sigset_t *set, int *sig);
 #endif
 
 /* stddef.h */
@@ -231,6 +164,10 @@ int vasprintf (char **, const char *, va_list);
 #endif
 
 /* string.h */
+#ifndef HAVE_FFSLL
+int ffsll(long long);
+#endif
+
 #ifndef HAVE_MEMRCHR
 void *memrchr(const void *, int, size_t);
 #endif
@@ -300,17 +237,6 @@ float strtof (const char *, char **);
 long long int strtoll (const char *, char **, int);
 #endif
 
-/* sys/uio.h */
-#ifndef HAVE_READV
-struct iovec;
-ssize_t readv(int, const struct iovec *, int);
-#endif
-
-#ifndef HAVE_WRITEV
-struct iovec;
-ssize_t writev(int, const struct iovec *, int);
-#endif
-
 /* time.h */
 #ifndef HAVE_GMTIME_R
 struct tm *gmtime_r (const time_t *, struct tm *);
@@ -333,13 +259,9 @@ int timespec_get(struct timespec *, int);
 #endif
 
 /* sys/time.h */
-#if defined(WIN32) && !defined(WINSTORECOMPAT) && defined(HAVE_GETPID)
-#include <winapifamily.h>
-#if !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
-// getpid is incorrectly detected in UWP so we won't use the compat version
-#include <processthreadsapi.h>
-#define getpid()  GetCurrentProcessId()
-#endif
+#ifndef HAVE_GETTIMEOFDAY
+struct timezone;
+int gettimeofday(struct timeval *, struct timezone *);
 #endif
 
 /* unistd.h */
@@ -349,6 +271,10 @@ pid_t getpid (void) VLC_NOTHROW;
 
 #ifndef HAVE_FSYNC
 int fsync (int fd);
+#endif
+
+#ifndef HAVE_PATHCONF
+long pathconf (const char *path, int name);
 #endif
 
 /* dirent.h */
@@ -382,10 +308,6 @@ int setenv (const char *, const char *, int);
 int unsetenv (const char *);
 #endif
 
-#ifndef HAVE_POSIX_MEMALIGN
-int posix_memalign(void **, size_t, size_t);
-#endif
-
 #ifndef HAVE_ALIGNED_ALLOC
 void *aligned_alloc(size_t, size_t);
 #endif
@@ -394,10 +316,16 @@ void *aligned_alloc(size_t, size_t);
 } /* extern "C" */
 #endif
 
-#if defined (_WIN32)
+#if defined (_WIN32) && defined(__MINGW32__)
+#define aligned_free(ptr)  __mingw_aligned_free(ptr)
+#elif defined (_WIN32) && defined(_MSC_VER)
 #define aligned_free(ptr)  _aligned_free(ptr)
 #else
 #define aligned_free(ptr)  free(ptr)
+#endif
+
+#if defined(__native_client__) && defined(__cplusplus)
+# define HAVE_USELOCALE
 #endif
 
 #if !defined(HAVE_NEWLOCALE) && defined(HAVE_CXX_LOCALE_T) && defined(__cplusplus)
@@ -434,6 +362,13 @@ static inline locale_t uselocale(locale_t loc)
 }
 #endif
 
+#if !defined (HAVE_STATIC_ASSERT) && !defined(__cpp_static_assert)
+# define STATIC_ASSERT_CONCAT_(a, b) a##b
+# define STATIC_ASSERT_CONCAT(a, b) STATIC_ASSERT_CONCAT_(a, b)
+# define _Static_assert(x, s) extern char STATIC_ASSERT_CONCAT(static_assert_, __LINE__)[sizeof(struct { unsigned:-!(x); })]
+# define static_assert _Static_assert
+#endif
+
 /* libintl support */
 #define _(str)            vlc_gettext (str)
 #define N_(str)           gettext_noop (str)
@@ -444,28 +379,23 @@ extern "C" {
 #endif
 
 #ifndef HAVE_SWAB
-/* Android NDK25 have swab but configure fails to detect it */
-#ifndef __ANDROID__
 void swab (const void *, void *, ssize_t);
-#endif
 #endif
 
 /* Socket stuff */
 #ifndef HAVE_INET_PTON
-# ifdef __cplusplus
-}
-# endif
 # ifndef _WIN32
 #  include <sys/socket.h>
 #else
 typedef int socklen_t;
 # endif
-# ifdef __cplusplus
-extern "C" {
-# endif
-
 int inet_pton(int, const char *, void *);
 const char *inet_ntop(int, const void *, char *, socklen_t);
+#endif
+
+/* NaCl has a broken netinet/tcp.h, so TCP_NODELAY is not set */
+#if defined(__native_client__) && !defined( HAVE_NETINET_TCP_H )
+#  define TCP_NODELAY 1
 #endif
 
 #ifndef HAVE_STRUCT_POLLFD
@@ -496,19 +426,16 @@ int poll (struct pollfd *, unsigned, int);
 #endif
 
 #ifndef HAVE_IF_NAMEINDEX
-# ifdef __cplusplus
-}
-# endif
 #include <errno.h>
-# ifdef __cplusplus
-extern "C" {
-# endif
 # ifndef HAVE_STRUCT_IF_NAMEINDEX
 struct if_nameindex
 {
     unsigned if_index;
     char    *if_name;
 };
+# endif
+# ifndef HAVE_IF_NAMETOINDEX
+#  define if_nametoindex(name)   atoi(name)
 # endif
 # define if_nameindex()         (errno = ENOBUFS, NULL)
 # define if_freenameindex(list) (void)0
@@ -538,20 +465,6 @@ struct msghdr
     size_t        msg_controllen;
     int           msg_flags;
 };
-
-# ifndef HAVE_IF_NAMETOINDEX
-#  ifdef __cplusplus
-}
-#  endif
-#  include <stdlib.h> /* a define may change from the real atoi declaration */
-#  ifdef __cplusplus
-extern "C" {
-#  endif
-static inline int if_nametoindex(const char *name)
-{
-    return atoi(name);
-}
-# endif
 #endif
 
 #ifdef _NEWLIB_VERSION
@@ -569,7 +482,16 @@ ssize_t sendmsg(int, const struct msghdr *, int);
 #endif
 
 /* search.h */
-#ifndef HAVE_TFIND
+#ifndef HAVE_SEARCH_H
+typedef struct entry {
+    char *key;
+    void *data;
+} ENTRY;
+
+typedef enum {
+    FIND, ENTER
+} ACTION;
+
 typedef enum {
     preorder,
     postorder,
@@ -578,7 +500,7 @@ typedef enum {
 } VISIT;
 
 void *tsearch( const void *key, void **rootp, int(*cmp)(const void *, const void *) );
-void *tfind( const void *key, void * const *rootp, int(*cmp)(const void *, const void *) );
+void *tfind( const void *key, const void **rootp, int(*cmp)(const void *, const void *) );
 void *tdelete( const void *key, void **rootp, int(*cmp)(const void *, const void *) );
 void twalk( const void *root, void(*action)(const void *nodep, VISIT which, int depth) );
 #ifndef _WIN32
@@ -586,15 +508,9 @@ void twalk( const void *root, void(*action)(const void *nodep, VISIT which, int 
 void *lfind( const void *key, const void *base, size_t *nmemb,
              size_t size, int(*cmp)(const void *, const void *) );
 #endif
-#endif /* HAVE_TFIND */
-
+#endif /* HAVE_SEARCH_H */
 #ifndef HAVE_TDESTROY
 void tdestroy( void *root, void (*free_node)(void *nodep) );
-#endif
-
-/* sys/auxv.h */
-#ifndef HAVE_GETAUXVAL
-unsigned long getauxval(unsigned long);
 #endif
 
 /* Random numbers */
@@ -713,19 +629,10 @@ struct sockaddr_in6
 
 # define IN6_IS_ADDR_MULTICAST(a)   (((__const uint8_t *) (a))[0] == 0xff)
 
-# define INET6_ADDRSTRLEN   46
-
 static const struct in6_addr in6addr_any =
     { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
 
-static const struct in6_addr in6addr_loopback =
-    { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 } };
-
-#define IN6ADDR_ANY_INIT \
-    { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } } }
-
-#define IN6ADDR_LOOPBACK_INIT \
-    { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 } } }
+# define INET6_ADDRSTRLEN   46
 
 # include <errno.h>
 # ifndef EPROTO
@@ -735,16 +642,7 @@ static const struct in6_addr in6addr_loopback =
 # ifndef HAVE_IF_NAMETOINDEX
 #  define if_nametoindex(name)  atoi(name)
 # endif
-
-/* static_assert missing in assert.h */
-# if defined(__STDC_VERSION__) && \
-     __STDC_VERSION__ >= 201112L && __STDC_VERSION__ < 202311L
-#  include <assert.h>
-#  ifndef static_assert
-#   define static_assert _Static_assert
-#  endif
-# endif
-#endif  /* __OS2__ */
+#endif
 
 /* math.h */
 
@@ -753,88 +651,27 @@ static const struct in6_addr in6addr_loopback =
 #endif
 
 #ifndef HAVE_SINCOS
-void (sincos)(double, double *, double *);
-void (sincosf)(float, float *, float *);
+void sincos(double, double *, double *);
+void sincosf(float, float *, float *);
 #endif
 
 #ifndef HAVE_REALPATH
 char *realpath(const char * restrict pathname, char * restrict resolved_path);
 #endif
 
+/* mingw-w64 has a broken IN6_IS_ADDR_MULTICAST macro */
+#if defined(_WIN32) && defined(__MINGW64_VERSION_MAJOR)
+# if __MINGW64_VERSION_MAJOR < 6 /* fixed in 4c2df0d02ed71ae07e85f1b35ac857a148cd2b8f */
+# define IN6_IS_ADDR_MULTICAST IN6_IS_ADDR_MULTICAST
+# endif
+#endif
+
 #ifdef __APPLE__
 # define fdatasync fsync
-
-# ifdef __cplusplus
-}
-# endif
-# include <time.h>
-# ifdef __cplusplus
-extern "C" {
-# endif
-# ifndef TIMER_ABSTIME
-#  define TIMER_ABSTIME 0x01
-# endif
-# ifndef CLOCK_REALTIME
-#  define CLOCK_REALTIME 0
-# endif
-# ifndef CLOCK_MONOTONIC
-#  define CLOCK_MONOTONIC 6
-# endif
-# ifndef HAVE_CLOCK_GETTIME
-int clock_gettime(clockid_t clock_id, struct timespec *tp);
-# endif
-# ifndef HAVE_CLOCK_GETRES
-int clock_getres(clockid_t clock_id, struct timespec *tp);
-# endif
 #endif
-
-#ifndef _WIN32
-# ifndef HAVE_CLOCK_NANOSLEEP
-#  ifdef __cplusplus
-}
-#  endif
-# include <time.h>
-#  ifdef __cplusplus
-extern "C" {
-#  endif
-int clock_nanosleep(clockid_t clock_id, int flags,
-        const struct timespec *rqtp, struct timespec *rmtp);
-# endif
-#endif
-
-#ifdef _WIN32
-# if defined(_CRT_INTERNAL_NONSTDC_NAMES) && !_CRT_INTERNAL_NONSTDC_NAMES
-#  include <string.h>
-// the MS POSIX aliases are missing
-static inline char *strdup(const char *str)
-{
-    return _strdup(str);
-}
-
-#  define O_WRONLY    _O_WRONLY
-#  define O_CREAT     _O_CREAT
-#  define O_APPEND    _O_APPEND
-#  define O_TRUNC     _O_TRUNC
-#  define O_BINARY    _O_BINARY
-#  define O_EXCL      _O_EXCL
-#  define O_RDWR      _O_RDWR
-#  define O_TEXT      _O_TEXT
-#  define O_NOINHERIT _O_NOINHERIT
-#  define O_RDONLY    _O_RDONLY
-
-# endif // !_CRT_INTERNAL_NONSTDC_NAMES
-#endif // _WIN32
-
 
 #ifdef __cplusplus
 } /* extern "C" */
-#endif
-
-#if defined(__cplusplus)
-#ifndef HAVE_CXX_TYPEOF
-# include <type_traits>
-# define typeof(t) std::remove_reference<decltype(t)>::type
-#endif
 #endif
 
 #endif /* !LIBVLC_FIXUPS_H */

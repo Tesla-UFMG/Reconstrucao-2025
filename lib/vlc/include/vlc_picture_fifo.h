@@ -2,6 +2,7 @@
  * vlc_picture_fifo.h: picture fifo definitions
  *****************************************************************************
  * Copyright (C) 2009 VLC authors and VideoLAN
+ * $Id$
  *
  * Authors: Laurent Aimar <fenrir _AT_ videolan _DOT_ org>
  *
@@ -50,34 +51,20 @@ VLC_API picture_fifo_t * picture_fifo_New( void ) VLC_USED;
 VLC_API void picture_fifo_Delete( picture_fifo_t * );
 
 /**
- * Lock the picture_fifo
- *
- * All picture_fifo_t functions, except picture_fifo_Delete(), need to be
- * called with the lock held.
- */
-VLC_API void picture_fifo_Lock( picture_fifo_t * );
-
-/**
- * Unlock the picture_fifo
- */
-VLC_API void picture_fifo_Unlock( picture_fifo_t * );
-
-/**
- * It retrieves a picture_t from the fifo.
+ * It retreives a picture_t from the fifo.
  *
  * If the fifo is empty, it return NULL without waiting.
  */
 VLC_API picture_t * picture_fifo_Pop( picture_fifo_t * ) VLC_USED;
 
 /**
- * It returns whether the fifo is empty or not.
+ * It returns the first picture_t pointer from the fifo but does not
+ * remove it. The picture returned has been hold for you so you
+ * must call picture_Release on it.
+ *
+ * If the fifo is empty, it return NULL without waiting.
  */
-VLC_API bool picture_fifo_IsEmpty( picture_fifo_t * );
-
-/**
- * It returns the number of pictures queued
- */
-VLC_API size_t picture_fifo_GetCount( picture_fifo_t * );
+VLC_API picture_t * picture_fifo_Peek( picture_fifo_t * ) VLC_USED;
 
 /**
  * It saves a picture_t into the fifo.
@@ -87,11 +74,16 @@ VLC_API void picture_fifo_Push( picture_fifo_t *, picture_t * );
 /**
  * It release all picture inside the fifo that have a lower or equal date
  * if flush_before or higher or equal to if not flush_before than the given one.
- * Passing VLC_TICK_INVALID on the date releases all the pictures.
  *
  * All pictures inside the fifo will be released by picture_Release.
  */
 VLC_API void picture_fifo_Flush( picture_fifo_t *, vlc_tick_t date, bool flush_before );
+
+/**
+ * It applies a delta on all the picture timestamp.
+ */
+VLC_API void picture_fifo_OffsetDate( picture_fifo_t *, vlc_tick_t delta );
+
 
 #endif /* VLC_PICTURE_FIFO_H */
 

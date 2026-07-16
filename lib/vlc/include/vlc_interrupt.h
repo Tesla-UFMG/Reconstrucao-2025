@@ -18,6 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
+/**
+ * @file
+ * This file declares interruptible sleep functions.
+ */
+
 #ifndef VLC_INTERRUPT_H
 # define VLC_INTERRUPT_H 1
 # include <vlc_threads.h>
@@ -34,10 +39,7 @@ struct msghdr;
 
 /**
  * @defgroup interrupt Interruptible sleep
- * @ingroup thread
  * @{
- * @file
- * This file declares interruptible sleep functions.
  * @defgroup interrupt_sleep Interruptible sleep functions
  * @{
  */
@@ -61,7 +63,7 @@ struct msghdr;
 VLC_API int vlc_sem_wait_i11e(vlc_sem_t *);
 
 /**
- * Interruptible variant of vlc_tick_wait().
+ * Interruptible variant of mwait().
  *
  * Waits for a specified timestamp or, if the calling thread has an
  * interruption context, an interruption.
@@ -72,7 +74,7 @@ VLC_API int vlc_sem_wait_i11e(vlc_sem_t *);
 VLC_API int vlc_mwait_i11e(vlc_tick_t);
 
 /**
- * Interruptible variant of vlc_tick_sleep().
+ * Interruptible variant of msleep().
  *
  * Waits for a specified timeout duration or, if the calling thread has an
  * interruption context, an interruption.
@@ -84,7 +86,7 @@ VLC_API int vlc_mwait_i11e(vlc_tick_t);
  */
 static inline int vlc_msleep_i11e(vlc_tick_t delay)
 {
-    return vlc_mwait_i11e(vlc_tick_now() + delay);
+    return vlc_mwait_i11e(mdate() + delay);
 }
 
 /**
@@ -211,7 +213,6 @@ VLC_API bool vlc_killed(void) VLC_USED;
  * If the calling thread has no interrupt context, this function does nothing.
  *
  * @param to context to forward to
- * @param data opaque data pointer for the callback
  */
 VLC_API void vlc_interrupt_forward_start(vlc_interrupt_t *to,
                                          void *data[2]);
@@ -233,6 +234,5 @@ VLC_API void vlc_interrupt_forward_start(vlc_interrupt_t *to,
  */
 VLC_API int vlc_interrupt_forward_stop(void *const data[2]);
 
-/** @} */
-/** @} */
+/** @} @} */
 #endif

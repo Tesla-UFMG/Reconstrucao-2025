@@ -59,10 +59,10 @@ void Video::render() {
     } else {
         // Tenta renderizar o frame
         SDL_Texture* tex = m_player.getTexture();
-        if (tex) {
-            float vW = static_cast<float>(m_player.getWidth());
-            float vH = static_cast<float>(m_player.getHeight());
-            
+        float vW = static_cast<float>(m_player.getWidth());
+        float vH = static_cast<float>(m_player.getHeight());
+        
+        if (tex && vW > 0.0f && vH > 0.0f) {
             // Mantém a proporção (aspect ratio)
             float aspect = vW / vH;
             float displayW = avail.x;
