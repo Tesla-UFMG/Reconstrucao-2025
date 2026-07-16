@@ -50,7 +50,7 @@ void MenuBar::Windows() {
         MenuBar::changeWindowVisibility("Reconstrução de Pista", &vw.visibility.showReconstruction);
         MenuBar::changeWindowVisibility("Vídeo", &vw.visibility.showVideo);
         MenuBar::changeWindowVisibility("Volante", &vw.visibility.showWheelControl);
-        MenuBar::changeWindowVisibility("Pedais", &vw.visibility.showPedal);
+        //MenuBar::changeWindowVisibility("Pedais", &vw.visibility.showPedal);
         
         
         ImGui::SeparatorText("Janelas Dinâmicas");

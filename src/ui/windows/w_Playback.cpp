@@ -104,9 +104,6 @@ void Window::Playback::processDragDrop() {
                             if (this->selectedFileName.empty()) {
                                 this->csvBlockStart = 0.0;
                                 this->csvBlockEnd   = this->videoLengthMs > 0 ? this->videoLengthMs : 10000.0;
-                            } else {
-                                this->csvBlockStart = 0.0;
-                                this->csvBlockEnd   = this->videoLengthMs > 0 ? this->videoLengthMs : 10000.0;
                             }
                         }
                         break;
@@ -147,13 +144,30 @@ void Window::Playback::processDragDrop() {
             this->lastUpdatedIndex = -1;
             this->isPlaying        = false;
 
+            double durationMs = 10000.0;
+            if (!this->timestampData.empty()) {
+                double diff = this->endTimestamp - this->startTimestamp;
+                if (this->selectedTimeUnit == TimeUnit::Seconds) durationMs = diff * 1000.0;
+                else if (this->selectedTimeUnit == TimeUnit::Milliseconds) durationMs = diff;
+                else if (this->selectedTimeUnit == TimeUnit::Microseconds) durationMs = diff / 1000.0;
+                else {
+                    if (this->startTimestamp > 1e9) {
+                        if (this->startTimestamp > 1e11) durationMs = diff;
+                        else durationMs = diff * 1000.0;
+                    } else {
+                        durationMs = diff;
+                    }
+                }
+                if (durationMs <= 0.0) durationMs = 10000.0;
+            }
+
             if (this->loadedVideoName.empty()) {
                 this->videoBlockStart = 0.0;
                 this->csvBlockStart   = 0.0;
-                this->csvBlockEnd     = 10000.0;
+                this->csvBlockEnd     = durationMs;
             } else {
                 this->csvBlockStart = 0.0;
-                this->csvBlockEnd   = this->videoLengthMs > 0 ? this->videoLengthMs : 10000.0;
+                this->csvBlockEnd   = durationMs;
             }
             this->globalTime = 0.0;
 
@@ -435,6 +449,24 @@ void Window::Playback::render() {
             const char* units[]     = {"Automático", "Segundos", "Milissegundos", "Microssegundos"};
             if (ImGui::Combo("Unidade de Tempo", &currentUnit, units, IM_ARRAYSIZE(units))) {
                 this->selectedTimeUnit = static_cast<TimeUnit>(currentUnit);
+                if (!this->selectedFileName.empty() && !this->timestampData.empty()) {
+                    double diff = this->endTimestamp - this->startTimestamp;
+                    double durationMs = 10000.0;
+                    if (this->selectedTimeUnit == TimeUnit::Seconds) durationMs = diff * 1000.0;
+                    else if (this->selectedTimeUnit == TimeUnit::Milliseconds) durationMs = diff;
+                    else if (this->selectedTimeUnit == TimeUnit::Microseconds) durationMs = diff / 1000.0;
+                    else {
+                        if (this->startTimestamp > 1e9) {
+                            if (this->startTimestamp > 1e11) durationMs = diff;
+                            else durationMs = diff * 1000.0;
+                        } else {
+                            durationMs = diff;
+                        }
+                    }
+                    if (durationMs > 0.0) {
+                        this->csvBlockEnd = this->csvBlockStart + durationMs;
+                    }
+                }
             }
             ImGui::EndMenu();
         }
@@ -466,6 +498,10 @@ void Window::Playback::render() {
     ImGui::Dummy(ImGui::GetContentRegionAvail());
     this->processDragDrop();
     ImGui::SetCursorPos(cursorBefore);
+
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Space, false)) {
+        this->isPlaying = !this->isPlaying;
+    }
 
     auto   now          = std::chrono::steady_clock::now();
     double dt           = std::chrono::duration<double>(now - this->lastFrameTime).count();
